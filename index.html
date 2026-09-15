@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Japanese Shrine Garden - 3D Three.js Experience (@loktar00 Replica)</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛩️</text></svg>">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Noto+Serif+JP:wght@300;500;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <!-- Start Experience Screen -->
+  <div id="start-overlay" class="start-overlay">
+    <div class="start-card">
+      <div class="kanji-title">神社庭園</div>
+      <h1 class="main-title">Japanese Shrine Garden</h1>
+      <p class="subtitle">High-Fidelity 3D Interactive Three.js Experience</p>
+      <div class="tags-badge">
+        <span>Three.js</span>
+        <span>Retro Dither Shader</span>
+        <span>Dynamic Ripples</span>
+        <span>YuE2 Audio</span>
+      </div>
+      <p class="desc">
+        A recreation of the atmospheric twilight Japanese shrine garden by <strong>@loktar00</strong>.
+        Features procedural Torii gate, cherry blossoms, water ripple physics, flickering stone lanterns, and 90s aesthetic post-processing.
+      </p>
+      <button id="start-btn" class="start-button">
+        <span class="btn-kanji">入園</span> Enter Shrine Garden
+      </button>
+      <div class="hint">Click anywhere on the pond to trigger water ripples</div>
+    </div>
+  </div>
+
+  <!-- Top Navigation / Watermark -->
+  <header class="top-nav">
+    <div class="brand">
+      <span class="brand-kanji">神社</span>
+      <div class="brand-text">
+        <div class="title">Japanese Shrine Garden</div>
+        <div class="author">Replica of <a href="https://x.com/loktar00/status/2099667407887307257" target="_blank" rel="noopener">@loktar00</a></div>
+      </div>
+    </div>
+
+    <div class="top-actions">
+      <!-- Camera Mode Toggle -->
+      <div class="mode-toggle">
+        <button id="btn-mode-cinematic" class="mode-btn active" title="Follow original 60s video camera flight">
+          🎥 Cinematic Tour
+        </button>
+        <button id="btn-mode-orbit" class="mode-btn" title="Free orbit and zoom camera controls">
+          🌐 Free Explore
+        </button>
+      </div>
+
+      <!-- Quick Action Buttons -->
+      <button id="btn-bell" class="icon-btn" title="Ring Temple Bell (Bonshō)">🔔</button>
+      <button id="btn-screenshot" class="icon-btn" title="Capture High-Res Photo">📷</button>
+      <button id="btn-fullscreen" class="icon-btn" title="Toggle Fullscreen">⛶</button>
+      <button id="btn-info" class="icon-btn" title="Information & Controls">ℹ</button>
+    </div>
+  </header>
+
+  <!-- Side Settings Drawer (Collapsible) -->
+  <div class="side-controls">
+    <div class="panel-header">
+      <span class="panel-title">Atmosphere & Shaders</span>
+    </div>
+
+    <!-- Atmosphere Presets -->
+    <div class="control-group">
+      <label for="preset-select">Time of Day</label>
+      <select id="preset-select" class="styled-select">
+        <option value="twilight" selected>Twilight (Original Video)</option>
+        <option value="night">Midnight Moon</option>
+        <option value="sunset">Golden Sunset</option>
+        <option value="dawn">Misty Dawn</option>
+      </select>
+    </div>
+
+    <!-- Retro Shader Toggle -->
+    <div class="control-group switch-group">
+      <label for="toggle-retro">Retro Dither & Color Banding</label>
+      <input type="checkbox" id="toggle-retro" class="styled-checkbox" checked>
+    </div>
+
+    <!-- Posterize Levels Slider -->
+    <div class="control-group">
+      <div class="label-row">
+        <span>Color Steps (Posterize)</span>
+        <span id="val-posterize" class="val-badge">16</span>
+      </div>
+      <input type="range" id="slider-posterize" min="4" max="28" step="1" value="16" class="styled-slider">
+    </div>
+
+    <!-- Bayer Dither Slider -->
+    <div class="control-group">
+      <div class="label-row">
+        <span>Bayer Dither Intensity</span>
+        <span id="val-dither" class="val-badge">0.04</span>
+      </div>
+      <input type="range" id="slider-dither" min="0.0" max="0.30" step="0.01" value="0.04" class="styled-slider">
+    </div>
+
+    <!-- Bloom Slider -->
+    <div class="control-group">
+      <div class="label-row">
+        <span>Lantern Glow (Bloom)</span>
+        <span id="val-bloom" class="val-badge">0.60</span>
+      </div>
+      <input type="range" id="slider-bloom" min="0.0" max="1.5" step="0.05" value="0.60" class="styled-slider">
+    </div>
+  </div>
+
+  <!-- Bottom Timeline & Audio Player Bar -->
+  <footer class="bottom-bar">
+    <button id="btn-play-pause" class="player-btn" title="Play / Pause">
+      <span id="play-pause-icon">&#10074;&#10074;</span>
+    </button>
+
+    <div class="timeline-container">
+      <input type="range" id="timeline-scrubber" min="0" max="1" step="0.001" value="0" class="timeline-slider">
+      <div class="time-meta">
+        <span id="time-display" class="time-display">0:00 / 1:00</span>
+        <span class="tour-status">60s Cinematic Spline Flythrough</span>
+      </div>
+    </div>
+
+    <!-- Audio Player Controls -->
+    <div class="audio-controls">
+      <button id="btn-audio-toggle" class="audio-btn" title="Toggle Mute">🔊</button>
+      <input type="range" id="audio-volume" min="0" max="1" step="0.02" value="0.75" class="volume-slider" title="Volume">
+    </div>
+  </footer>
+
+  <!-- Info Modal -->
+  <div id="info-modal" class="modal hidden">
+    <div class="modal-content">
+      <button id="close-info" class="close-btn">&times;</button>
+      <h2>Japanese Shrine Garden</h2>
+      <p class="modal-jp">神社庭園（じんじゃていえん）</p>
+      <p>
+        An exact 3D real-time replica of the viral demo created by <strong>@loktar00</strong> on X.
+      </p>
+      <h3>Features & Mechanics</h3>
+      <ul>
+        <li><strong>Original Audio Track:</strong> Atmospheric music generated with YuE2 + interactive procedural temple bells & water drops.</li>
+        <li><strong>Dynamic Water Ripples:</strong> Falling sakura petals and user clicks generate interactive expanding concentric wave rings.</li>
+        <li><strong>Authentic Shaders:</strong> 4x4 Bayer Matrix ordered dithering, color quantization/posterization, tilt-shift depth of field, and soft lantern bloom.</li>
+        <li><strong>Procedural Architecture:</strong> Traditional Japanese Myōjin Torii gate, stone lanterns (Tōrō), Tsukubai water basin, and curved kawara-tiled shrine roof.</li>
+        <li><strong>Dual Camera Modes:</strong> Switch between the exact 60-second video flythrough and free 360° orbital exploration.</li>
+      </ul>
+      <p class="modal-tip">Tip: Click on the pond to trigger ripples or click the 🔔 bell to ring the Japanese temple chime.</p>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
