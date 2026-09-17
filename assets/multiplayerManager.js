@@ -907,7 +907,8 @@ export class MultiplayerManager {
   requestRematch(nextTrack = false) {
     if (!this.isHost) return;
     if (nextTrack) {
-      this.trackIndex = (this.trackIndex + 1) % 4;
+      const totalTracks = (typeof window !== 'undefined' && window.__ZEPHYR_TRACKS?.length) || 24;
+      this.trackIndex = (this.trackIndex + 1) % totalTracks;
     }
     this.broadcastToAll({
       type: 'REMATCH',

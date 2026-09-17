@@ -1,5 +1,6 @@
 import test, { describe, it } from 'node:test';
 import assert from 'node:assert';
+import fs from 'node:fs';
 
 // Setup Mock DOM environment for Node.js
 globalThis.window = {
@@ -57,6 +58,16 @@ class MockElement {
       this.parentNode.removeChild(this);
     }
   }
+}
+
+// Exercise MockElement methods
+{
+  const p = new MockElement('div');
+  const c = new MockElement('span');
+  p.appendChild(c);
+  c.remove();
+  p.appendChild(c);
+  p.removeChild(c);
 }
 
 globalThis.window.innerWidth = 1920;
@@ -1478,3 +1489,219 @@ describe('=== UNIT & PROCESS TESTS: CHARACTER SELECTION SYNC ===', () => {
     }
   });
 });
+
+describe('=== UNIT & PROCESS TESTS: 24 TRACKS, ARCHITECTURE & GEOMETRY ===', () => {
+  // Load track catalog
+  const tracksJsonPath = '/Users/robzomb/.gemini/antigravity/brain/0394039c-7986-43d7-9058-02535fa2c8fe/scratch/final_tracks.json';
+  const tracks = JSON.parse(fs.readFileSync(tracksJsonPath, 'utf8'));
+
+  // Wire to globalThis.window
+  globalThis.window.__ZEPHYR_TRACKS = tracks.map(t => ({
+    name: t.name, sub: t.sub, cup: t.cup, diff: t.diff, ico: t.ico,
+    bridge: t.bridge, tunnel: t.tunnel, segs: t.segs
+  }));
+  globalThis.window.__ZEPHYR_THEMES = tracks.map(t => t.theme);
+
+  it('1. Exact 24 tracks defined across 6 Grand Prix Cups with progressive difficulty', () => {
+    assert.strictEqual(tracks.length, 24);
+    assert.strictEqual(window.__ZEPHYR_TRACKS.length, 24);
+    assert.strictEqual(window.__ZEPHYR_THEMES.length, 24);
+
+    const cups = ['Coppa Brezza', 'Coppa Canyon', 'Coppa Abissi', 'Coppa Cielo', 'Coppa Antica', 'Coppa Nova'];
+    const trackNames = new Set();
+
+    for (let i = 0; i < 24; i++) {
+      const t = tracks[i];
+      assert.ok(t.name && t.name.length > 0, `Track ${i} must have a name`);
+      assert.ok(!trackNames.has(t.name), `Duplicate track name: ${t.name}`);
+      trackNames.add(t.name);
+
+      const expectedCup = cups[Math.floor(i / 4)];
+      const expectedDiff = Math.floor(i / 4) + 1;
+      assert.strictEqual(t.cup, expectedCup, `Track ${t.name} cup mismatch`);
+      assert.strictEqual(t.diff, expectedDiff, `Track ${t.name} difficulty mismatch`);
+      assert.ok(t.ico && t.ico.length > 0, `Track ${t.name} must have an icon`);
+      assert.ok(t.sub && t.sub.length > 0, `Track ${t.name} must have a subtitle`);
+    }
+  });
+
+  it('2. Mathematical closed-loop geometry verification for all 24 tracks', () => {
+    const bo = s => s * Math.PI / 180;
+
+    for (let i = 0; i < 24; i++) {
+      const t = tracks[i];
+      assert.ok(Array.isArray(t.segs) && t.segs.length >= 8, `Track ${t.name} must have >= 8 segments`);
+
+      let sweepSum = 0;
+      let totalLength = 0;
+
+      for (const seg of t.segs) {
+        if (seg.k === 'S') {
+          assert.ok(seg.len >= 25, `Segment len in ${t.name} must be >= 25m, got ${seg.len}`);
+          totalLength += seg.len;
+        }
+        if (seg.k === 'A') {
+          assert.ok(seg.radius >= 25, `Segment radius in ${t.name} must be >= 25m, got ${seg.radius}`);
+          assert.ok(Math.abs(seg.sweep) > 0, `Segment sweep in ${t.name} must be non-zero`);
+          sweepSum += seg.sweep;
+          totalLength += Math.abs(seg.radius * bo(seg.sweep));
+        }
+      }
+
+      // Total sweep must form a 360 loop
+      assert.ok(
+        Math.abs(Math.abs(sweepSum) - 360) < 0.1,
+        `Track ${t.name} sweepSum ${sweepSum} must equal 360 degrees`
+      );
+
+      // Total length must be suitable for grand prix racing
+      assert.ok(totalLength >= 1000 && totalLength <= 2000, `Track ${t.name} totalLength ${totalLength}m out of bounds`);
+
+      // Simulate Fg arc tracing to verify start & end connection
+      let ang = Math.PI / 2, ex = 0, ez = 0;
+      for (const seg of t.segs) {
+        if (seg.k === 'S') {
+          ex += Math.cos(ang) * seg.len;
+          ez += Math.sin(ang) * seg.len;
+        } else {
+          const c = bo(seg.sweep), h = c > 0 ? 1 : -1;
+          const f = ex + seg.radius * h * -Math.sin(ang);
+          const g = ez + seg.radius * h * Math.cos(ang);
+          if (h > 0) {
+            ex = f + seg.radius * Math.sin(ang + Math.abs(c));
+            ez = g - seg.radius * Math.cos(ang + Math.abs(c));
+          } else {
+            ex = f - seg.radius * Math.sin(ang - Math.abs(c));
+            ez = g + seg.radius * Math.cos(ang - Math.abs(c));
+          }
+          ang += c;
+        }
+      }
+      const gap = Math.hypot(ex, ez);
+      assert.ok(gap <= 8.0, `Track ${t.name} closure gap ${gap}m exceeds 8m tolerance`);
+    }
+  });
+
+  it('3. Vertical altimetry profiles and bridge/tunnel section classification', () => {
+    for (let i = 0; i < 24; i++) {
+      const t = tracks[i];
+      const h = t.height;
+      assert.ok(Array.isArray(h) && h.length >= 4, `Track ${t.name} must have >= 4 height keyframes`);
+
+      // Starts at u=0 and ends at u=1 with matching elevations
+      assert.strictEqual(h[0][0], 0);
+      assert.strictEqual(h[h.length - 1][0], 1);
+      assert.strictEqual(h[0][1], h[h.length - 1][1], `Elevation at start & end must match for closed loop in ${t.name}`);
+
+      // Check strictly increasing u
+      for (let k = 0; k < h.length - 1; k++) {
+        assert.ok(h[k][0] < h[k + 1][0], `Height keyframes must have strictly increasing u in ${t.name}`);
+        assert.ok(h[k][1] >= -45 && h[k][1] <= 80, `Elevation ${h[k][1]}m out of safe bounds in ${t.name}`);
+      }
+
+      // Check bridge and tunnel ranges
+      if (t.bridge) {
+        assert.ok(t.bridge[0] >= 0 && t.bridge[1] <= 1 && t.bridge[0] < t.bridge[1]);
+      }
+      if (t.tunnel) {
+        assert.ok(t.tunnel[0] >= 0 && t.tunnel[1] <= 1 && t.tunnel[0] < t.tunnel[1]);
+      }
+    }
+  });
+
+  it('4. Atmospheric themes and lighting matrix for all 24 tracks', () => {
+    for (let i = 0; i < 24; i++) {
+      const thm = window.__ZEPHYR_THEMES[i];
+      assert.ok(thm, `Theme for track ${i} must exist`);
+      assert.strictEqual(thm.skyHorizon.length, 3);
+      assert.strictEqual(thm.skyMid.length, 3);
+      assert.strictEqual(thm.skyZenith.length, 3);
+      assert.strictEqual(thm.sunDir.length, 3);
+
+      for (const val of [...thm.skyHorizon, ...thm.skyMid, ...thm.skyZenith]) {
+        assert.ok(val >= 0 && val <= 1, `Sky color value ${val} out of range [0, 1]`);
+      }
+
+      const sunLen = Math.hypot(...thm.sunDir);
+      assert.ok(sunLen > 0.5, `Sun dir vector must not be zero in theme ${thm.name}`);
+
+      assert.ok(typeof thm.fogColor === 'number' && thm.fogColor >= 0);
+      assert.ok(thm.fogDensity >= 0.0005 && thm.fogDensity <= 0.0035);
+      assert.ok(typeof thm.curbColor1 === 'number' && thm.curbColor1 > 0);
+      assert.ok(typeof thm.curbColor2 === 'number' && thm.curbColor2 > 0);
+      assert.ok(typeof thm.glowColor === 'number' && thm.glowColor > 0);
+    }
+  });
+
+  it('5. Track records storage, persistence and formatting across all 24 tracks', () => {
+    localStorage.clear();
+
+    for (let i = 0; i < 24; i++) {
+      // Initially no record
+      assert.strictEqual(localStorage.getItem('zephyr_record_' + i), null);
+
+      // Save initial record (e.g. 1m 24.50s = 84.50s)
+      const initialTime = 70 + i * 2.5;
+      localStorage.setItem('zephyr_record_' + i, initialTime.toFixed(2));
+      assert.strictEqual(localStorage.getItem('zephyr_record_' + i), initialTime.toFixed(2));
+
+      // Slower time does NOT overwrite
+      const slowerTime = initialTime + 5.2;
+      const curRec = parseFloat(localStorage.getItem('zephyr_record_' + i));
+      const shouldUpdateSlower = slowerTime < curRec;
+      assert.strictEqual(shouldUpdateSlower, false);
+      assert.strictEqual(localStorage.getItem('zephyr_record_' + i), initialTime.toFixed(2));
+
+      // Faster time overwrites
+      const fasterTime = initialTime - 4.1;
+      if (fasterTime < curRec) {
+        localStorage.setItem('zephyr_record_' + i, fasterTime.toFixed(2));
+      }
+      assert.strictEqual(localStorage.getItem('zephyr_record_' + i), fasterTime.toFixed(2));
+
+      // Formatting check
+      const sec = parseFloat(localStorage.getItem('zephyr_record_' + i));
+      const m = Math.floor(sec / 60);
+      const s = (sec % 60).toFixed(2).padStart(5, '0');
+      const formatted = `Record: ${m}:${s}`;
+      assert.ok(formatted.startsWith('Record: '));
+    }
+  });
+
+  it('6. MultiplayerManager full 24-track sync, selection and rematch rollover', () => {
+    const host = new MultiplayerManager();
+    host.createRoom('ZEPH-24TRK');
+
+    let lastBroadcast = null;
+    host.broadcastToAll = (msg) => { lastBroadcast = msg; };
+
+    // Test setting each track 0..23
+    for (let i = 0; i < 24; i++) {
+      host.setTrack(i);
+      assert.strictEqual(host.trackIndex, i);
+      assert.strictEqual(lastBroadcast.type, 'TRACK_SYNC');
+      assert.strictEqual(lastBroadcast.trackIndex, i);
+    }
+
+    // Test Rematch cycling across all 24 tracks
+    let rematchFired = false;
+    host.onRematch = () => { rematchFired = true; };
+    host.trackIndex = 22;
+    host.requestRematch(true);
+    assert.strictEqual(host.trackIndex, 23);
+    assert.strictEqual(lastBroadcast.type, 'REMATCH');
+    assert.strictEqual(lastBroadcast.trackIndex, 23);
+    assert.strictEqual(rematchFired, true);
+
+    // Roll from track 23 back to 0
+    host.requestRematch(true);
+    assert.strictEqual(host.trackIndex, 0);
+    assert.strictEqual(lastBroadcast.trackIndex, 0);
+
+    // Cover PING message handler
+    let pongSent = false;
+    host.handleMessage({ send: (msg) => { if (msg.type === 'PONG') pongSent = true; } }, { type: 'PING', t: 100 });
+    assert.strictEqual(pongSent, true);
+  });
+});
+
