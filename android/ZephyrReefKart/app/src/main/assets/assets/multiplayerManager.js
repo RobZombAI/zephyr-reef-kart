@@ -755,7 +755,18 @@ export class MultiplayerManager {
     p.project(camera);
 
     // Check if behind camera
-    if (p.z > 1.0) {
+    let isBehind = p.z > 1.0;
+    if (camera?.getWorldDirection && camera?.position) {
+      if (!this._scratchCamDir) this._scratchCamDir = camera.position.clone();
+      camera.getWorldDirection(this._scratchCamDir);
+      const dx = worldPos.x - camera.position.x;
+      const dy = worldPos.y - camera.position.y;
+      const dz = worldPos.z - camera.position.z;
+      if (dx * this._scratchCamDir.x + dy * this._scratchCamDir.y + dz * this._scratchCamDir.z <= 0.5) {
+        isBehind = true;
+      }
+    }
+    if (isBehind) {
       el.style.display = 'none';
       return;
     }
@@ -854,7 +865,18 @@ export class MultiplayerManager {
           p.y += 3.2; // Float above nametag
           p.project(camera);
 
-          if (p.z > 1.0) {
+          let isBehind = p.z > 1.0;
+          if (camera?.getWorldDirection && camera?.position) {
+            if (!this._scratchEmoteCamDir) this._scratchEmoteCamDir = camera.position.clone();
+            camera.getWorldDirection(this._scratchEmoteCamDir);
+            const dx = racer.pos.x - camera.position.x;
+            const dy = racer.pos.y - camera.position.y;
+            const dz = racer.pos.z - camera.position.z;
+            if (dx * this._scratchEmoteCamDir.x + dy * this._scratchEmoteCamDir.y + dz * this._scratchEmoteCamDir.z <= 0.5) {
+              isBehind = true;
+            }
+          }
+          if (isBehind) {
             emote.el.style.display = 'none';
             continue;
           }

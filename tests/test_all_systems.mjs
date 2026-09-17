@@ -651,7 +651,11 @@ describe('=== UNIT & PROCESS TESTS: MULTIPLAYER MANAGER ===', () => {
     const pos = new MockWorldPos(10, 0, 20);
 
     // 1. Normal in-screen projection
-    const camInScreen = { mockX: 0, mockY: 0, mockZ: 0.5 };
+    const camInScreen = {
+      mockX: 0, mockY: 0, mockZ: 0.5,
+      position: { x: 10, y: 0, z: 0, clone() { return new MockWorldPos(10, 0, 0); } },
+      getWorldDirection(out) { out.x = 0; out.y = 0; out.z = 1; }
+    };
     mp.updateProjectedNametag(1, 'FastRacer', 45, pos, camInScreen);
     const el = mp.nametagEls.get(1);
     assert.ok(el);
@@ -670,6 +674,15 @@ describe('=== UNIT & PROCESS TESTS: MULTIPLAYER MANAGER ===', () => {
     // 4. Behind camera (z > 1.0)
     const camBehind = { mockX: 0, mockY: 0, mockZ: 1.5 };
     mp.updateProjectedNametag(1, 'FastRacer', 150, pos, camBehind);
+    assert.strictEqual(el.style.display, 'none');
+
+    // 4b. Behind camera via directional dot product (dx*camDir.x + dy*camDir.y + dz*camDir.z <= 0.5)
+    const camBehindVector = {
+      mockX: 0, mockY: 0, mockZ: 0.5,
+      position: { x: 10, y: 0, z: 30, clone() { return new MockWorldPos(10, 0, 30); } },
+      getWorldDirection(out) { out.x = 0; out.y = 0; out.z = 1; }
+    };
+    mp.updateProjectedNametag(1, 'FastRacer', 150, pos, camBehindVector);
     assert.strictEqual(el.style.display, 'none');
 
     // 5. Off-screen bounds
@@ -1066,7 +1079,11 @@ describe('=== UNIT & PROCESS TESTS: MULTIPLAYER MANAGER ===', () => {
       }
     };
 
-    const camFront = { mockX: 0.1, mockY: 0.1, mockZ: 0.5, position: { clone() { return new MockPos(0, 2, 0); } } };
+    const camFront = {
+      mockX: 0.1, mockY: 0.1, mockZ: 0.5,
+      position: { x: 0, y: 2, z: 0, clone() { return new MockPos(0, 2, 0); } },
+      getWorldDirection(out) { out.x = 0; out.y = 0; out.z = 1; }
+    };
     const now = performance.now();
 
     // 1. In front of camera -> display: block
@@ -1074,9 +1091,18 @@ describe('=== UNIT & PROCESS TESTS: MULTIPLAYER MANAGER ===', () => {
     const bubble = mp.emoteEls.get(1);
     assert.strictEqual(bubble.el.style.display, 'block');
 
-    // 2. Behind camera -> display: none
+    // 2. Behind camera (z > 1.0) -> display: none
     const camBehind = { mockX: 0.1, mockY: 0.1, mockZ: 1.8, position: { clone() { return new MockPos(0, 2, 0); } } };
     mp.updateEmoteBubbles(now, mockDirector, camBehind);
+    assert.strictEqual(bubble.el.style.display, 'none');
+
+    // 3. Behind camera via directional dot product -> display: none
+    const camBehindVector = {
+      mockX: 0.1, mockY: 0.1, mockZ: 0.5,
+      position: { x: 0, y: 2, z: 20, clone() { return new MockPos(0, 2, 20); } },
+      getWorldDirection(out) { out.x = 0; out.y = 0; out.z = 1; }
+    };
+    mp.updateEmoteBubbles(now, mockDirector, camBehindVector);
     assert.strictEqual(bubble.el.style.display, 'none');
   });
 
@@ -1902,5 +1928,37 @@ describe('=== UNIT & PROCESS TESTS: UNIVERSAL ANDROID & BATTERY OPTIMIZATIONS ==
     assert.strictEqual(rafStopped, false);
   });
 });
+
+describe('=== UNIT & PROCESS TESTS: REAR FLICKER PREVENTION & CAMERA OCCLUSION ===', () => {
+  it('1. Kart model frustumCulled is disabled on all submeshes to prevent partial mesh flashing', () => {
+    const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+    assert.ok(bundle.includes('e.traverse(b=>{b.isMesh&&(b.frustumCulled=!1)})'), 'bundle must disable frustumCulled on all kart meshes');
+  });
+
+  it('2. Camera near clipping plane is reduced to 0.08m (8cm) to prevent lens intersection clipping', () => {
+    const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+    assert.ok(bundle.includes('this.camera=new Ke(e.fovBase,t,.08,2200)'), 'camera near clipping plane must be 0.08');
+  });
+
+  it('3. Look-back (rearview) snaps camera and aim targets to eliminate origin crossing singularity', () => {
+    const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+    assert.ok(bundle.includes('targetLb=this.wantLookBack?1:0,isTogglingLb=(this.lookBack>.5)!==(targetLb>.5)'), 'lookback must detect toggle without lerp singularity');
+    assert.ok(bundle.includes('(isTogglingLb||this.pos.distanceToSquared(Ie)>900)&&(this.pos.copy(Ie),this.aim.copy(Ui))'), 'lookback toggle must snap position and aim immediately');
+    assert.ok(bundle.includes('p=-24'), 'lookback aim must look 24m down the track behind kart');
+  });
+
+  it('4. Camera trailing close distance dynamic clearance buffer keeps lens ahead of pursuers', () => {
+    const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+    assert.ok(bundle.includes('trailingCloseDist:trDist'), 'Ev.syncVisual must compute trDist and pass to camera');
+    assert.ok(bundle.includes('extra&&extra.trailingCloseDist<8.5&&(c=Math.min(c,Math.max(3.6,extra.trailingCloseDist-1.8))'), 'computeDesired must clamp distance in front of pursuer');
+  });
+
+  it('5. AI avoidance hysteresis prevents steering and chassis lean flutter when drafting behind player', () => {
+    const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+    assert.ok(bundle.includes('E(this,"_avSide",0)'), 'nc class must have _avSide hysteresis property');
+    assert.ok(bundle.includes('side=Rt>.3?1:Rt<-.3?-1:this._avSide'), 'avoidance must employ lateral hysteresis deadband');
+  });
+});
+
 
 
