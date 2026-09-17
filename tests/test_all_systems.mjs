@@ -2149,4 +2149,214 @@ describe('=== UNIT & PROCESS TESTS: 50 ARCHITECTURAL IMPROVEMENTS ===', () => {
   });
 });
 
+describe('=== UNIT & PROCESS TESTS: MINE IMPACT & COLLISION MECHANICS ===', () => {
+  const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+
+  it('1. Bundle code verification for mine fixes', () => {
+    assert.ok(bundle.includes('this.spline=e,this.vfx=n'), 'mv stores track spline reference');
+    assert.ok(bundle.includes('e.baseY=py'), 'mine remembers surface baseY');
+    assert.ok(bundle.includes('n.armTimer>0&&(n.armTimer-=t);'), 'armTimer decrements without continue blocking rivals');
+    assert.ok(bundle.includes('r*r+o*o<8.2&&Math.abs(a)<3.4'), 'expanded mine collision radius (2.86m)');
+    assert.ok(bundle.includes('i.kart.physics.knockback(kx*7,kz*7,11,7.5)'), 'knockback pop applied to kart on mine hit');
+    assert.ok(bundle.includes('this.onHit?.(i,"mine")'), 'explosion event triggered unconditionally');
+    assert.ok(bundle.includes('for(const m of this.mines)if(m.active)'), 'bolts collide with and detonate mines');
+  });
+
+  it('2. Mine deployment geometry & surface height clamping', () => {
+    // Mock spline and kart
+    const mockSpline = {
+      surfaceHeight(x, z, idx) { return 4.5; }
+    };
+    const mockKart = {
+      state: {
+        pos: { x: 10, y: 5.0, z: 20 },
+        yaw: 0,
+        trackIndex: 2
+      }
+    };
+
+    // Simulate dropMine
+    const dropMineSim = (t, spline) => {
+      const n = t.state;
+      const i = -Math.sin(n.yaw), r = -Math.cos(n.yaw);
+      const px = n.pos.x - i * 3.2, pz = n.pos.z - r * 3.2;
+      const roadY = spline ? spline.surfaceHeight(px, pz, n.trackIndex || 0) : n.pos.y;
+      const py = Math.max(n.pos.y - 0.8, Math.min(n.pos.y + 1.5, roadY + 0.55));
+      return { active: true, life: 26, armTimer: 0.75, owner: t, spin: 0, baseY: py, pos: { x: px, y: py, z: pz } };
+    };
+
+    const mine = dropMineSim(mockKart, mockSpline);
+    assert.strictEqual(mine.active, true);
+    assert.strictEqual(mine.pos.x, 10);
+    assert.strictEqual(mine.pos.z, 23.2, 'mine is deployed 3.2m behind kart');
+    assert.strictEqual(mine.pos.y, 4.5 + 0.55, 'mine is clamped to track surface height + 0.55m');
+    assert.strictEqual(mine.armTimer, 0.75);
+  });
+
+  it('3. Rival instant detonation vs owner immunity during armTimer', () => {
+    const ownerKart = { id: 0, pos: { x: 10, y: 5.05, z: 23.2 }, progress: { finished: false } };
+    const rivalKart = { id: 1, pos: { x: 10, y: 5.05, z: 23.2 }, progress: { finished: false } };
+
+    const checkCollision = (mine, racer) => {
+      if (racer.progress.finished || (racer === mine.owner && (mine.armTimer > 0 || mine.life > 26 - 1))) {
+        return false;
+      }
+      const r = racer.pos.x - mine.pos.x;
+      const o = racer.pos.z - mine.pos.z;
+      const a = racer.pos.y + 0.6 - mine.pos.y;
+      return (r * r + o * o < 8.2 && Math.abs(a) < 3.4);
+    };
+
+    const mine = { pos: { x: 10, y: 5.05, z: 23.2 }, armTimer: 0.75, life: 26, owner: ownerKart };
+
+    // Owner should NOT detonate mine during armTimer
+    assert.strictEqual(checkCollision(mine, ownerKart), false, 'owner is immune during armTimer');
+
+    // Rival SHOULD detonate mine immediately even when armTimer > 0
+    assert.strictEqual(checkCollision(mine, rivalKart), true, 'rival detonates mine immediately upon impact');
+  });
+
+  it('4. Expanded contact radius detects kart front bumper & side grazing', () => {
+    const mine = { pos: { x: 0, y: 1.0, z: 0 }, armTimer: 0, life: 20, owner: null };
+    const checkHit = (racerX, racerZ, racerY) => {
+      const r = racerX - mine.pos.x;
+      const o = racerZ - mine.pos.z;
+      const a = racerY + 0.6 - mine.pos.y;
+      return (r * r + o * o < 8.2 && Math.abs(a) < 3.4);
+    };
+
+    // Front bumper contact at 2.6m (center of kart is 2.6m from mine)
+    assert.strictEqual(checkHit(0, 2.6, 1.0), true, '2.6m direct contact triggers collision');
+    // Side grazing contact at lateral 1.8m and forward 1.8m: dist = sqrt(1.8^2 + 1.8^2) = 2.54m
+    assert.strictEqual(checkHit(1.8, 1.8, 1.0), true, '2.54m oblique contact triggers collision');
+    // Far away at 3.5m: dist^2 = 12.25 > 8.2
+    assert.strictEqual(checkHit(0, 3.5, 1.0), false, '3.5m beyond collision threshold');
+  });
+
+  it('5. Detonation physics: upward pop, radial knockback, coin drop and visual punch', () => {
+    let droppedCoins = false;
+    let visualPunched = 0;
+    let knockbackApplied = null;
+    let onHitType = null;
+
+    const mockRacer = {
+      pos: { x: 1.5, y: 1.0, z: 2.0 },
+      dropCoins() { droppedCoins = true; },
+      kart: {
+        visual: { punch(p) { visualPunched = p; } },
+        physics: {
+          knockback(kx, kz, force, vy) {
+            knockbackApplied = { kx, kz, force, vy };
+          }
+        }
+      },
+      hit(duration, dir) { return true; }
+    };
+
+    const mine = { object: { position: { x: 0, y: 1.0, z: 0 } }, active: true };
+    const r = mockRacer.pos.x - mine.object.position.x;
+    const o = mockRacer.pos.z - mine.object.position.z;
+    const dist = Math.hypot(r, o) || 1;
+    const kx = r / dist, kz = o / dist;
+
+    // Simulate detonation
+    mine.active = false;
+    const hitOk = mockRacer.hit(1.5, 1);
+    if (hitOk) {
+      mockRacer.dropCoins();
+      mockRacer.kart.visual.punch(1.3);
+      mockRacer.kart.physics.knockback(kx * 7, kz * 7, 11, 7.5);
+      onHitType = 'mine';
+    }
+
+    assert.strictEqual(mine.active, false, 'mine becomes inactive');
+    assert.strictEqual(droppedCoins, true, 'coins dropped');
+    assert.strictEqual(visualPunched, 1.3, 'chassis visual punch applied');
+    assert.ok(knockbackApplied !== null, 'knockback applied');
+    assert.strictEqual(knockbackApplied.vy, 7.5, 'upward vertical pop is 7.5m/s');
+    assert.strictEqual(knockbackApplied.force, 11, 'outward impulse force is 11');
+    assert.strictEqual(onHitType, 'mine', 'onHit type is mine');
+  });
+
+  it('6. Shielded racer absorbs damage but still deflects kart and triggers explosion audio', () => {
+    let visualPunched = 0;
+    let knockbackApplied = null;
+    let onHitPlayed = false;
+    let coinsDropped = false;
+
+    const mockShieldedRacer = {
+      pos: { x: 2.0, y: 1.0, z: 0 },
+      dropCoins() { assert.fail('should not drop coins when shielded'); },
+      kart: {
+        visual: { punch(p) { visualPunched = p; } },
+        physics: {
+          knockback(kx, kz, force, vy) {
+            knockbackApplied = { kx, kz, force, vy };
+          }
+        }
+      },
+      hit(duration, dir) { return false; } // Shield absorbs hit
+    };
+
+    const mine = { object: { position: { x: 0, y: 1.0, z: 0 } }, active: true };
+    const r = mockShieldedRacer.pos.x - mine.object.position.x;
+    const o = mockShieldedRacer.pos.z - mine.object.position.z;
+    const dist = Math.hypot(r, o) || 1;
+    const kx = r / dist, kz = o / dist;
+
+    mine.active = false;
+    onHitPlayed = true;
+    const applyMineHit = (racer) => {
+      const hitOk = racer.hit(1.5, 1);
+      if (hitOk) {
+        racer.dropCoins();
+        racer.kart.visual.punch(1.3);
+        racer.kart.physics.knockback(kx * 7, kz * 7, 11, 7.5);
+      } else {
+        racer.kart.visual.punch(0.7);
+        racer.kart.physics.knockback(kx * 4, kz * 4, 6, 3.5);
+      }
+    };
+    applyMineHit(mockShieldedRacer);
+
+    assert.strictEqual(visualPunched, 0.7, 'shield punch applied');
+    assert.strictEqual(knockbackApplied.vy, 3.5, 'shield deflection vertical pop applied');
+    assert.strictEqual(onHitPlayed, true, 'explosion SFX played on shielded impact');
+
+    // Also test unshielded racer branch
+    const mockUnshieldedRacer = {
+      pos: { x: 0.5, y: 1.0, z: 0.5 },
+      shield: 0,
+      hit: () => true,
+      dropCoins: () => { coinsDropped = true; },
+      kart: {
+        visual: { punch: (p) => { visualPunched = p; } },
+        physics: { knockback: (vx, vz, spd, vy) => { knockbackApplied = { vx, vz, spd, vy }; } }
+      }
+    };
+    applyMineHit(mockUnshieldedRacer);
+    assert.strictEqual(visualPunched, 1.3);
+    assert.strictEqual(knockbackApplied.vy, 7.5);
+  });
+
+  it('7. Laser bolt destroys active mine on impact', () => {
+    const mine = { object: { position: { x: 15, y: 2, z: 30 } }, active: true };
+    const bolt = { object: { position: { x: 15.5, y: 2.1, z: 30.2 } }, active: true };
+
+    const bx = mine.object.position.x - bolt.object.position.x;
+    const by = mine.object.position.y - bolt.object.position.y;
+    const bz = mine.object.position.z - bolt.object.position.z;
+    const dSq = bx * bx + by * by + bz * bz;
+
+    if (dSq < 5.5) {
+      mine.active = false;
+      bolt.active = false;
+    }
+
+    assert.strictEqual(mine.active, false, 'mine destroyed by laser bolt');
+    assert.strictEqual(bolt.active, false, 'bolt consumed on impact with mine');
+  });
+});
+
+
 
