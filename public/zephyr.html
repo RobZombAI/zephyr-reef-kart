@@ -609,15 +609,44 @@
             if (itemBtn && ico && txt) {
               if (player.itemRoll > 0) {
                 itemBtn.classList.add('rolling');
-                const rollIcons = ['⚡', '💣', '💥', '🛡️', '🚀'];
+                const rollIcons = ['⚡', '🎯', '🛰️', '💣', '🚀', '⭐', '📢', '🌐', '📦'];
                 ico.textContent = rollIcons[Math.floor(Math.random() * rollIcons.length)];
                 txt.textContent = 'ROULETTE';
               } else if (item) {
                 itemBtn.classList.remove('rolling');
                 itemBtn.classList.add('ready');
-                const icons = { bolt: '⚡', mine: '💣', blast: '💥', shield: '🛡️', turbo: '🚀' };
+                const icons = {
+                  photon: '⚡',
+                  drone: '🎯',
+                  orbital: '🛰️',
+                  mine: '💣',
+                  turbo: '🚀',
+                  triple_turbo: '🚀',
+                  matrix: '⭐',
+                  shockwave: '📢',
+                  glitch: '🌐',
+                  decoy: '📦',
+                  bolt: '⚡',
+                  blast: '📢',
+                  shield: '🛡️'
+                };
+                const names = {
+                  photon: 'PHOTON',
+                  drone: 'DRONE',
+                  orbital: 'ION STRIKE',
+                  mine: 'EMP MINE',
+                  turbo: 'NITRO',
+                  triple_turbo: (player.turboCharges || 3) + 'x NITRO',
+                  matrix: 'MATRIX',
+                  shockwave: 'SHOCKWAVE',
+                  glitch: 'GLITCH',
+                  decoy: 'DECOY',
+                  bolt: 'PHOTON',
+                  blast: 'SHOCKWAVE',
+                  shield: 'SHIELD'
+                };
                 ico.textContent = icons[item] || '🎯';
-                txt.textContent = item.toUpperCase();
+                txt.textContent = names[item] || item.toUpperCase();
               } else {
                 itemBtn.classList.remove('rolling', 'ready');
                 ico.textContent = '🎯';
