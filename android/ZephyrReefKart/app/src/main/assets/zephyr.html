@@ -432,24 +432,34 @@
         right: max(16px, env(safe-area-inset-right)) !important;
       }
       .hud__speed {
-        bottom: max(22px, env(safe-area-inset-bottom)) !important;
+        bottom: max(116px, calc(env(safe-area-inset-bottom) + 104px)) !important;
+        left: max(18px, env(safe-area-inset-left)) !important;
+      }
+      .hud__coins {
+        bottom: max(226px, calc(env(safe-area-inset-bottom) + 214px)) !important;
         left: max(18px, env(safe-area-inset-left)) !important;
       }
       .hud__minimap {
-        bottom: max(22px, env(safe-area-inset-bottom)) !important;
+        bottom: max(180px, calc(env(safe-area-inset-bottom) + 168px)) !important;
         right: max(18px, env(safe-area-inset-right)) !important;
       }
 
       /* Mobile HUD layout adjustments to avoid pedal overlap */
       @media (max-width: 900px) {
         .hud__speed {
-          bottom: 120px !important;
+          bottom: max(112px, calc(env(safe-area-inset-bottom) + 102px)) !important;
           left: max(14px, env(safe-area-inset-left)) !important;
           transform: scale(0.85);
           transform-origin: bottom left;
         }
+        .hud__coins {
+          bottom: max(212px, calc(env(safe-area-inset-bottom) + 200px)) !important;
+          left: max(14px, env(safe-area-inset-left)) !important;
+          transform: scale(0.88);
+          transform-origin: bottom left;
+        }
         .hud__minimap {
-          bottom: 140px !important;
+          bottom: max(175px, calc(env(safe-area-inset-bottom) + 165px)) !important;
           right: max(14px, env(safe-area-inset-right)) !important;
           width: 140px !important;
           height: 140px !important;
@@ -467,16 +477,22 @@
         .z-brake { width: 60px; height: 60px; font-size: 12px; }
         .z-drift, .z-item { width: 102px; height: 42px; font-size: 13px; }
         .hud__speed {
-          bottom: 106px !important;
+          bottom: max(96px, calc(env(safe-area-inset-bottom) + 90px)) !important;
+          left: max(12px, env(safe-area-inset-left)) !important;
+          transform: scale(0.76);
+          transform-origin: bottom left;
+        }
+        .hud__coins {
+          bottom: max(176px, calc(env(safe-area-inset-bottom) + 170px)) !important;
           left: max(12px, env(safe-area-inset-left)) !important;
           transform: scale(0.78);
           transform-origin: bottom left;
         }
         .hud__minimap {
-          bottom: 122px !important;
+          bottom: max(152px, calc(env(safe-area-inset-bottom) + 146px)) !important;
           right: max(12px, env(safe-area-inset-right)) !important;
-          width: 120px !important;
-          height: 120px !important;
+          width: 114px !important;
+          height: 114px !important;
         }
         .hud__pos {
           top: max(8px, env(safe-area-inset-top)) !important;
@@ -500,14 +516,22 @@
       /* Tablets & Foldables (4:3, 16:10, 1:1) */
       @media (min-height: 521px) and (max-aspect-ratio: 16/10) {
         .hud__minimap {
-          bottom: 155px !important;
+          bottom: max(180px, calc(env(safe-area-inset-bottom) + 170px)) !important;
           right: max(22px, env(safe-area-inset-right)) !important;
-          width: 160px !important;
-          height: 160px !important;
+          width: 156px !important;
+          height: 156px !important;
         }
         .hud__speed {
-          bottom: 135px !important;
+          bottom: max(120px, calc(env(safe-area-inset-bottom) + 110px)) !important;
           left: max(22px, env(safe-area-inset-left)) !important;
+          transform: scale(0.9);
+          transform-origin: bottom left;
+        }
+        .hud__coins {
+          bottom: max(224px, calc(env(safe-area-inset-bottom) + 214px)) !important;
+          left: max(22px, env(safe-area-inset-left)) !important;
+          transform: scale(0.92);
+          transform-origin: bottom left;
         }
       }
     </style>
@@ -1240,15 +1264,9 @@
           item.addEventListener('click', () => {
             haptic(25);
             localStorage.setItem('zephyr_track', item.dataset.index);
-            if (window.__zephyr && typeof window.__zephyr.loadTrack === 'function') {
-              window.__zephyr.loadTrack(parseInt(item.dataset.index, 10));
-              document.querySelectorAll('.z-track-item').forEach(el => el.classList.toggle('active', el.dataset.index === item.dataset.index));
-              if (trackModal) trackModal.classList.add('hidden');
-            } else {
-              // Smooth reload
-              document.body.style.opacity = '0';
-              setTimeout(() => window.location.reload(), 180);
-            }
+            // Smooth reload
+            document.body.style.opacity = '0';
+            setTimeout(() => window.location.reload(), 180);
           });
         });
 
