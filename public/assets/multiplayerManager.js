@@ -536,23 +536,40 @@ export class MultiplayerManager {
     const p = kart.physics.state;
     const prog = director.player.progress;
 
-    const payload = {
-      type: 'KART_STATE',
-      slot: this.mySlot,
-      x: Number(p.pos.x.toFixed(2)),
-      y: Number(p.pos.y.toFixed(2)),
-      z: Number(p.pos.z.toFixed(2)),
-      yaw: Number(p.yaw.toFixed(3)),
-      pitch: Number((p.pitch || 0).toFixed(3)),
-      roll: Number((p.roll || 0).toFixed(3)),
-      speed: Number(p.speed.toFixed(1)),
-      steer: Number(p.steer.toFixed(2)),
-      driftTier: p.driftTier || 0,
-      isDrifting: p.drifting || false,
-      boost: (p.boostTime > 0 || p.padBoostTime > 0),
-      lap: prog.lap || 1,
-      dist: Number(prog.distance.toFixed(1))
-    };
+    if (!this._statePayload) {
+      this._statePayload = {
+        type: 'KART_STATE',
+        slot: 0,
+        x: 0,
+        y: 0,
+        z: 0,
+        yaw: 0,
+        pitch: 0,
+        roll: 0,
+        speed: 0,
+        steer: 0,
+        driftTier: 0,
+        isDrifting: false,
+        boost: false,
+        lap: 1,
+        dist: 0
+      };
+    }
+    const payload = this._statePayload;
+    payload.slot = this.mySlot;
+    payload.x = Math.round(p.pos.x * 100) / 100;
+    payload.y = Math.round(p.pos.y * 100) / 100;
+    payload.z = Math.round(p.pos.z * 100) / 100;
+    payload.yaw = Math.round(p.yaw * 1000) / 1000;
+    payload.pitch = Math.round((p.pitch || 0) * 1000) / 1000;
+    payload.roll = Math.round((p.roll || 0) * 1000) / 1000;
+    payload.speed = Math.round(p.speed * 10) / 10;
+    payload.steer = Math.round(p.steer * 100) / 100;
+    payload.driftTier = p.driftTier || 0;
+    payload.isDrifting = !!p.drifting;
+    payload.boost = (p.boostTime > 0 || p.padBoostTime > 0);
+    payload.lap = prog.lap || 1;
+    payload.dist = Math.round(prog.distance * 10) / 10;
 
     this.broadcastToAll(payload);
   }
@@ -634,12 +651,29 @@ export class MultiplayerManager {
         white-space: nowrap;
         transition: opacity 0.15s ease;
       `;
+      const nameSpan = document.createElement('span');
+      nameSpan.style.color = '#76fff0';
+      const dotSpan = document.createElement('span');
+      dotSpan.style.cssText = 'display:inline-block; width: 7px; height: 7px; border-radius: 50%;';
+      const pingSpan = document.createElement('span');
+      pingSpan.style.cssText = 'font-size: 10px; color: #94a3b8; font-family: monospace;';
+      el.append(nameSpan, dotSpan, pingSpan);
+      el._nameSpan = nameSpan;
+      el._dotSpan = dotSpan;
+      el._pingSpan = pingSpan;
+      el._lastName = '';
+      el._lastPing = -1;
+
       this.nametagsLayer.appendChild(el);
       this.nametagEls.set(slot, el);
     }
 
-    // Project world coordinates to 2D screen
-    const p = worldPos.clone();
+    // Project world coordinates to 2D screen without heap allocation
+    if (!this._scratchVec && worldPos.clone) {
+      this._scratchVec = worldPos.clone();
+    }
+    const p = this._scratchVec || worldPos.clone();
+    p.copy(worldPos);
     p.y += 2.1; // Float above kart
     p.project(camera);
 
@@ -662,12 +696,17 @@ export class MultiplayerManager {
     el.style.left = `${screenX}px`;
     el.style.top = `${screenY}px`;
 
-    const pingColor = ping < 60 ? '#10b981' : ping < 120 ? '#f59e0b' : '#ef4444';
-    el.innerHTML = `
-      <span style="color: #76fff0;">${name.slice(0, 12)}</span>
-      <span style="display:inline-block; width: 7px; height: 7px; border-radius: 50%; background: ${pingColor}; box-shadow: 0 0 6px ${pingColor};"></span>
-      <span style="font-size: 10px; color: #94a3b8; font-family: monospace;">${ping}ms</span>
-    `;
+    if (el._lastName !== name) {
+      el._lastName = name;
+      el._nameSpan.textContent = name.slice(0, 12);
+    }
+    if (el._lastPing !== ping) {
+      el._lastPing = ping;
+      const pingColor = ping < 60 ? '#10b981' : ping < 120 ? '#f59e0b' : '#ef4444';
+      el._dotSpan.style.background = pingColor;
+      el._dotSpan.style.boxShadow = `0 0 6px ${pingColor}`;
+      el._pingSpan.textContent = `${ping}ms`;
+    }
   }
 
   // --- IN-GAME EMOTES & QUICK CHAT ---
@@ -717,13 +756,17 @@ export class MultiplayerManager {
   }
 
   updateEmoteBubbles(now, director, camera) {
+    if (!this._scratchEmoteVec && camera?.position?.clone) {
+      this._scratchEmoteVec = camera.position.clone();
+    }
     for (const [slot, emote] of this.emoteEls.entries()) {
       if (now > emote.expireTime) {
         emote.el.style.display = 'none';
       } else {
         const racer = director?.racers?.[slot];
         if (racer && camera) {
-          const p = racer.pos.clone();
+          const p = this._scratchEmoteVec || racer.pos.clone();
+          p.copy(racer.pos);
           p.y += 3.2; // Float above nametag
           p.project(camera);
 
