@@ -136,15 +136,23 @@ class MainActivity : ComponentActivity() {
         // Load Zephyr Reef via asset loader
         webView.loadUrl("https://appassets.androidplatform.net/assets/zephyr.html")
 
-        // Handle Back button with exit confirmation
+        // Handle Back button with in-race pause and exit confirmation
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 val now = System.currentTimeMillis()
-                if (now - lastBackPressedTime < 2000) {
-                    finish()
-                } else {
-                    lastBackPressedTime = now
-                    Toast.makeText(this@MainActivity, "Press again to exit Zephyr Reef Grand Prix", Toast.LENGTH_SHORT).show()
+                webView.evaluateJavascript(
+                    "(function() { if (window.__zephyr && window.__zephyr.mode === 'race' && !window.__zephyr.paused) { window.__zephyr.setPaused(true); document.getElementById('z-pause-modal')?.classList.remove('hidden'); return 'paused'; } return 'not_in_race'; })()"
+                ) { result ->
+                    if (result != null && result.contains("paused")) {
+                        // Race was running and is now paused cleanly
+                        return@evaluateJavascript
+                    }
+                    if (now - lastBackPressedTime < 2000) {
+                        finish()
+                    } else {
+                        lastBackPressedTime = now
+                        Toast.makeText(this@MainActivity, "Press again to exit Zephyr Reef Grand Prix", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         })
