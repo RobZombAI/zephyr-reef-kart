@@ -1240,9 +1240,15 @@
           item.addEventListener('click', () => {
             haptic(25);
             localStorage.setItem('zephyr_track', item.dataset.index);
-            // Smooth reload
-            document.body.style.opacity = '0';
-            setTimeout(() => window.location.reload(), 180);
+            if (window.__zephyr && typeof window.__zephyr.loadTrack === 'function') {
+              window.__zephyr.loadTrack(parseInt(item.dataset.index, 10));
+              document.querySelectorAll('.z-track-item').forEach(el => el.classList.toggle('active', el.dataset.index === item.dataset.index));
+              if (trackModal) trackModal.classList.add('hidden');
+            } else {
+              // Smooth reload
+              document.body.style.opacity = '0';
+              setTimeout(() => window.location.reload(), 180);
+            }
           });
         });
 
