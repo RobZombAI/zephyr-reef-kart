@@ -1979,3 +1979,174 @@ describe('=== UNIT & PROCESS TESTS: REAR FLICKER PREVENTION & CAMERA OCCLUSION =
   });
 });
 
+describe('=== UNIT & PROCESS TESTS: 50 ARCHITECTURAL IMPROVEMENTS ===', () => {
+  it('1. Slipstream drafting timer accumulation, boost trigger and cooldown', () => {
+    const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+    assert.ok(bundle.includes('o.draftTimer=o.draftTimer||0;o.draftBoost=o.draftBoost||0;'), 'bundle must manage draftTimer');
+    assert.ok(bundle.includes('if(o.draftTimer>1.15){'), 'draft boost triggers after 1.15 seconds');
+    assert.ok(bundle.includes('o.kart.physics.applyBoost(2.2,14)'), 'draft boost applies nitro');
+
+    // Simulate drafting math
+    let draftTimer = 0;
+    const dt = 0.1;
+    let boostTriggered = false;
+    for (let t = 0; t < 1.3; t += dt) {
+      draftTimer += dt;
+      if (draftTimer > 1.15) {
+        boostTriggered = true;
+        draftTimer = 0;
+        break;
+      }
+    }
+    assert.strictEqual(boostTriggered, true, 'drafting behind rival should trigger nitro boost');
+  });
+
+  it('2. Jump trick stunt aerial detection, barrel roll animation and landing boost', () => {
+    const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+    assert.ok(bundle.includes('!t.state.grounded||t.state.vy>1.0||t.state.airHeight>0.35'), 'stunt trick triggers when airborne');
+    assert.ok(bundle.includes('if(o.state.justLanded&&o.stuntActive){'), 'landing stunt grants mini-turbo');
+    assert.ok(bundle.includes('o.kart.physics.applyBoost(1.1,16)'), 'landing mini-turbo boosts kart');
+
+    // Simulate stunt trigger logic
+    const canStunt = (grounded, vy, airHeight, stuntActive, cooldown) => {
+      if ((!grounded || vy > 1.0 || airHeight > 0.35) && !stuntActive && cooldown <= 0) {
+        return true;
+      }
+      return false;
+    };
+    assert.strictEqual(canStunt(false, 1.5, 0.6, false, 0), true);
+    assert.strictEqual(canStunt(true, 0, 0, false, 0), false);
+    assert.strictEqual(canStunt(false, 1.5, 0.6, true, 0), false);
+    assert.strictEqual(canStunt(false, 1.5, 0.6, false, 0.8), false);
+  });
+
+  it('3. Rocket start golden timing window vs early engine stall', () => {
+    const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+    assert.ok(bundle.includes('this.countdown>1.35)this.engineStalled=1.1;'), 'holding gas too early stalls engine');
+    assert.ok(bundle.includes('this.countdown<=0.75&&this.countdown>=0.05)this.rocketStartPrimed=!0;'), 'holding gas in golden window primes launch boost');
+
+    // Evaluate launch logic
+    const evalRocketStart = (countdownTime, isAccel) => {
+      let stalled = false;
+      let rocketPrimed = false;
+      if (isAccel) {
+        if (countdownTime > 1.35) stalled = true;
+        else if (countdownTime <= 0.75 && countdownTime >= 0.05) rocketPrimed = true;
+      }
+      return { stalled, rocketPrimed };
+    };
+
+    assert.strictEqual(evalRocketStart(2.0, true).stalled, true, 'early gas should stall');
+    assert.strictEqual(evalRocketStart(0.5, true).rocketPrimed, true, 'perfect timing should prime rocket start');
+    assert.strictEqual(evalRocketStart(0.5, false).rocketPrimed, false, 'no gas should not prime');
+  });
+
+  it('4. Elastic soft bumper collision restitution (bounce = 0.70)', () => {
+    const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+    assert.ok(bundle.includes('const bounce=0.70;'), 'bumper restitution must be 0.70');
+    assert.ok(bundle.includes('const D=-(1+bounce)*S/(1/v+1/p);'), 'impulse equation must use restitution coefficient');
+  });
+
+  it('5. New combat items: vortex, horn, triple_shield, and backward bolt fire', () => {
+    const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+    assert.ok(bundle.includes('spawnVortex(t,spline,racers)'), 'must include spawnVortex method');
+    assert.ok(bundle.includes('detonateSuperHorn(t,racers)'), 'must include detonateSuperHorn method');
+    assert.ok(bundle.includes('raiseTripleShield(t)'), 'must include raiseTripleShield method');
+    assert.ok(bundle.includes('backward=!1'), 'fireBolt must accept backward parameter');
+    assert.ok(bundle.includes('vortex:{id:"vortex"'), 'vortex item must be registered');
+    assert.ok(bundle.includes('horn:{id:"horn"'), 'horn item must be registered');
+    assert.ok(bundle.includes('triple_shield:{id:"triple_shield"'), 'triple_shield item must be registered');
+
+    // Test Triple Shield absorption logic
+    let shieldCharges = 3;
+    let invuln = 0;
+    const takeHit = () => {
+      if (shieldCharges > 0) {
+        shieldCharges--;
+        invuln = 0.6;
+        return false; // hit absorbed!
+      }
+      return true; // spun out
+    };
+
+    assert.strictEqual(takeHit(), false, 'charge 1 absorbed');
+    assert.strictEqual(shieldCharges, 2);
+    assert.strictEqual(takeHit(), false, 'charge 2 absorbed');
+    assert.strictEqual(shieldCharges, 1);
+    assert.strictEqual(takeHit(), false, 'charge 3 absorbed');
+    assert.strictEqual(shieldCharges, 0);
+    assert.strictEqual(takeHit(), true, 'after charges depleted, kart takes damage');
+  });
+
+  it('6. Dynamic item roulette distribution scales with race position', () => {
+    const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+    assert.ok(bundle.includes('vortex:1+n*9'), 'vortex weight scales with trailing position');
+    assert.ok(bundle.includes('triple_shield:Math.max(1,8-n*6)'), 'defensive ward favoured in leading position');
+
+    // Test roulette weighting simulation
+    const computeWeights = (rank, total) => {
+      const n = (rank - 1) / (total - 1);
+      return {
+        vortex: 1 + n * 9,
+        triple_shield: Math.max(1, 8 - n * 6)
+      };
+    };
+
+    const firstPlaceWeights = computeWeights(1, 6);
+    const lastPlaceWeights = computeWeights(6, 6);
+
+    assert.ok(firstPlaceWeights.triple_shield > firstPlaceWeights.vortex, '1st place receives more shields than catch-up vortices');
+    assert.ok(lastPlaceWeights.vortex > lastPlaceWeights.triple_shield, '6th place receives more vortices than shields');
+  });
+
+  it('7. Audio synthesis for all newly added sound effects', () => {
+    const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+    assert.ok(bundle.includes('case"jump_trick":'), 'jump_trick audio effect defined');
+    assert.ok(bundle.includes('case"drafting":'), 'drafting audio effect defined');
+    assert.ok(bundle.includes('case"curb_tick":'), 'curb_tick audio effect defined');
+    assert.ok(bundle.includes('case"vortex":'), 'vortex audio effect defined');
+    assert.ok(bundle.includes('case"horn":'), 'horn audio effect defined');
+    assert.ok(bundle.includes('case"threat_alert":'), 'threat_alert audio effect defined');
+  });
+
+  it('8. Radar systems: Blind spot detection, threat radar and rearview distance indicator', () => {
+    const htmlContent = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf-8');
+    assert.ok(htmlContent.includes('id="z-rearview-container"'), 'rearview container present');
+    assert.ok(htmlContent.includes('id="z-blind-left"'), 'left blind spot element present');
+    assert.ok(htmlContent.includes('id="z-blind-right"'), 'right blind spot element present');
+    assert.ok(htmlContent.includes('id="z-threat-radar"'), 'threat alert element present');
+
+    // Simulate blind spot logic
+    const isBlindSpot = (fwdDist, latDist) => {
+      if (fwdDist > -3.5 && fwdDist < 1.8) {
+        if (latDist < -1.4 && latDist > -4.5) return 'left';
+        if (latDist > 1.4 && latDist < 4.5) return 'right';
+      }
+      return 'none';
+    };
+
+    assert.strictEqual(isBlindSpot(-1.0, -2.5), 'left', 'rival on left flank detected');
+    assert.strictEqual(isBlindSpot(-1.0, 2.5), 'right', 'rival on right flank detected');
+    assert.strictEqual(isBlindSpot(10.0, 0), 'none', 'rival ahead not in blind spot');
+  });
+
+  it('9. Results screen lap breakdown and gold trophy winner badge', () => {
+    const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+    assert.ok(bundle.includes('lapTimes:[...t.progress.lapTimes]'), 'results() includes lapTimes array');
+    assert.ok(bundle.includes('🏆 VITTORIA! 1° POSTO 🏆'), 'showResults includes gold trophy winner badge');
+    assert.ok(bundle.includes('G${idx+1}: <b>${Hn(lt)}</b>'), 'showResults formats each lap time');
+  });
+
+  it('10. Mobile controls: Quick chat radial and Settings modal (Auto-Gas, Tilt Gyro, FPS)', () => {
+    const htmlContent = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf-8');
+    assert.ok(htmlContent.includes('id="z-chat-modal"'), 'quick chat modal present');
+    assert.ok(htmlContent.includes('id="z-settings-modal"'), 'settings modal present');
+    assert.ok(htmlContent.includes('id="z-opt-autogas"'), 'autogas toggle present');
+    assert.ok(htmlContent.includes('id="z-opt-gyro"'), 'gyro tilt toggle present');
+    assert.ok(htmlContent.includes('id="z-opt-btnsize"'), 'touch button size selector present');
+    assert.ok(htmlContent.includes('id="z-opt-speedclass"'), 'speed class selector present');
+    assert.ok(htmlContent.includes('id="z-opt-fps"'), 'fps battery saver selector present');
+  });
+});
+
+

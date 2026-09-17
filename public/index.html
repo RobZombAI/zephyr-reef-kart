@@ -558,6 +558,8 @@
           <button id="z-btn-fullscreen" class="z-mini" aria-label="Schermo Intero">⛶ SCHERMO</button>
           <button id="z-btn-reset" class="z-mini" aria-label="Reset Kart">↻ RESET</button>
           <button id="z-btn-audio" class="z-mini" aria-label="Toggle Audio">🔊 AUDIO</button>
+          <button id="z-btn-chat" class="z-mini" aria-label="Quick Chat">💬 CHAT</button>
+          <button id="z-btn-settings" class="z-mini" aria-label="Opzioni">⚙️ OPZIONI</button>
         </div>
 
         <!-- Pedals & Action Buttons (Hidden on Title/Select/Results) -->
@@ -578,6 +580,16 @@
       </div>
 
       <!-- In-race Banners -->
+      <!-- In-race Radar & Threat HUD -->
+      <div id="z-rearview-container" class="hud__rearview hidden">
+        <div class="mirror-bezel">
+          <span class="mirror-label">RETRO</span>
+          <div id="z-mirror-indicator" class="mirror-indicator">CLEAR</div>
+        </div>
+      </div>
+      <div id="z-threat-radar" class="hud__threat-alert hidden">⚠️ ATTACCO IN ARRIVO! ⚠️</div>
+      <div id="z-blind-left" class="hud__blind-spot left hidden">◀ RIVALE</div>
+      <div id="z-blind-right" class="hud__blind-spot right hidden">RIVALE ▶</div>
       <div id="z-hud-wrong-way" class="z-banner z-banner-wrong hidden">⚠️ WRONG WAY! TURN AROUND! ⚠️</div>
       <div id="z-hud-final-lap" class="z-banner z-banner-lap hidden">🏁 FINAL LAP! 🏁</div>
 
@@ -589,10 +601,69 @@
           <div style="display: flex; flex-direction: column; gap: 12px; width: 100%;">
             <button id="z-pause-resume" class="z-mini" style="padding: 14px; font-size: 15px; background: rgba(118, 255, 240, 0.35); border-color: #76fff0;">RIPRENDI GARA</button>
             <button id="z-pause-mp" class="z-mini" style="padding: 14px; font-size: 15px; border-color: #76fff0; color: #76fff0; font-weight: 800;">🌐 MULTIPLAYER PRIVATO</button>
+            <button id="z-pause-opt" class="z-mini" style="padding: 14px; font-size: 15px;">⚙️ OPZIONI GIOCO</button>
             <button id="z-pause-restart" class="z-mini" style="padding: 14px; font-size: 15px;">RICOMINCIA GARA</button>
             <button id="z-pause-change-track" class="z-mini" style="padding: 14px; font-size: 15px;">SCEGLI CIRCUITO</button>
             <button id="z-pause-title" class="z-mini" style="padding: 14px; font-size: 15px; border-color: rgba(255,255,255,0.2);">TORNA AL TITOLO</button>
           </div>
+        </div>
+      </div>
+
+      <!-- Quick Chat Modal -->
+      <div id="z-chat-modal" class="z-modal hidden">
+        <div class="z-modal-card" style="max-width: 380px; text-align: center;">
+          <h2 style="font-size: 20px; font-weight: 800; color: #76fff0; margin: 0 0 12px 0;">💬 CHAT RAPIDA</h2>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%;">
+            <button class="z-chat-btn" data-msg="GG! 🏁">GG! 🏁</button>
+            <button class="z-chat-btn" data-msg="Attento! 💣">Attento! 💣</button>
+            <button class="z-chat-btn" data-msg="Bella gara! 🏎️">Bella gara! 🏎️</button>
+            <button class="z-chat-btn" data-msg="Rivincita! 🔄">Rivincita! 🔄</button>
+            <button class="z-chat-btn" data-msg="Grande sorpasso! ⚡">Sorpasso! ⚡</button>
+            <button class="z-chat-btn" data-msg="Al traguardo! 😎">Traguardo! 😎</button>
+          </div>
+          <button id="z-chat-close" class="z-mini" style="margin-top: 14px; width: 100%; padding: 10px; border-color: rgba(255,255,255,0.2);">CHIUDI</button>
+        </div>
+      </div>
+
+      <!-- Settings Modal -->
+      <div id="z-settings-modal" class="z-modal hidden">
+        <div class="z-modal-card" style="max-width: 440px; text-align: left;">
+          <h2 style="font-size: 22px; font-weight: 800; color: #76fff0; margin: 0 0 14px 0; text-align: center;">⚙️ OPZIONI GIOCO</h2>
+          <div style="display: flex; flex-direction: column; gap: 14px; width: 100%;">
+            <label style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #e2e8f0; cursor: pointer;">
+              <span>Acceleratore Automatico (Auto-Gas)</span>
+              <input type="checkbox" id="z-opt-autogas" style="width: 20px; height: 20px; accent-color: #76fff0;">
+            </label>
+            <label style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #e2e8f0; cursor: pointer;">
+              <span>Sterzo Giroscopico (Tilt Gyro)</span>
+              <input type="checkbox" id="z-opt-gyro" style="width: 20px; height: 20px; accent-color: #76fff0;">
+            </label>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #e2e8f0;">
+              <span>Dimensione Tasti Touch</span>
+              <select id="z-opt-btnsize" style="background: #0d1e30; color: #76fff0; border: 1px solid #76fff0; border-radius: 6px; padding: 4px 8px; font-family: inherit;">
+                <option value="standard">Standard</option>
+                <option value="large">Grande</option>
+                <option value="compact">Compatto</option>
+              </select>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #e2e8f0;">
+              <span>Classe Velocità</span>
+              <select id="z-opt-speedclass" style="background: #0d1e30; color: #76fff0; border: 1px solid #76fff0; border-radius: 6px; padding: 4px 8px; font-family: inherit;">
+                <option value="150cc">150cc (Esperto)</option>
+                <option value="100cc">100cc (Normale)</option>
+                <option value="50cc">50cc (Principiante)</option>
+              </select>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #e2e8f0;">
+              <span>Risparmio Batteria (Target FPS)</span>
+              <select id="z-opt-fps" style="background: #0d1e30; color: #76fff0; border: 1px solid #76fff0; border-radius: 6px; padding: 4px 8px; font-family: inherit;">
+                <option value="60">60 FPS (Massima Fluidità)</option>
+                <option value="45">45 FPS (Bilanciato)</option>
+                <option value="30">30 FPS (Eco Batteria)</option>
+              </select>
+            </div>
+          </div>
+          <button id="z-settings-close" class="z-mini" style="margin-top: 18px; width: 100%; padding: 12px; font-weight: 800; background: rgba(118, 255, 240, 0.3); border-color: #76fff0; color: #ffffff;">SALVA & CHIUDI</button>
         </div>
       </div>
 
@@ -1151,7 +1222,10 @@
                   decoy: '📦',
                   bolt: '⚡',
                   blast: '📢',
-                  shield: '🛡️'
+                  shield: '🛡️',
+                  vortex: '🌪️',
+                  horn: '📯',
+                  triple_shield: '🫧'
                 };
                 const names = {
                   photon: 'PHOTON',
@@ -1166,7 +1240,10 @@
                   decoy: 'DECOY',
                   bolt: 'PHOTON',
                   blast: 'SHOCKWAVE',
-                  shield: 'SHIELD'
+                  shield: 'SHIELD',
+                  vortex: 'VORTEX',
+                  horn: 'SUPER HORN',
+                  triple_shield: '3x WARD'
                 };
                 ico.textContent = icons[item] || '🎯';
                 txt.textContent = names[item] || item.toUpperCase();
@@ -1175,6 +1252,72 @@
                 ico.textContent = '🎯';
                 txt.textContent = 'POTERE';
               }
+            }
+
+            // 50 Improvements: Radar, Blind Spot & Threat Alert monitoring
+            if (director && director.racers && player) {
+              const pPos = player.pos;
+              const pYaw = (player.state && player.state.yaw) || 0;
+              const fwdX = -Math.sin(pYaw);
+              const fwdZ = -Math.cos(pYaw);
+              const rightX = -fwdZ;
+              const rightZ = fwdX;
+
+              let leftBlind = false;
+              let rightBlind = false;
+              let closestRearDist = 999;
+
+              for (const other of director.racers) {
+                if (other === player || (other.progress && other.progress.finished)) continue;
+                const dx = other.pos.x - pPos.x;
+                const dz = other.pos.z - pPos.z;
+                const fwdDist = dx * fwdX + dz * fwdZ;
+                const latDist = dx * rightX + dz * rightZ;
+                const dist = Math.hypot(dx, dz);
+
+                if (fwdDist < -0.5 && fwdDist > -30) {
+                  if (dist < closestRearDist) closestRearDist = dist;
+                }
+                if (fwdDist > -3.5 && fwdDist < 1.8) {
+                  if (latDist < -1.4 && latDist > -4.5) leftBlind = true;
+                  if (latDist > 1.4 && latDist < 4.5) rightBlind = true;
+                }
+              }
+
+              const blindLeftEl = document.getElementById('z-blind-left');
+              const blindRightEl = document.getElementById('z-blind-right');
+              if (blindLeftEl) blindLeftEl.classList.toggle('hidden', !leftBlind);
+              if (blindRightEl) blindRightEl.classList.toggle('hidden', !rightBlind);
+
+              const rearIndicatorEl = document.getElementById('z-mirror-indicator');
+              const rearContainerEl = document.getElementById('z-rearview-container');
+              if (rearContainerEl && rearIndicatorEl) {
+                rearContainerEl.classList.remove('hidden');
+                if (closestRearDist < 30) {
+                  rearIndicatorEl.textContent = `${closestRearDist.toFixed(1)}m`;
+                  rearIndicatorEl.classList.toggle('warning', closestRearDist < 6.0);
+                } else {
+                  rearIndicatorEl.textContent = 'CLEAR';
+                  rearIndicatorEl.classList.remove('warning');
+                }
+              }
+
+              const threatRadarEl = document.getElementById('z-threat-radar');
+              let hasThreat = false;
+              if (director.items && director.items.bolts) {
+                for (const b of director.items.bolts) {
+                  if (b.active && b.owner !== player) {
+                    const bx = b.object.position.x - pPos.x;
+                    const bz = b.object.position.z - pPos.z;
+                    const fwdDot = bx * fwdX + bz * fwdZ;
+                    if (fwdDot < 0 && Math.hypot(bx, bz) < 26) {
+                      hasThreat = true;
+                      break;
+                    }
+                  }
+                }
+              }
+              if (threatRadarEl) threatRadarEl.classList.toggle('hidden', !hasThreat);
             }
 
             // Auto-recovery: if stuck < 2.5 km/h for > 2.8 seconds during race
@@ -1326,6 +1469,130 @@
           }
           haptic(20);
         });
+
+        // 50 Improvements: Quick Chat & Options Event Handlers
+        const chatModal = document.getElementById('z-chat-modal');
+        const chatBtn = document.getElementById('z-btn-chat');
+        const chatClose = document.getElementById('z-chat-close');
+        if (chatBtn && chatModal) {
+          chatBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            chatModal.classList.remove('hidden');
+            haptic(15);
+          });
+        }
+        if (chatClose && chatModal) {
+          chatClose.addEventListener('click', () => {
+            chatModal.classList.add('hidden');
+            haptic(15);
+          });
+        }
+        document.querySelectorAll('.z-chat-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const msg = btn.dataset.msg;
+            if (window.__multiplayerManager && typeof window.__multiplayerManager.sendEmote === 'function') {
+              window.__multiplayerManager.sendEmote(msg);
+            }
+            if (window.__zephyr?.ui?.toast) {
+              window.__zephyr.ui.toast(msg, 2.0);
+            }
+            haptic(25);
+            if (chatModal) chatModal.classList.add('hidden');
+          });
+        });
+
+        const settingsModal = document.getElementById('z-settings-modal');
+        const settingsBtn = document.getElementById('z-btn-settings');
+        const pauseOptBtn = document.getElementById('z-pause-opt');
+        const settingsClose = document.getElementById('z-settings-close');
+        const optAutogas = document.getElementById('z-opt-autogas');
+        const optGyro = document.getElementById('z-opt-gyro');
+        const optBtnSize = document.getElementById('z-opt-btnsize');
+        const optSpeedClass = document.getElementById('z-opt-speedclass');
+        const optFps = document.getElementById('z-opt-fps');
+
+        if (optAutogas) {
+          optAutogas.checked = localStorage.getItem('zephyr_opt_autogas') === '1';
+          window.__ZEPHYR_AUTOGAS = optAutogas.checked;
+          optAutogas.addEventListener('change', () => {
+            window.__ZEPHYR_AUTOGAS = optAutogas.checked;
+            localStorage.setItem('zephyr_opt_autogas', optAutogas.checked ? '1' : '0');
+          });
+        }
+
+        if (optGyro) {
+          optGyro.checked = localStorage.getItem('zephyr_opt_gyro') === '1';
+          window.__ZEPHYR_GYRO = optGyro.checked;
+          optGyro.addEventListener('change', () => {
+            window.__ZEPHYR_GYRO = optGyro.checked;
+            localStorage.setItem('zephyr_opt_gyro', optGyro.checked ? '1' : '0');
+            if (optGyro.checked && typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+              DeviceOrientationEvent.requestPermission().catch(() => {});
+            }
+          });
+        }
+
+        if (optBtnSize) {
+          const savedSize = localStorage.getItem('zephyr_opt_btnsize') || 'standard';
+          optBtnSize.value = savedSize;
+          const touchLayer = document.getElementById('zephyr-touch');
+          if (touchLayer) {
+            touchLayer.classList.toggle('touch-large', savedSize === 'large');
+            touchLayer.classList.toggle('touch-compact', savedSize === 'compact');
+          }
+          optBtnSize.addEventListener('change', () => {
+            localStorage.setItem('zephyr_opt_btnsize', optBtnSize.value);
+            if (touchLayer) {
+              touchLayer.classList.toggle('touch-large', optBtnSize.value === 'large');
+              touchLayer.classList.toggle('touch-compact', optBtnSize.value === 'compact');
+            }
+          });
+        }
+
+        if (optSpeedClass) {
+          const savedSpeed = localStorage.getItem('zephyr_opt_speedclass') || '150cc';
+          optSpeedClass.value = savedSpeed;
+          optSpeedClass.addEventListener('change', () => {
+            localStorage.setItem('zephyr_opt_speedclass', optSpeedClass.value);
+          });
+        }
+
+        if (optFps) {
+          const savedFps = localStorage.getItem('zephyr_opt_fps') || '60';
+          optFps.value = savedFps;
+          window.__ZEPHYR_TARGET_FPS = parseInt(savedFps, 10);
+          optFps.addEventListener('change', () => {
+            localStorage.setItem('zephyr_opt_fps', optFps.value);
+            window.__ZEPHYR_TARGET_FPS = parseInt(optFps.value, 10);
+          });
+        }
+
+        const openSettings = (e) => {
+          e.preventDefault();
+          if (settingsModal) settingsModal.classList.remove('hidden');
+          haptic(15);
+        };
+        if (settingsBtn) settingsBtn.addEventListener('click', openSettings);
+        if (pauseOptBtn) pauseOptBtn.addEventListener('click', openSettings);
+        if (settingsClose && settingsModal) {
+          settingsClose.addEventListener('click', () => {
+            settingsModal.classList.add('hidden');
+            haptic(15);
+          });
+        }
+
+        if (typeof window !== 'undefined' && window.DeviceOrientationEvent) {
+          window.addEventListener('deviceorientation', (e) => {
+            if (!window.__ZEPHYR_GYRO) return;
+            const gamma = e.gamma || 0;
+            if (Math.abs(gamma) > 4) {
+              const steer = Math.max(-1, Math.min(1, gamma / 25));
+              if (window.__zephyr && window.__zephyr.director && window.__zephyr.director.player) {
+                window.__zephyr.director.player.controls.steer = steer;
+              }
+            }
+          });
+        }
 
         // Reset button
         const resetBtn = document.getElementById('z-btn-reset');
