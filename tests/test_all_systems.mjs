@@ -1930,9 +1930,9 @@ describe('=== UNIT & PROCESS TESTS: UNIVERSAL ANDROID & BATTERY OPTIMIZATIONS ==
 });
 
 describe('=== UNIT & PROCESS TESTS: REAR FLICKER PREVENTION & CAMERA OCCLUSION ===', () => {
-  it('1. Kart model frustumCulled and receiveShadow are disabled on all submeshes to prevent partial mesh flashing and shadow duplication', () => {
+  it('1. Kart model frustumCulled is disabled on all submeshes to prevent partial mesh flashing', () => {
     const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
-    assert.ok(bundle.includes('e.traverse(b=>{b.isMesh&&(b.frustumCulled=!1,b.receiveShadow=!1)})'), 'bundle must disable frustumCulled and receiveShadow on all kart meshes');
+    assert.ok(bundle.includes('e.traverse(b=>{b.isMesh&&(b.frustumCulled=!1)})'), 'bundle must disable frustumCulled on all kart meshes');
   });
 
   it('2. Camera near clipping plane is reduced to 0.08m (8cm) to prevent lens intersection clipping', () => {
@@ -1947,17 +1947,25 @@ describe('=== UNIT & PROCESS TESTS: REAR FLICKER PREVENTION & CAMERA OCCLUSION =
     assert.ok(bundle.includes('p=-24'), 'lookback aim must look 24m down the track behind kart');
   });
 
-  it('4. Camera blind-cone proximity occlusion culls overlapping pursuers in chase view while keeping lookback intact', () => {
+  it('4. Camera trailing close distance dynamic clearance buffer keeps lens ahead of pursuers', () => {
     const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
     assert.ok(bundle.includes('trailingCloseDist:trDist'), 'Ev.syncVisual must compute trDist and pass to camera');
-    assert.ok(bundle.includes('r.kart.object.visible=!(fwdDot<-.7&&fwdDot>-7.8&&latDot<2.6)'), 'Ev.syncVisual must cull pursuers directly in blind-cone between camera and player');
-    assert.ok(bundle.includes('if(isLookBack){r.kart.object.visible=!0}'), 'lookback must render pursuers with full visibility');
+    assert.ok(bundle.includes('extra&&extra.trailingCloseDist<8.5&&(c=Math.min(c,Math.max(3.6,extra.trailingCloseDist-1.8))'), 'computeDesired must clamp distance in front of pursuer');
   });
 
   it('5. AI avoidance hysteresis prevents steering and chassis lean flutter when drafting behind player', () => {
     const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
     assert.ok(bundle.includes('E(this,"_avSide",0)'), 'nc class must have _avSide hysteresis property');
     assert.ok(bundle.includes('side=Rt>.3?1:Rt<-.3?-1:this._avSide'), 'avoidance must employ lateral hysteresis deadband');
+  });
+
+  it('6. Closer third-person camera perspective optimized for desktop and mobile devices', () => {
+    const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+    assert.ok(bundle.includes('distance:4.8'), 'desktop camera distance should be 4.8m');
+    assert.ok(bundle.includes('mobileDistance:4.35'), 'mobile camera distance should be 4.35m');
+    assert.ok(bundle.includes('height:2.18'), 'desktop camera height should be 2.18m');
+    assert.ok(bundle.includes('mobileHeight:1.98'), 'mobile camera height should be 1.98m');
+    assert.ok(bundle.includes('isMob=(typeof window!=="undefined")'), 'must dynamically detect mobile touch device viewport');
   });
 });
 
