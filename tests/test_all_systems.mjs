@@ -1930,9 +1930,9 @@ describe('=== UNIT & PROCESS TESTS: UNIVERSAL ANDROID & BATTERY OPTIMIZATIONS ==
 });
 
 describe('=== UNIT & PROCESS TESTS: REAR FLICKER PREVENTION & CAMERA OCCLUSION ===', () => {
-  it('1. Kart model frustumCulled is disabled on all submeshes to prevent partial mesh flashing', () => {
+  it('1. Kart model frustumCulled and receiveShadow are disabled on all submeshes to prevent partial mesh flashing and shadow duplication', () => {
     const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
-    assert.ok(bundle.includes('e.traverse(b=>{b.isMesh&&(b.frustumCulled=!1)})'), 'bundle must disable frustumCulled on all kart meshes');
+    assert.ok(bundle.includes('e.traverse(b=>{b.isMesh&&(b.frustumCulled=!1,b.receiveShadow=!1)})'), 'bundle must disable frustumCulled and receiveShadow on all kart meshes');
   });
 
   it('2. Camera near clipping plane is reduced to 0.08m (8cm) to prevent lens intersection clipping', () => {
@@ -1947,10 +1947,11 @@ describe('=== UNIT & PROCESS TESTS: REAR FLICKER PREVENTION & CAMERA OCCLUSION =
     assert.ok(bundle.includes('p=-24'), 'lookback aim must look 24m down the track behind kart');
   });
 
-  it('4. Camera trailing close distance dynamic clearance buffer keeps lens ahead of pursuers', () => {
+  it('4. Camera blind-cone proximity occlusion culls overlapping pursuers in chase view while keeping lookback intact', () => {
     const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
     assert.ok(bundle.includes('trailingCloseDist:trDist'), 'Ev.syncVisual must compute trDist and pass to camera');
-    assert.ok(bundle.includes('extra&&extra.trailingCloseDist<8.5&&(c=Math.min(c,Math.max(3.6,extra.trailingCloseDist-1.8))'), 'computeDesired must clamp distance in front of pursuer');
+    assert.ok(bundle.includes('r.kart.object.visible=!(fwdDot<-.7&&fwdDot>-7.8&&latDot<2.6)'), 'Ev.syncVisual must cull pursuers directly in blind-cone between camera and player');
+    assert.ok(bundle.includes('if(isLookBack){r.kart.object.visible=!0}'), 'lookback must render pursuers with full visibility');
   });
 
   it('5. AI avoidance hysteresis prevents steering and chassis lean flutter when drafting behind player', () => {
