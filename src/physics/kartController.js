@@ -410,9 +410,9 @@ export class KartController {
     const curbStart = (this.track.width / 2) - 2.2;
     const lateralDist = proj.distanceToCenter;
 
-    // Off-track curb / grass rolling resistance (Item 13)
-    if (Math.abs(lateralDist) > curbStart && Math.abs(lateralDist) <= maxLateral) {
-      this.speed = Math.max(0, this.speed - 9.0 * dt);
+    // Off-track curb / grass rolling resistance (Item 13) - ignored during boost, smooth roll
+    if (this.boostTimer <= 0 && Math.abs(lateralDist) > curbStart && Math.abs(lateralDist) <= maxLateral) {
+      this.speed = Math.max(13.5, this.speed - 5.0 * dt);
     }
 
     if (Math.abs(lateralDist) > maxLateral) {
@@ -421,15 +421,17 @@ export class KartController {
 
       const dotNormal = this.forward.dot(proj.normal);
       if (dotNormal * sign > 0) {
+        // Continuous forward drive along guardrail with gentle deflection
         const targetYaw = Math.atan2(proj.tangent.x, proj.tangent.z);
-        this.yaw = THREE.MathUtils.lerp(this.yaw, targetYaw, 0.25);
-        this.speed = Math.max(12.0, this.speed * 0.94);
+        this.yaw = THREE.MathUtils.lerp(this.yaw, targetYaw, 0.35);
+        this.speed = Math.max(14.0, this.speed * 0.96);
       }
 
-      // Wall Glance Assist: immediately disengage nose if steering away from wall
+      // Wall Glance Assist: immediately disengage nose and push inwards if steering away from wall
       const steerInput = (this.input.right ? 1 : 0) - (this.input.left ? 1 : 0);
       if (steerInput * sign < 0) {
-        this.yaw += -sign * Math.abs(steerInput) * dt * 2.5;
+        this.yaw += -sign * Math.abs(steerInput) * dt * 3.2;
+        this.position.addScaledVector(proj.normal, -sign * 0.15);
       }
 
       this.wallHit = true;
