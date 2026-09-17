@@ -410,9 +410,9 @@ export class KartController {
     const curbStart = (this.track.width / 2) - 2.2;
     const lateralDist = proj.distanceToCenter;
 
-    // Off-track curb / grass rolling resistance (Item 13) - ignored during boost, smooth roll
+    // Off-track curb / grass / dirt rolling resistance - ignored during boost, realistic drag
     if (this.boostTimer <= 0 && Math.abs(lateralDist) > curbStart && Math.abs(lateralDist) <= maxLateral) {
-      this.speed = Math.max(13.5, this.speed - 5.0 * dt);
+      this.speed = Math.max(8.0, this.speed - 11.0 * dt);
     }
 
     if (Math.abs(lateralDist) > maxLateral) {
@@ -438,10 +438,10 @@ export class KartController {
       // Continuous forward alignment pull
       this.yaw += dYaw * 0.35;
 
-      // Continuous forward drive along guardrail
+      // Continuous forward drive along guardrail with tangible friction deceleration
       const isAccelerating = this.input.forward || Math.abs(this.speed) > 2.0;
       if (isAccelerating) {
-        this.speed = Math.max(14.0, this.speed * 0.96);
+        this.speed = Math.max(8.5, this.speed * 0.88);
         this.forward.copy(proj.tangent).normalize();
         this.velocity.copy(this.forward).multiplyScalar(this.speed);
       }

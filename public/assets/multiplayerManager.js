@@ -268,42 +268,50 @@ export class MultiplayerManager {
     conn.on('data', (data) => this.handleMessage(conn, data));
 
     conn.on('close', () => {
-      console.log(`[Host] Client disconnected: ${conn.peer}`);
-      this.connections.delete(conn.peer);
-      const idx = this.players.findIndex(p => p.peerId === conn.peer);
-      if (idx !== -1) {
-        const leaving = this.players[idx];
-        if (this.state === 'RACING') {
-          // Prevent array shifting during race: mark as AI and inform everyone
-          leaving.isAI = true;
-          this.toast(`${leaving.name} si è disconnesso (subentra l'IA).`);
-          this.broadcastToAll({
-            type: 'PLAYER_DISCONNECTED',
-            slot: leaving.slot,
-            name: leaving.name
-          });
-          this.nametagEls.get(leaving.slot)?.remove();
-          this.nametagEls.delete(leaving.slot);
-          this.emoteEls.get(leaving.slot)?.el?.remove();
-          this.emoteEls.delete(leaving.slot);
-          this.remoteStates.delete(leaving.slot);
-          if (window.__zephyr?.director?.racers?.[leaving.slot]) {
-            const r = window.__zephyr.director.racers[leaving.slot];
-            r.kind = "ai";
-            r.isPlayer = false;
-            r.isRemotePlayer = false;
-            r.name = `${leaving.name} (IA)`;
-          }
-        } else {
-          this.players.splice(idx, 1);
-          this.toast(`${leaving.name} è uscito dalla stanza.`);
-          this.broadcastLobbyUpdate();
-        }
-      }
+      this.handlePeerDisconnect(conn.peer);
     });
   }
 
+  handlePeerDisconnect(peerId) {
+    console.log(`[Host] Client disconnected: ${peerId}`);
+    this.connections.delete(peerId);
+    const idx = this.players.findIndex(p => p.peerId === peerId);
+    if (idx !== -1) {
+      const leaving = this.players[idx];
+      if (this.state === 'RACING') {
+        // Prevent array shifting during race: mark as AI and inform everyone
+        leaving.isAI = true;
+        this.toast(`${leaving.name} si è disconnesso (subentra l'IA).`);
+        this.broadcastToAll({
+          type: 'PLAYER_DISCONNECTED',
+          slot: leaving.slot,
+          name: leaving.name
+        });
+        this.nametagEls.get(leaving.slot)?.remove();
+        this.nametagEls.delete(leaving.slot);
+        this.emoteEls.get(leaving.slot)?.el?.remove();
+        this.emoteEls.delete(leaving.slot);
+        this.remoteStates.delete(leaving.slot);
+        if (window.__zephyr?.director?.racers?.[leaving.slot]) {
+          const r = window.__zephyr.director.racers[leaving.slot];
+          r.kind = "ai";
+          r.isPlayer = false;
+          r.isRemotePlayer = false;
+          r.name = `${leaving.name} (IA)`;
+        }
+      } else {
+        this.players.splice(idx, 1);
+        this.toast(`${leaving.name} è uscito dalla stanza.`);
+        this.broadcastLobbyUpdate();
+      }
+    }
+  }
+
   // --- MESSAGE ROUTING ---
+  handleIncomingData(conn, data) {
+    return this.handleMessage(conn, data);
+  }
+
   handleMessage(conn, data) {
     if (!data || !data.type) return;
 
@@ -445,7 +453,7 @@ export class MultiplayerManager {
 
         if (this.isHost) {
           for (const [peerId, otherConn] of this.connections.entries()) {
-            if (peerId !== conn.peer && otherConn.open) {
+            if (peerId !== conn?.peer && otherConn.open) {
               otherConn.send(data);
             }
           }
@@ -457,7 +465,7 @@ export class MultiplayerManager {
       case 'ITEM_USE': {
         if (this.onItemUse) this.onItemUse(data);
         if (this.isHost) {
-          this.relayToOthers(conn.peer, data);
+          this.relayToOthers(conn?.peer, data);
         }
         break;
       }
@@ -465,7 +473,7 @@ export class MultiplayerManager {
       case 'RACER_HIT': {
         if (this.onRacerHit) this.onRacerHit(data);
         if (this.isHost) {
-          this.relayToOthers(conn.peer, data);
+          this.relayToOthers(conn?.peer, data);
         }
         break;
       }
@@ -474,7 +482,7 @@ export class MultiplayerManager {
         this.displayEmoteBubble(data.slot, data.text);
         if (this.onEmote) this.onEmote(data);
         if (this.isHost) {
-          this.relayToOthers(conn.peer, data);
+          this.relayToOthers(conn?.peer, data);
         }
         break;
       }
@@ -487,7 +495,7 @@ export class MultiplayerManager {
         }
         if (this.onPlayerFinish) this.onPlayerFinish(data);
         if (this.isHost) {
-          this.relayToOthers(conn.peer, data);
+          this.relayToOthers(conn?.peer, data);
         }
         break;
       }
@@ -499,13 +507,13 @@ export class MultiplayerManager {
       }
 
       case 'PING': {
-        conn.send({ type: 'PONG', t: data.t });
+        if (conn?.send) conn.send({ type: 'PONG', t: data.t });
         break;
       }
 
       case 'PONG': {
         const rtt = Math.round(performance.now() - data.t);
-        const p = this.players.find(pl => pl.peerId === conn.peer);
+        const p = this.players.find(pl => pl.peerId === conn?.peer);
         if (p) p.ping = Math.max(12, rtt);
         this.notifyLobbyUpdate();
         break;
@@ -780,13 +788,20 @@ export class MultiplayerManager {
 
   // --- IN-GAME EMOTES & QUICK CHAT ---
   sendEmote(text) {
-    if (this.state !== 'RACING') return;
+    if (this.state !== 'RACING') return false;
+    const now = performance.now();
+    if (this.lastEmoteTime && now - this.lastEmoteTime < 750) return false;
+    this.lastEmoteTime = now;
     this.displayEmoteBubble(this.mySlot, text);
     this.broadcastToAll({
       type: 'EMOTE',
       slot: this.mySlot,
       text: text
     });
+    if (this.onEmote) {
+      this.onEmote({ slot: this.mySlot, text: text });
+    }
+    return true;
   }
 
   displayEmoteBubble(slot, text) {

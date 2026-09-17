@@ -1263,12 +1263,14 @@
         });
         hostKartSelect?.addEventListener('change', (e) => {
           if (mp) mp.setSelectedKart(e.target.value);
+          if (window.__zephyr?.selectKart) window.__zephyr.selectKart(e.target.value);
         });
         guestNameInput?.addEventListener('input', (e) => {
           if (mp) mp.setPlayerName(e.target.value);
         });
         guestKartSelect?.addEventListener('change', (e) => {
           if (mp) mp.setSelectedKart(e.target.value);
+          if (window.__zephyr?.selectKart) window.__zephyr.selectKart(e.target.value);
         });
         trackSelect?.addEventListener('change', (e) => {
           if (mp) mp.setTrack(parseInt(e.target.value, 10));
