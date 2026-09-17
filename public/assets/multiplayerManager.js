@@ -89,16 +89,37 @@ export class MultiplayerManager {
     if (this.state === 'HOST_LOBBY' || this.state === 'GUEST_LOBBY') {
       const me = this.players.find(p => p.slot === this.mySlot);
       if (me) me.name = this.playerName;
-      this.broadcastLobbyUpdate();
+      if (this.isHost) {
+        this.broadcastLobbyUpdate();
+      } else {
+        this.broadcastToAll({
+          type: 'PLAYER_UPDATE',
+          slot: this.mySlot,
+          name: this.playerName,
+          kartId: this.selectedKart
+        });
+        this.notifyLobbyUpdate();
+      }
     }
   }
 
   setSelectedKart(kartId) {
     this.selectedKart = kartId;
+    localStorage.setItem('zephyr_kart', kartId);
     if (this.state === 'HOST_LOBBY' || this.state === 'GUEST_LOBBY') {
       const me = this.players.find(p => p.slot === this.mySlot);
       if (me) me.kartId = kartId;
-      this.broadcastLobbyUpdate();
+      if (this.isHost) {
+        this.broadcastLobbyUpdate();
+      } else {
+        this.broadcastToAll({
+          type: 'PLAYER_UPDATE',
+          slot: this.mySlot,
+          name: this.playerName,
+          kartId: this.selectedKart
+        });
+        this.notifyLobbyUpdate();
+      }
     }
   }
 
@@ -144,6 +165,8 @@ export class MultiplayerManager {
       ping: 0,
       isAI: false
     }];
+
+    this.notifyLobbyUpdate();
 
     this.initPeer(hostPeerId, () => {
       this.toast(`Stanza creata! Codice: ${this.roomCode}`);
@@ -239,6 +262,7 @@ export class MultiplayerManager {
   handleHostIncomingConnection(conn) {
     conn.on('open', () => {
       console.log(`[Host] Client connected: ${conn.peer}`);
+      this.connections.set(conn.peer, conn);
     });
 
     conn.on('data', (data) => this.handleMessage(conn, data));
@@ -249,9 +273,32 @@ export class MultiplayerManager {
       const idx = this.players.findIndex(p => p.peerId === conn.peer);
       if (idx !== -1) {
         const leaving = this.players[idx];
-        this.players.splice(idx, 1);
-        this.toast(`${leaving.name} è uscito dalla stanza.`);
-        this.broadcastLobbyUpdate();
+        if (this.state === 'RACING') {
+          // Prevent array shifting during race: mark as AI and inform everyone
+          leaving.isAI = true;
+          this.toast(`${leaving.name} si è disconnesso (subentra l'IA).`);
+          this.broadcastToAll({
+            type: 'PLAYER_DISCONNECTED',
+            slot: leaving.slot,
+            name: leaving.name
+          });
+          this.nametagEls.get(leaving.slot)?.remove();
+          this.nametagEls.delete(leaving.slot);
+          this.emoteEls.get(leaving.slot)?.el?.remove();
+          this.emoteEls.delete(leaving.slot);
+          this.remoteStates.delete(leaving.slot);
+          if (window.__zephyr?.director?.racers?.[leaving.slot]) {
+            const r = window.__zephyr.director.racers[leaving.slot];
+            r.kind = "ai";
+            r.isPlayer = false;
+            r.isRemotePlayer = false;
+            r.name = `${leaving.name} (IA)`;
+          }
+        } else {
+          this.players.splice(idx, 1);
+          this.toast(`${leaving.name} è uscito dalla stanza.`);
+          this.broadcastLobbyUpdate();
+        }
       }
     });
   }
@@ -300,6 +347,34 @@ export class MultiplayerManager {
         break;
       }
 
+      case 'PLAYER_UPDATE': {
+        if (!this.isHost) return;
+        const p = this.players.find(pl => pl.slot === data.slot);
+        if (p) {
+          if (data.name) p.name = data.name;
+          if (data.kartId) p.kartId = data.kartId;
+          this.broadcastLobbyUpdate();
+        }
+        break;
+      }
+
+      case 'PLAYER_DISCONNECTED': {
+        this.toast(`${data.name} si è disconnesso (subentra l'IA)`);
+        this.nametagEls.get(data.slot)?.remove();
+        this.nametagEls.delete(data.slot);
+        this.emoteEls.get(data.slot)?.el?.remove();
+        this.emoteEls.delete(data.slot);
+        this.remoteStates.delete(data.slot);
+        if (window.__zephyr?.director?.racers?.[data.slot]) {
+          const r = window.__zephyr.director.racers[data.slot];
+          r.kind = "ai";
+          r.isPlayer = false;
+          r.isRemotePlayer = false;
+          r.name = `${data.name} (IA)`;
+        }
+        break;
+      }
+
       case 'ROOM_WELCOME': {
         this.state = 'GUEST_LOBBY';
         this.mySlot = data.mySlot;
@@ -307,6 +382,7 @@ export class MultiplayerManager {
         this.trackIndex = data.trackIndex;
         this.laps = data.laps;
         this.players = data.players;
+        try { localStorage.setItem('zephyr_track', String(data.trackIndex)); } catch {}
         this.toast(`Sei nella stanza privata! (Slot ${this.mySlot + 1})`);
         this.notifyLobbyUpdate();
         this.startHeartbeat();
@@ -317,6 +393,7 @@ export class MultiplayerManager {
         this.players = data.players;
         this.trackIndex = data.trackIndex;
         this.laps = data.laps;
+        try { localStorage.setItem('zephyr_track', String(data.trackIndex)); } catch {}
         this.notifyLobbyUpdate();
         break;
       }
@@ -324,6 +401,7 @@ export class MultiplayerManager {
       case 'TRACK_SYNC': {
         this.trackIndex = data.trackIndex;
         this.laps = data.laps;
+        try { localStorage.setItem('zephyr_track', String(data.trackIndex)); } catch {}
         this.notifyLobbyUpdate();
         break;
       }
@@ -333,6 +411,7 @@ export class MultiplayerManager {
         this.trackIndex = data.trackIndex;
         this.laps = data.laps;
         this.players = data.players;
+        try { localStorage.setItem('zephyr_track', String(data.trackIndex)); } catch {}
         if (this.onRaceStart) {
           this.onRaceStart(data);
         }
@@ -341,22 +420,28 @@ export class MultiplayerManager {
 
       case 'KART_STATE': {
         const s = data.slot;
-        this.remoteStates.set(s, {
-          x: data.x,
-          y: data.y,
-          z: data.z,
-          yaw: data.yaw,
-          pitch: data.pitch || 0,
-          roll: data.roll || 0,
-          speed: data.speed || 0,
-          steer: data.steer || 0,
-          driftTier: data.driftTier || 0,
-          isDrifting: !!data.isDrifting,
-          boost: !!data.boost,
-          lap: data.lap || 1,
-          dist: data.dist || 0,
-          lastUpdate: performance.now()
-        });
+        let rState = this.remoteStates.get(s);
+        if (!rState) {
+          rState = {
+            x: 0, y: 0, z: 0, yaw: 0, pitch: 0, roll: 0, speed: 0, steer: 0,
+            driftTier: 0, isDrifting: false, boost: false, lap: 1, dist: 0, lastUpdate: 0
+          };
+          this.remoteStates.set(s, rState);
+        }
+        rState.x = data.x;
+        rState.y = data.y;
+        rState.z = data.z;
+        rState.yaw = data.yaw;
+        rState.pitch = data.pitch || 0;
+        rState.roll = data.roll || 0;
+        rState.speed = data.speed || 0;
+        rState.steer = data.steer || 0;
+        rState.driftTier = data.driftTier || 0;
+        rState.isDrifting = !!data.isDrifting;
+        rState.boost = !!data.boost;
+        rState.lap = data.lap || 1;
+        rState.dist = data.dist || 0;
+        rState.lastUpdate = performance.now();
 
         if (this.isHost) {
           for (const [peerId, otherConn] of this.connections.entries()) {
@@ -367,6 +452,7 @@ export class MultiplayerManager {
         }
         break;
       }
+
 
       case 'ITEM_USE': {
         if (this.onItemUse) this.onItemUse(data);
@@ -536,40 +622,23 @@ export class MultiplayerManager {
     const p = kart.physics.state;
     const prog = director.player.progress;
 
-    if (!this._statePayload) {
-      this._statePayload = {
-        type: 'KART_STATE',
-        slot: 0,
-        x: 0,
-        y: 0,
-        z: 0,
-        yaw: 0,
-        pitch: 0,
-        roll: 0,
-        speed: 0,
-        steer: 0,
-        driftTier: 0,
-        isDrifting: false,
-        boost: false,
-        lap: 1,
-        dist: 0
-      };
-    }
-    const payload = this._statePayload;
-    payload.slot = this.mySlot;
-    payload.x = Math.round(p.pos.x * 100) / 100;
-    payload.y = Math.round(p.pos.y * 100) / 100;
-    payload.z = Math.round(p.pos.z * 100) / 100;
-    payload.yaw = Math.round(p.yaw * 1000) / 1000;
-    payload.pitch = Math.round((p.pitch || 0) * 1000) / 1000;
-    payload.roll = Math.round((p.roll || 0) * 1000) / 1000;
-    payload.speed = Math.round(p.speed * 10) / 10;
-    payload.steer = Math.round(p.steer * 100) / 100;
-    payload.driftTier = p.driftTier || 0;
-    payload.isDrifting = !!p.drifting;
-    payload.boost = (p.boostTime > 0 || p.padBoostTime > 0);
-    payload.lap = prog.lap || 1;
-    payload.dist = Math.round(prog.distance * 10) / 10;
+    const payload = {
+      type: 'KART_STATE',
+      slot: this.mySlot,
+      x: Math.round(p.pos.x * 100) / 100,
+      y: Math.round(p.pos.y * 100) / 100,
+      z: Math.round(p.pos.z * 100) / 100,
+      yaw: Math.round(p.yaw * 1000) / 1000,
+      pitch: Math.round((p.pitch || 0) * 1000) / 1000,
+      roll: Math.round((p.roll || 0) * 1000) / 1000,
+      speed: Math.round(p.speed * 10) / 10,
+      steer: Math.round(p.steer * 100) / 100,
+      driftTier: p.driftTier || 0,
+      isDrifting: !!p.drifting,
+      boost: (p.boostTime > 0 || p.padBoostTime > 0),
+      lap: prog.lap || 1,
+      dist: Math.round(prog.distance * 10) / 10
+    };
 
     this.broadcastToAll(payload);
   }

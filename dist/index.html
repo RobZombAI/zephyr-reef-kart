@@ -545,11 +545,22 @@
             </div>
 
             <div style="display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;">
-              <div style="flex: 1; min-width: 140px; text-align: left;">
+              <div style="flex: 1; min-width: 130px; text-align: left;">
                 <label style="font-size: 11px; color: #76fff0; font-weight: 700;">IL TUO NICKNAME</label>
                 <input id="z-mp-host-name" type="text" maxlength="16" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 8px 12px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
               </div>
-              <div style="flex: 1; min-width: 160px; text-align: left;">
+              <div style="flex: 1; min-width: 140px; text-align: left;">
+                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">IL TUO KART</label>
+                <select id="z-mp-host-kart" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 8px 12px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
+                  <option value="nix">🦦 Nix (Wave-Runner)</option>
+                  <option value="bruno">🪨 Bruno (Landslide)</option>
+                  <option value="sable">🦋 Sable (Nightflyer)</option>
+                  <option value="zuzu">⚡ Zuzu (Drifter)</option>
+                  <option value="rustam">⚙️ Rustam (Tinkerer)</option>
+                  <option value="marlow">🐸 Marlow (Corsair)</option>
+                </select>
+              </div>
+              <div style="flex: 1; min-width: 150px; text-align: left;">
                 <label style="font-size: 11px; color: #76fff0; font-weight: 700;">CIRCUITO GARA</label>
                 <select id="z-mp-track-select" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 8px 12px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
                   <option value="0">🪸 Coral Sanctuary</option>
@@ -558,7 +569,7 @@
                   <option value="3">🏛️ Temple of Nix</option>
                 </select>
               </div>
-              <div style="width: 80px; text-align: left;">
+              <div style="width: 75px; text-align: left;">
                 <label style="font-size: 11px; color: #76fff0; font-weight: 700;">GIRI</label>
                 <select id="z-mp-laps-select" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 8px 12px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
                   <option value="1">1 Giro</option>
@@ -588,18 +599,33 @@
               <input id="z-mp-join-code" type="text" maxlength="12" placeholder="Es. ZEPH-7429" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #ffc857; font-family: monospace; font-size: 20px; text-transform: uppercase; padding: 10px 14px; border-radius: 10px; font-weight: 800; margin-top: 4px;">
             </div>
 
-            <div style="text-align: left; margin-bottom: 16px;">
-              <label style="font-size: 11px; color: #76fff0; font-weight: 700;">IL TUO NICKNAME</label>
-              <input id="z-mp-guest-name" type="text" maxlength="16" placeholder="Il tuo nome" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 10px 14px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
+            <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 140px; text-align: left;">
+                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">IL TUO NICKNAME</label>
+                <input id="z-mp-guest-name" type="text" maxlength="16" placeholder="Il tuo nome" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 10px 14px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
+              </div>
+              <div style="flex: 1; min-width: 140px; text-align: left;">
+                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">IL TUO KART</label>
+                <select id="z-mp-guest-kart" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 10px 14px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
+                  <option value="nix">🦦 Nix (Wave-Runner)</option>
+                  <option value="bruno">🪨 Bruno (Landslide)</option>
+                  <option value="sable">🦋 Sable (Nightflyer)</option>
+                  <option value="zuzu">⚡ Zuzu (Drifter)</option>
+                  <option value="rustam">⚙️ Rustam (Tinkerer)</option>
+                  <option value="marlow">🐸 Marlow (Corsair)</option>
+                </select>
+              </div>
             </div>
 
             <button id="z-mp-join-btn" class="z-mini" style="width: 100%; padding: 14px; font-size: 16px; font-weight: 900; background: linear-gradient(135deg, #0284c7, #0ea5e9); border: 2px solid #38bdf8; color: #ffffff; border-radius: 14px; box-shadow: 0 0 25px rgba(14, 165, 233, 0.5); cursor: pointer; margin-bottom: 12px;">
               🔗 ENTRA NELLA STANZA
             </button>
 
-            <div id="z-mp-guest-waiting" class="hidden" style="background: rgba(8, 26, 36, 0.8); border: 1px solid #76fff0; border-radius: 12px; padding: 14px; margin-top: 10px;">
+            <div id="z-mp-guest-waiting" class="hidden" style="background: rgba(8, 26, 36, 0.8); border: 1px solid #76fff0; border-radius: 12px; padding: 14px; margin-top: 10px; text-align: left;">
               <div style="font-size: 14px; font-weight: 800; color: #34d399; margin-bottom: 4px;">✓ Connesso alla Stanza!</div>
-              <div id="z-mp-guest-info" style="font-size: 12px; color: #94a3b8;">In attesa che l'Host avvii la gara...</div>
+              <div id="z-mp-guest-info" style="font-size: 12px; color: #94a3b8; margin-bottom: 10px;">In attesa che l'Host avvii la gara...</div>
+              <div style="font-size: 11px; color: #94a3b8; font-weight: 700; margin-bottom: 6px;">AMICI IN STANZA:</div>
+              <div id="z-mp-guest-players" style="display: flex; flex-direction: column; gap: 6px; max-height: 140px; overflow-y: auto; background: rgba(6, 20, 28, 0.6); padding: 8px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);"></div>
             </div>
           </div>
         </div>
@@ -999,7 +1025,9 @@
         const copyCodeBtn = document.getElementById('z-mp-copy-code');
         const copyLinkBtn = document.getElementById('z-mp-copy-link');
         const hostNameInput = document.getElementById('z-mp-host-name');
+        const hostKartSelect = document.getElementById('z-mp-host-kart');
         const guestNameInput = document.getElementById('z-mp-guest-name');
+        const guestKartSelect = document.getElementById('z-mp-guest-kart');
         const joinCodeInput = document.getElementById('z-mp-join-code');
         const joinBtn = document.getElementById('z-mp-join-btn');
         const startRaceBtn = document.getElementById('z-mp-start-race');
@@ -1009,6 +1037,7 @@
         const lobbyPlayersEl = document.getElementById('z-mp-lobby-players');
         const guestWaitingBox = document.getElementById('z-mp-guest-waiting');
         const guestInfoEl = document.getElementById('z-mp-guest-info');
+        const guestPlayersEl = document.getElementById('z-mp-guest-players');
         const emoteBar = document.getElementById('z-emote-bar');
 
         let mp = null;
@@ -1023,28 +1052,40 @@
               if (window.__zephyr?.ui?.toast) window.__zephyr.ui.toast(msg, 2.8);
             };
 
+            const KART_INFO = {
+              nix: { icon: '🦦', label: 'Nix' },
+              bruno: { icon: '🪨', label: 'Bruno' },
+              sable: { icon: '🦋', label: 'Sable' },
+              zuzu: { icon: '⚡', label: 'Zuzu' },
+              rustam: { icon: '⚙️', label: 'Rustam' },
+              marlow: { icon: '🐸', label: 'Marlow' }
+            };
+
             mp.onLobbyUpdate = (lobby) => {
               if (roomCodeEl) roomCodeEl.textContent = lobby.roomCode || 'ZEPH-....';
               if (playerCountEl) playerCountEl.textContent = lobby.players.length;
 
-              if (lobbyPlayersEl) {
-                lobbyPlayersEl.innerHTML = lobby.players.map((p, idx) => {
-                  const isMe = idx === lobby.mySlot;
-                  const pingColor = (p.ping || 0) < 60 ? '#10b981' : (p.ping || 0) < 120 ? '#f59e0b' : '#ef4444';
-                  return `
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${isMe ? 'rgba(118, 255, 240, 0.12)' : 'rgba(255,255,255,0.03)'}; border-radius: 8px; border: 1px solid ${isMe ? '#76fff0' : 'rgba(255,255,255,0.06)'};">
-                      <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 14px;">${p.isHost ? '👑' : '🏎️'}</span>
-                        <span style="font-size: 13px; font-weight: 800; color: ${isMe ? '#ffc857' : '#ffffff'};">${p.name} ${isMe ? '(Tu)' : ''}</span>
-                      </div>
-                      <div style="display: flex; align-items: center; gap: 6px;">
-                        <span style="display:inline-block; width: 6px; height: 6px; border-radius: 50%; background: ${pingColor};"></span>
-                        <span style="font-size: 11px; font-family: monospace; color: #94a3b8;">${p.ping || 30}ms</span>
-                      </div>
+              const renderPlayerRow = (p, idx) => {
+                const isMe = idx === lobby.mySlot;
+                const pingColor = (p.ping || 0) < 60 ? '#10b981' : (p.ping || 0) < 120 ? '#f59e0b' : '#ef4444';
+                const kInfo = KART_INFO[p.kartId] || { icon: '🏎️', label: p.kartId || 'Kart' };
+                return `
+                  <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${isMe ? 'rgba(118, 255, 240, 0.12)' : 'rgba(255,255,255,0.03)'}; border-radius: 8px; border: 1px solid ${isMe ? '#76fff0' : 'rgba(255,255,255,0.06)'};">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span style="font-size: 14px;">${p.isHost ? '👑' : '🏎️'}</span>
+                      <span style="font-size: 13px; font-weight: 800; color: ${isMe ? '#ffc857' : '#ffffff'};">${p.name} ${isMe ? '(Tu)' : ''}</span>
+                      <span style="font-size: 11px; padding: 2px 6px; border-radius: 6px; background: rgba(255,255,255,0.08); color: #76fff0;">${kInfo.icon} ${kInfo.label}</span>
                     </div>
-                  `;
-                }).join('');
-              }
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span style="display:inline-block; width: 6px; height: 6px; border-radius: 50%; background: ${pingColor};"></span>
+                      <span style="font-size: 11px; font-family: monospace; color: #94a3b8;">${p.ping || 30}ms</span>
+                    </div>
+                  </div>
+                `;
+              };
+
+              if (lobbyPlayersEl) lobbyPlayersEl.innerHTML = lobby.players.map(renderPlayerRow).join('');
+              if (guestPlayersEl) guestPlayersEl.innerHTML = lobby.players.map(renderPlayerRow).join('');
 
               if (guestInfoEl) {
                 guestInfoEl.innerHTML = `Connesso all'Host! Circuito: <b>${['Coral Sanctuary', 'Abyssal Trench', 'Sky Reef', 'Temple of Nix'][lobby.trackIndex] || 'Circuito'}</b> (${lobby.laps} giri)<br>In attesa della partenza...`;
@@ -1130,11 +1171,29 @@
               if (window.__zephyr?.ui?.toast) {
                 window.__zephyr.ui.toast(`🏁 ${pName} ha tagliato il traguardo! (#${data.rank})`, 3.5);
               }
+              if (window.__zephyr?.director?.racers?.[data.slot]) {
+                const r = window.__zephyr.director.racers[data.slot];
+                r.progress.finished = true;
+                r.progress.finishTime = data.finishTime;
+                r.progress.finishRank = data.rank;
+                r.progress.lap = window.__zephyr.director.config.laps;
+              }
+            };
+
+            mp.onRematch = (data) => {
+              mp.state = 'RACING';
+              mpModal?.classList.add('hidden');
+              if (window.__zephyr) {
+                window.__zephyr.startMultiplayerRace(data.trackIndex ?? mp.trackIndex, mp.laps, mp.players, mp.mySlot);
+              }
+              if (emoteBar) emoteBar.classList.remove('hidden');
             };
 
             // Sync initial inputs
             if (hostNameInput) hostNameInput.value = mp.playerName;
             if (guestNameInput) guestNameInput.value = mp.playerName;
+            if (hostKartSelect) hostKartSelect.value = mp.selectedKart;
+            if (guestKartSelect) guestKartSelect.value = mp.selectedKart;
             if (trackSelect) trackSelect.value = String(mp.trackIndex);
             if (lapsSelect) lapsSelect.value = String(mp.laps);
           }
@@ -1198,12 +1257,18 @@
           });
         }
 
-        // Host settings events
+        // Host and guest settings events
         hostNameInput?.addEventListener('input', (e) => {
           if (mp) mp.setPlayerName(e.target.value);
         });
+        hostKartSelect?.addEventListener('change', (e) => {
+          if (mp) mp.setSelectedKart(e.target.value);
+        });
         guestNameInput?.addEventListener('input', (e) => {
           if (mp) mp.setPlayerName(e.target.value);
+        });
+        guestKartSelect?.addEventListener('change', (e) => {
+          if (mp) mp.setSelectedKart(e.target.value);
         });
         trackSelect?.addEventListener('change', (e) => {
           if (mp) mp.setTrack(parseInt(e.target.value, 10));
@@ -1237,6 +1302,7 @@
         // Start Race (Host)
         startRaceBtn?.addEventListener('click', () => {
           if (!mp) return;
+          if (hostKartSelect) mp.setSelectedKart(hostKartSelect.value);
           haptic(35);
           startRaceBtn.disabled = true;
           startRaceBtn.textContent = '⏳ AVVIO IN CORSO...';
@@ -1256,6 +1322,7 @@
             return;
           }
           initMultiplayer();
+          if (guestKartSelect) mp.setSelectedKart(guestKartSelect.value);
           haptic(25);
           joinBtn.disabled = true;
           joinBtn.textContent = '⏳ CONNESSIONE...';
