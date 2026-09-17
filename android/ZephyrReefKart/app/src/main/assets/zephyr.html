@@ -28,8 +28,10 @@
     <meta name="twitter:title" content="🌴 Zephyr Reef Grand Prix — 3D Fantasy Kart Racer" />
     <meta name="twitter:description" content="Play Zephyr Reef Grand Prix in your browser! 3D arcade kart racer with 4 fantasy tracks, dynamic AI racers, power-ups, and full touch controls." />
     <meta name="twitter:image" content="https://robzombai.github.io/zephyr-reef-kart/og-image.jpg" />
-
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%8F%81%3C/text%3E%3C/svg%3E" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="64x64" href="./assets/favicon.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="./assets/icon-192.png" />
+    <link rel="shortcut icon" href="./assets/favicon.png" />
     <script>
       // Clean legacy caches and service workers
       if ('serviceWorker' in navigator) {
@@ -262,8 +264,33 @@
       .z-track-list {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        margin: 18px 0;
+        gap: 10px;
+        margin: 14px 0;
+        max-height: 64vh;
+        overflow-y: auto;
+        padding-right: 6px;
+      }
+      .z-cup-header {
+        grid-column: 1 / -1;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: linear-gradient(90deg, rgba(118, 255, 240, 0.2), rgba(8, 26, 36, 0.6));
+        padding: 7px 12px;
+        border-radius: 8px;
+        border-left: 4px solid #76fff0;
+        margin-top: 10px;
+      }
+      .z-cup-title {
+        font-size: 13px;
+        font-weight: 900;
+        color: #76fff0;
+        letter-spacing: 0.5px;
+      }
+      .z-cup-diff {
+        font-size: 11px;
+        color: #ffc857;
+        font-weight: 700;
       }
       .z-track-item {
         background: rgba(8, 26, 36, 0.85);
@@ -392,23 +419,95 @@
         100% { transform: translate(-50%, -100%) scale(1); opacity: 1; }
       }
 
+      /* Universal Safe Area Insets & Responsive Android HUD Layouts */
+      .hud__pos {
+        top: max(16px, env(safe-area-inset-top)) !important;
+        left: max(16px, env(safe-area-inset-left)) !important;
+      }
+      .hud__timers {
+        top: max(16px, env(safe-area-inset-top)) !important;
+      }
+      .hud__standings {
+        top: max(16px, env(safe-area-inset-top)) !important;
+        right: max(16px, env(safe-area-inset-right)) !important;
+      }
+      .hud__speed {
+        bottom: max(22px, env(safe-area-inset-bottom)) !important;
+        left: max(18px, env(safe-area-inset-left)) !important;
+      }
+      .hud__minimap {
+        bottom: max(22px, env(safe-area-inset-bottom)) !important;
+        right: max(18px, env(safe-area-inset-right)) !important;
+      }
+
       /* Mobile HUD layout adjustments to avoid pedal overlap */
       @media (max-width: 900px) {
         .hud__speed {
           bottom: 120px !important;
-          left: 18px !important;
+          left: max(14px, env(safe-area-inset-left)) !important;
           transform: scale(0.85);
           transform-origin: bottom left;
         }
         .hud__minimap {
           bottom: 140px !important;
-          right: 18px !important;
+          right: max(14px, env(safe-area-inset-right)) !important;
           width: 140px !important;
           height: 140px !important;
         }
         .hud__drift {
-          bottom: 16px !important;
+          bottom: max(16px, env(safe-area-inset-bottom)) !important;
           width: 180px !important;
+        }
+      }
+
+      /* Android Ultra-Wide Landscape Phones (360px - 520px height) */
+      @media (max-height: 520px) {
+        .z-steer { width: 66px; height: 66px; font-size: 24px; }
+        .z-gas { width: 72px; height: 72px; font-size: 14px; }
+        .z-brake { width: 60px; height: 60px; font-size: 12px; }
+        .z-drift, .z-item { width: 102px; height: 42px; font-size: 13px; }
+        .hud__speed {
+          bottom: 106px !important;
+          left: max(12px, env(safe-area-inset-left)) !important;
+          transform: scale(0.78);
+          transform-origin: bottom left;
+        }
+        .hud__minimap {
+          bottom: 122px !important;
+          right: max(12px, env(safe-area-inset-right)) !important;
+          width: 120px !important;
+          height: 120px !important;
+        }
+        .hud__pos {
+          top: max(8px, env(safe-area-inset-top)) !important;
+          left: max(10px, env(safe-area-inset-left)) !important;
+          transform: scale(0.82);
+          transform-origin: top left;
+        }
+        .hud__timers {
+          top: max(8px, env(safe-area-inset-top)) !important;
+          transform: translate(-50%) scale(0.85);
+          transform-origin: top center;
+        }
+        .hud__standings {
+          top: max(8px, env(safe-area-inset-top)) !important;
+          right: max(68px, calc(env(safe-area-inset-right) + 60px)) !important;
+          transform: scale(0.82);
+          transform-origin: top right;
+        }
+      }
+
+      /* Tablets & Foldables (4:3, 16:10, 1:1) */
+      @media (min-height: 521px) and (max-aspect-ratio: 16/10) {
+        .hud__minimap {
+          bottom: 155px !important;
+          right: max(22px, env(safe-area-inset-right)) !important;
+          width: 160px !important;
+          height: 160px !important;
+        }
+        .hud__speed {
+          bottom: 135px !important;
+          left: max(22px, env(safe-area-inset-left)) !important;
         }
       }
     </style>
@@ -479,39 +578,223 @@
           <h2 style="font-size: 22px; font-weight: 800; color: #76fff0; margin: 0 0 6px 0;">SCEGLI CIRCUITO ZEPHYR REEF</h2>
           <p style="font-size: 13px; color: #94a3b8; margin: 0 0 16px 0;">Seleziona il tracciato con guardrail protettivo continuo (Zero cadute nel vuoto):</p>
           <div class="z-track-list">
-            <div class="z-track-item" data-index="0">
-              <span style="font-size: 28px;">🪸</span>
-              <div>
-                <div style="font-weight: 800; color: #ffffff; font-size: 15px;">Coral Sanctuary</div>
-                <div style="font-size: 11px; color: #76fff0;">Laguna Corallina Classica</div>
-                <div id="z-record-0" style="font-size: 10px; color: #ffc857; margin-top: 3px;">Record: --:--</div>
-              </div>
-            </div>
-            <div class="z-track-item" data-index="1">
-              <span style="font-size: 28px;">🌊</span>
-              <div>
-                <div style="font-weight: 800; color: #ffffff; font-size: 15px;">Abyssal Trench</div>
-                <div style="font-size: 11px; color: #76fff0;">Fossa degli Abissi Profonda</div>
-                <div id="z-record-1" style="font-size: 10px; color: #ffc857; margin-top: 3px;">Record: --:--</div>
-              </div>
-            </div>
-            <div class="z-track-item" data-index="2">
-              <span style="font-size: 28px;">☁️</span>
-              <div>
-                <div style="font-weight: 800; color: #ffffff; font-size: 15px;">Sky Reef</div>
-                <div style="font-size: 11px; color: #76fff0;">Arcipelago Celeste Sospeso</div>
-                <div id="z-record-2" style="font-size: 10px; color: #ffc857; margin-top: 3px;">Record: --:--</div>
-              </div>
-            </div>
-            <div class="z-track-item" data-index="3">
-              <span style="font-size: 28px;">🏛️</span>
-              <div>
-                <div style="font-weight: 800; color: #ffffff; font-size: 15px;">Temple of Nix</div>
-                <div style="font-size: 11px; color: #76fff0;">Il Tempio Sommerso Antico</div>
-                <div id="z-record-3" style="font-size: 10px; color: #ffc857; margin-top: 3px;">Record: --:--</div>
-              </div>
-            </div>
-          </div>
+  <div class="z-cup-header">
+    <span class="z-cup-title">🏆 COPPA BREZZA</span>
+    <span class="z-cup-diff">Difficoltà: ★☆☆☆☆☆</span>
+  </div>
+  <div class="z-track-item" data-index="0">
+    <span style="font-size: 26px;">🪸</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Coral Sanctuary</div>
+      <div style="font-size: 11px; color: #76fff0;">Laguna Corallina</div>
+      <div id="z-record-0" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="1">
+    <span style="font-size: 26px;">🏖️</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Sunken Shallows</div>
+      <div style="font-size: 11px; color: #76fff0;">Bassi Fondali Sabbiosi</div>
+      <div id="z-record-1" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="2">
+    <span style="font-size: 26px;">🌴</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Palm Grove Way</div>
+      <div style="font-size: 11px; color: #76fff0;">Viale delle Palme</div>
+      <div id="z-record-2" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="3">
+    <span style="font-size: 26px;">⚪</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Pearl Atoll</div>
+      <div style="font-size: 11px; color: #76fff0;">Atollo delle Perle</div>
+      <div id="z-record-3" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-cup-header">
+    <span class="z-cup-title">🏆 COPPA CANYON</span>
+    <span class="z-cup-diff">Difficoltà: ★★☆☆☆☆</span>
+  </div>
+  <div class="z-track-item" data-index="4">
+    <span style="font-size: 26px;">🪨</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Amber Reef Gulch</div>
+      <div style="font-size: 11px; color: #76fff0;">Gola d'Ambra</div>
+      <div id="z-record-4" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="5">
+    <span style="font-size: 26px;">🐚</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Nautilus Spiral</div>
+      <div style="font-size: 11px; color: #76fff0;">Spirale del Nautilus</div>
+      <div id="z-record-5" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="6">
+    <span style="font-size: 26px;">🌉</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Seafoam Viaduct</div>
+      <div style="font-size: 11px; color: #76fff0;">Viadotto di Schiuma</div>
+      <div id="z-record-6" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="7">
+    <span style="font-size: 26px;">🌀</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Tidal Drift Arena</div>
+      <div style="font-size: 11px; color: #76fff0;">Arena delle Maree</div>
+      <div id="z-record-7" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-cup-header">
+    <span class="z-cup-title">🏆 COPPA ABISSI</span>
+    <span class="z-cup-diff">Difficoltà: ★★★☆☆☆</span>
+  </div>
+  <div class="z-track-item" data-index="8">
+    <span style="font-size: 26px;">🌊</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Abyssal Trench</div>
+      <div style="font-size: 11px; color: #76fff0;">Fossa degli Abissi</div>
+      <div id="z-record-8" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="9">
+    <span style="font-size: 26px;">🌋</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Obsidian Gorge</div>
+      <div style="font-size: 11px; color: #76fff0;">Gola d'Ossidiana</div>
+      <div id="z-record-9" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="10">
+    <span style="font-size: 26px;">🦑</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Kraken Spine</div>
+      <div style="font-size: 11px; color: #76fff0;">Dorso del Kraken</div>
+      <div id="z-record-10" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="11">
+    <span style="font-size: 26px;">💎</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Bioluminescent Caves</div>
+      <div style="font-size: 11px; color: #76fff0;">Grotte Luminescenti</div>
+      <div id="z-record-11" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-cup-header">
+    <span class="z-cup-title">🏆 COPPA CIELO</span>
+    <span class="z-cup-diff">Difficoltà: ★★★★☆☆</span>
+  </div>
+  <div class="z-track-item" data-index="12">
+    <span style="font-size: 26px;">☁️</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Sky Reef</div>
+      <div style="font-size: 11px; color: #76fff0;">Arcipelago Celeste</div>
+      <div id="z-record-12" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="13">
+    <span style="font-size: 26px;">🌩️</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Nimbus Overpass</div>
+      <div style="font-size: 11px; color: #76fff0;">Cavalcavia dei Nembi</div>
+      <div id="z-record-13" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="14">
+    <span style="font-size: 26px;">🦅</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Stratos Hairpins</div>
+      <div style="font-size: 11px; color: #76fff0;">Tornanti della Stratosfera</div>
+      <div id="z-record-14" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="15">
+    <span style="font-size: 26px;">🌪️</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Vortex Zenith</div>
+      <div style="font-size: 11px; color: #76fff0;">Zenith del Vortice</div>
+      <div id="z-record-15" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-cup-header">
+    <span class="z-cup-title">🏆 COPPA ANTICA</span>
+    <span class="z-cup-diff">Difficoltà: ★★★★★☆</span>
+  </div>
+  <div class="z-track-item" data-index="16">
+    <span style="font-size: 26px;">🏛️</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Temple of Nix</div>
+      <div style="font-size: 11px; color: #76fff0;">Il Tempio Sommerso</div>
+      <div id="z-record-16" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="17">
+    <span style="font-size: 26px;">🏺</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Sunken Acropolis</div>
+      <div style="font-size: 11px; color: #76fff0;">Acropoli Sommersa</div>
+      <div id="z-record-17" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="18">
+    <span style="font-size: 26px;">🐉</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Leviathan's Roar</div>
+      <div style="font-size: 11px; color: #76fff0;">Ruggito del Leviatano</div>
+      <div id="z-record-18" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="19">
+    <span style="font-size: 26px;">🔮</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Prism Citadel</div>
+      <div style="font-size: 11px; color: #76fff0;">Cittadella dei Prismi</div>
+      <div id="z-record-19" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-cup-header">
+    <span class="z-cup-title">🏆 COPPA NOVA</span>
+    <span class="z-cup-diff">Difficoltà: ★★★★★★</span>
+  </div>
+  <div class="z-track-item" data-index="20">
+    <span style="font-size: 26px;">🔥</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Solar Forge Caldera</div>
+      <div style="font-size: 11px; color: #76fff0;">Caldera della Forgia Solare</div>
+      <div id="z-record-20" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="21">
+    <span style="font-size: 26px;">🌌</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Cosmic Warpway</div>
+      <div style="font-size: 11px; color: #76fff0;">Autostrada Iperspaziale</div>
+      <div id="z-record-21" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="22">
+    <span style="font-size: 26px;">⚛️</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Quantum Singularity</div>
+      <div style="font-size: 11px; color: #76fff0;">Singolarità Quantistica</div>
+      <div id="z-record-22" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="23">
+    <span style="font-size: 26px;">👑</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Zephyr Omega Finale</div>
+      <div style="font-size: 11px; color: #76fff0;">Gran Finale Zephyr Omega</div>
+      <div id="z-record-23" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+</div>
           <button id="z-modal-close" class="z-mini" style="width: 100%; padding: 12px; font-size: 14px; cursor: pointer;">CHIUDI</button>
         </div>
       </div>
@@ -545,20 +828,63 @@
             </div>
 
             <div style="display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;">
-              <div style="flex: 1; min-width: 140px; text-align: left;">
+              <div style="flex: 1; min-width: 130px; text-align: left;">
                 <label style="font-size: 11px; color: #76fff0; font-weight: 700;">IL TUO NICKNAME</label>
                 <input id="z-mp-host-name" type="text" maxlength="16" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 8px 12px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
               </div>
-              <div style="flex: 1; min-width: 160px; text-align: left;">
-                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">CIRCUITO GARA</label>
-                <select id="z-mp-track-select" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 8px 12px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
-                  <option value="0">🪸 Coral Sanctuary</option>
-                  <option value="1">🌊 Abyssal Trench</option>
-                  <option value="2">☁️ Sky Reef</option>
-                  <option value="3">🏛️ Temple of Nix</option>
+              <div style="flex: 1; min-width: 140px; text-align: left;">
+                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">IL TUO KART</label>
+                <select id="z-mp-host-kart" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 8px 12px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
+                  <option value="nix">🦦 Nix (Wave-Runner)</option>
+                  <option value="bruno">🪨 Bruno (Landslide)</option>
+                  <option value="sable">🦋 Sable (Nightflyer)</option>
+                  <option value="zuzu">⚡ Zuzu (Drifter)</option>
+                  <option value="rustam">⚙️ Rustam (Tinkerer)</option>
+                  <option value="marlow">🐸 Marlow (Corsair)</option>
                 </select>
               </div>
-              <div style="width: 80px; text-align: left;">
+              <div style="flex: 1; min-width: 150px; text-align: left;">
+                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">CIRCUITO GARA</label>
+                <select id="z-mp-track-select" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 8px 12px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
+  <optgroup label="🏆 Coppa Brezza">
+    <option value="0">🪸 Coral Sanctuary</option>
+    <option value="1">🏖️ Sunken Shallows</option>
+    <option value="2">🌴 Palm Grove Way</option>
+    <option value="3">⚪ Pearl Atoll</option>
+  </optgroup>
+  <optgroup label="🏆 Coppa Canyon">
+    <option value="4">🪨 Amber Reef Gulch</option>
+    <option value="5">🐚 Nautilus Spiral</option>
+    <option value="6">🌉 Seafoam Viaduct</option>
+    <option value="7">🌀 Tidal Drift Arena</option>
+  </optgroup>
+  <optgroup label="🏆 Coppa Abissi">
+    <option value="8">🌊 Abyssal Trench</option>
+    <option value="9">🌋 Obsidian Gorge</option>
+    <option value="10">🦑 Kraken Spine</option>
+    <option value="11">💎 Bioluminescent Caves</option>
+  </optgroup>
+  <optgroup label="🏆 Coppa Cielo">
+    <option value="12">☁️ Sky Reef</option>
+    <option value="13">🌩️ Nimbus Overpass</option>
+    <option value="14">🦅 Stratos Hairpins</option>
+    <option value="15">🌪️ Vortex Zenith</option>
+  </optgroup>
+  <optgroup label="🏆 Coppa Antica">
+    <option value="16">🏛️ Temple of Nix</option>
+    <option value="17">🏺 Sunken Acropolis</option>
+    <option value="18">🐉 Leviathan's Roar</option>
+    <option value="19">🔮 Prism Citadel</option>
+  </optgroup>
+  <optgroup label="🏆 Coppa Nova">
+    <option value="20">🔥 Solar Forge Caldera</option>
+    <option value="21">🌌 Cosmic Warpway</option>
+    <option value="22">⚛️ Quantum Singularity</option>
+    <option value="23">👑 Zephyr Omega Finale</option>
+  </optgroup>
+</select>
+              </div>
+              <div style="width: 75px; text-align: left;">
                 <label style="font-size: 11px; color: #76fff0; font-weight: 700;">GIRI</label>
                 <select id="z-mp-laps-select" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 8px 12px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
                   <option value="1">1 Giro</option>
@@ -588,18 +914,33 @@
               <input id="z-mp-join-code" type="text" maxlength="12" placeholder="Es. ZEPH-7429" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #ffc857; font-family: monospace; font-size: 20px; text-transform: uppercase; padding: 10px 14px; border-radius: 10px; font-weight: 800; margin-top: 4px;">
             </div>
 
-            <div style="text-align: left; margin-bottom: 16px;">
-              <label style="font-size: 11px; color: #76fff0; font-weight: 700;">IL TUO NICKNAME</label>
-              <input id="z-mp-guest-name" type="text" maxlength="16" placeholder="Il tuo nome" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 10px 14px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
+            <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 140px; text-align: left;">
+                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">IL TUO NICKNAME</label>
+                <input id="z-mp-guest-name" type="text" maxlength="16" placeholder="Il tuo nome" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 10px 14px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
+              </div>
+              <div style="flex: 1; min-width: 140px; text-align: left;">
+                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">IL TUO KART</label>
+                <select id="z-mp-guest-kart" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 10px 14px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
+                  <option value="nix">🦦 Nix (Wave-Runner)</option>
+                  <option value="bruno">🪨 Bruno (Landslide)</option>
+                  <option value="sable">🦋 Sable (Nightflyer)</option>
+                  <option value="zuzu">⚡ Zuzu (Drifter)</option>
+                  <option value="rustam">⚙️ Rustam (Tinkerer)</option>
+                  <option value="marlow">🐸 Marlow (Corsair)</option>
+                </select>
+              </div>
             </div>
 
             <button id="z-mp-join-btn" class="z-mini" style="width: 100%; padding: 14px; font-size: 16px; font-weight: 900; background: linear-gradient(135deg, #0284c7, #0ea5e9); border: 2px solid #38bdf8; color: #ffffff; border-radius: 14px; box-shadow: 0 0 25px rgba(14, 165, 233, 0.5); cursor: pointer; margin-bottom: 12px;">
               🔗 ENTRA NELLA STANZA
             </button>
 
-            <div id="z-mp-guest-waiting" class="hidden" style="background: rgba(8, 26, 36, 0.8); border: 1px solid #76fff0; border-radius: 12px; padding: 14px; margin-top: 10px;">
+            <div id="z-mp-guest-waiting" class="hidden" style="background: rgba(8, 26, 36, 0.8); border: 1px solid #76fff0; border-radius: 12px; padding: 14px; margin-top: 10px; text-align: left;">
               <div style="font-size: 14px; font-weight: 800; color: #34d399; margin-bottom: 4px;">✓ Connesso alla Stanza!</div>
-              <div id="z-mp-guest-info" style="font-size: 12px; color: #94a3b8;">In attesa che l'Host avvii la gara...</div>
+              <div id="z-mp-guest-info" style="font-size: 12px; color: #94a3b8; margin-bottom: 10px;">In attesa che l'Host avvii la gara...</div>
+              <div style="font-size: 11px; color: #94a3b8; font-weight: 700; margin-bottom: 6px;">AMICI IN STANZA:</div>
+              <div id="z-mp-guest-players" style="display: flex; flex-direction: column; gap: 6px; max-height: 140px; overflow-y: auto; background: rgba(6, 20, 28, 0.6); padding: 8px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);"></div>
             </div>
           </div>
         </div>
@@ -860,7 +1201,7 @@
         const closeBtn = document.getElementById('z-modal-close');
 
         const updateRecordDisplays = () => {
-          for (let i = 0; i < 4; i++) {
+          for (let i = 0; i < 24; i++) {
             const el = document.getElementById('z-record-' + i);
             if (el) {
               const rec = localStorage.getItem('zephyr_record_' + i);
@@ -999,7 +1340,9 @@
         const copyCodeBtn = document.getElementById('z-mp-copy-code');
         const copyLinkBtn = document.getElementById('z-mp-copy-link');
         const hostNameInput = document.getElementById('z-mp-host-name');
+        const hostKartSelect = document.getElementById('z-mp-host-kart');
         const guestNameInput = document.getElementById('z-mp-guest-name');
+        const guestKartSelect = document.getElementById('z-mp-guest-kart');
         const joinCodeInput = document.getElementById('z-mp-join-code');
         const joinBtn = document.getElementById('z-mp-join-btn');
         const startRaceBtn = document.getElementById('z-mp-start-race');
@@ -1009,6 +1352,7 @@
         const lobbyPlayersEl = document.getElementById('z-mp-lobby-players');
         const guestWaitingBox = document.getElementById('z-mp-guest-waiting');
         const guestInfoEl = document.getElementById('z-mp-guest-info');
+        const guestPlayersEl = document.getElementById('z-mp-guest-players');
         const emoteBar = document.getElementById('z-emote-bar');
 
         let mp = null;
@@ -1023,31 +1367,43 @@
               if (window.__zephyr?.ui?.toast) window.__zephyr.ui.toast(msg, 2.8);
             };
 
+            const KART_INFO = {
+              nix: { icon: '🦦', label: 'Nix' },
+              bruno: { icon: '🪨', label: 'Bruno' },
+              sable: { icon: '🦋', label: 'Sable' },
+              zuzu: { icon: '⚡', label: 'Zuzu' },
+              rustam: { icon: '⚙️', label: 'Rustam' },
+              marlow: { icon: '🐸', label: 'Marlow' }
+            };
+
             mp.onLobbyUpdate = (lobby) => {
               if (roomCodeEl) roomCodeEl.textContent = lobby.roomCode || 'ZEPH-....';
               if (playerCountEl) playerCountEl.textContent = lobby.players.length;
 
-              if (lobbyPlayersEl) {
-                lobbyPlayersEl.innerHTML = lobby.players.map((p, idx) => {
-                  const isMe = idx === lobby.mySlot;
-                  const pingColor = (p.ping || 0) < 60 ? '#10b981' : (p.ping || 0) < 120 ? '#f59e0b' : '#ef4444';
-                  return `
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${isMe ? 'rgba(118, 255, 240, 0.12)' : 'rgba(255,255,255,0.03)'}; border-radius: 8px; border: 1px solid ${isMe ? '#76fff0' : 'rgba(255,255,255,0.06)'};">
-                      <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 14px;">${p.isHost ? '👑' : '🏎️'}</span>
-                        <span style="font-size: 13px; font-weight: 800; color: ${isMe ? '#ffc857' : '#ffffff'};">${p.name} ${isMe ? '(Tu)' : ''}</span>
-                      </div>
-                      <div style="display: flex; align-items: center; gap: 6px;">
-                        <span style="display:inline-block; width: 6px; height: 6px; border-radius: 50%; background: ${pingColor};"></span>
-                        <span style="font-size: 11px; font-family: monospace; color: #94a3b8;">${p.ping || 30}ms</span>
-                      </div>
+              const renderPlayerRow = (p, idx) => {
+                const isMe = idx === lobby.mySlot;
+                const pingColor = (p.ping || 0) < 60 ? '#10b981' : (p.ping || 0) < 120 ? '#f59e0b' : '#ef4444';
+                const kInfo = KART_INFO[p.kartId] || { icon: '🏎️', label: p.kartId || 'Kart' };
+                return `
+                  <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${isMe ? 'rgba(118, 255, 240, 0.12)' : 'rgba(255,255,255,0.03)'}; border-radius: 8px; border: 1px solid ${isMe ? '#76fff0' : 'rgba(255,255,255,0.06)'};">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span style="font-size: 14px;">${p.isHost ? '👑' : '🏎️'}</span>
+                      <span style="font-size: 13px; font-weight: 800; color: ${isMe ? '#ffc857' : '#ffffff'};">${p.name} ${isMe ? '(Tu)' : ''}</span>
+                      <span style="font-size: 11px; padding: 2px 6px; border-radius: 6px; background: rgba(255,255,255,0.08); color: #76fff0;">${kInfo.icon} ${kInfo.label}</span>
                     </div>
-                  `;
-                }).join('');
-              }
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span style="display:inline-block; width: 6px; height: 6px; border-radius: 50%; background: ${pingColor};"></span>
+                      <span style="font-size: 11px; font-family: monospace; color: #94a3b8;">${p.ping || 30}ms</span>
+                    </div>
+                  </div>
+                `;
+              };
+
+              if (lobbyPlayersEl) lobbyPlayersEl.innerHTML = lobby.players.map(renderPlayerRow).join('');
+              if (guestPlayersEl) guestPlayersEl.innerHTML = lobby.players.map(renderPlayerRow).join('');
 
               if (guestInfoEl) {
-                guestInfoEl.innerHTML = `Connesso all'Host! Circuito: <b>${['Coral Sanctuary', 'Abyssal Trench', 'Sky Reef', 'Temple of Nix'][lobby.trackIndex] || 'Circuito'}</b> (${lobby.laps} giri)<br>In attesa della partenza...`;
+                guestInfoEl.innerHTML = `Connesso all'Host! Circuito: <b>${(window.__ZEPHYR_TRACKS && window.__ZEPHYR_TRACKS[lobby.trackIndex]?.name) || 'Circuito'}</b> (${lobby.laps} giri)<br>In attesa della partenza...`;
               }
             };
 
@@ -1130,11 +1486,29 @@
               if (window.__zephyr?.ui?.toast) {
                 window.__zephyr.ui.toast(`🏁 ${pName} ha tagliato il traguardo! (#${data.rank})`, 3.5);
               }
+              if (window.__zephyr?.director?.racers?.[data.slot]) {
+                const r = window.__zephyr.director.racers[data.slot];
+                r.progress.finished = true;
+                r.progress.finishTime = data.finishTime;
+                r.progress.finishRank = data.rank;
+                r.progress.lap = window.__zephyr.director.config.laps;
+              }
+            };
+
+            mp.onRematch = (data) => {
+              mp.state = 'RACING';
+              mpModal?.classList.add('hidden');
+              if (window.__zephyr) {
+                window.__zephyr.startMultiplayerRace(data.trackIndex ?? mp.trackIndex, mp.laps, mp.players, mp.mySlot);
+              }
+              if (emoteBar) emoteBar.classList.remove('hidden');
             };
 
             // Sync initial inputs
             if (hostNameInput) hostNameInput.value = mp.playerName;
             if (guestNameInput) guestNameInput.value = mp.playerName;
+            if (hostKartSelect) hostKartSelect.value = mp.selectedKart;
+            if (guestKartSelect) guestKartSelect.value = mp.selectedKart;
             if (trackSelect) trackSelect.value = String(mp.trackIndex);
             if (lapsSelect) lapsSelect.value = String(mp.laps);
           }
@@ -1198,12 +1572,20 @@
           });
         }
 
-        // Host settings events
+        // Host and guest settings events
         hostNameInput?.addEventListener('input', (e) => {
           if (mp) mp.setPlayerName(e.target.value);
         });
+        hostKartSelect?.addEventListener('change', (e) => {
+          if (mp) mp.setSelectedKart(e.target.value);
+          if (window.__zephyr?.selectKart) window.__zephyr.selectKart(e.target.value);
+        });
         guestNameInput?.addEventListener('input', (e) => {
           if (mp) mp.setPlayerName(e.target.value);
+        });
+        guestKartSelect?.addEventListener('change', (e) => {
+          if (mp) mp.setSelectedKart(e.target.value);
+          if (window.__zephyr?.selectKart) window.__zephyr.selectKart(e.target.value);
         });
         trackSelect?.addEventListener('change', (e) => {
           if (mp) mp.setTrack(parseInt(e.target.value, 10));
@@ -1237,6 +1619,7 @@
         // Start Race (Host)
         startRaceBtn?.addEventListener('click', () => {
           if (!mp) return;
+          if (hostKartSelect) mp.setSelectedKart(hostKartSelect.value);
           haptic(35);
           startRaceBtn.disabled = true;
           startRaceBtn.textContent = '⏳ AVVIO IN CORSO...';
@@ -1256,6 +1639,7 @@
             return;
           }
           initMultiplayer();
+          if (guestKartSelect) mp.setSelectedKart(guestKartSelect.value);
           haptic(25);
           joinBtn.disabled = true;
           joinBtn.textContent = '⏳ CONNESSIONE...';

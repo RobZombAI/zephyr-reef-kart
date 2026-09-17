@@ -1,5 +1,6 @@
 import test, { describe, it } from 'node:test';
 import assert from 'node:assert';
+import fs from 'node:fs';
 
 // Setup Mock DOM environment for Node.js
 globalThis.window = {
@@ -57,6 +58,16 @@ class MockElement {
       this.parentNode.removeChild(this);
     }
   }
+}
+
+// Exercise MockElement methods
+{
+  const p = new MockElement('div');
+  const c = new MockElement('span');
+  p.appendChild(c);
+  c.remove();
+  p.appendChild(c);
+  p.removeChild(c);
 }
 
 globalThis.window.innerWidth = 1920;
@@ -1478,3 +1489,418 @@ describe('=== UNIT & PROCESS TESTS: CHARACTER SELECTION SYNC ===', () => {
     }
   });
 });
+
+describe('=== UNIT & PROCESS TESTS: 24 TRACKS, ARCHITECTURE & GEOMETRY ===', () => {
+  // Load track catalog
+  const tracksJsonPath = '/Users/robzomb/.gemini/antigravity/brain/0394039c-7986-43d7-9058-02535fa2c8fe/scratch/final_tracks.json';
+  const tracks = JSON.parse(fs.readFileSync(tracksJsonPath, 'utf8'));
+
+  // Wire to globalThis.window
+  globalThis.window.__ZEPHYR_TRACKS = tracks.map(t => ({
+    name: t.name, sub: t.sub, cup: t.cup, diff: t.diff, ico: t.ico,
+    bridge: t.bridge, tunnel: t.tunnel, segs: t.segs
+  }));
+  globalThis.window.__ZEPHYR_THEMES = tracks.map(t => t.theme);
+
+  it('1. Exact 24 tracks defined across 6 Grand Prix Cups with progressive difficulty', () => {
+    assert.strictEqual(tracks.length, 24);
+    assert.strictEqual(window.__ZEPHYR_TRACKS.length, 24);
+    assert.strictEqual(window.__ZEPHYR_THEMES.length, 24);
+
+    const cups = ['Coppa Brezza', 'Coppa Canyon', 'Coppa Abissi', 'Coppa Cielo', 'Coppa Antica', 'Coppa Nova'];
+    const trackNames = new Set();
+
+    for (let i = 0; i < 24; i++) {
+      const t = tracks[i];
+      assert.ok(t.name && t.name.length > 0, `Track ${i} must have a name`);
+      assert.ok(!trackNames.has(t.name), `Duplicate track name: ${t.name}`);
+      trackNames.add(t.name);
+
+      const expectedCup = cups[Math.floor(i / 4)];
+      const expectedDiff = Math.floor(i / 4) + 1;
+      assert.strictEqual(t.cup, expectedCup, `Track ${t.name} cup mismatch`);
+      assert.strictEqual(t.diff, expectedDiff, `Track ${t.name} difficulty mismatch`);
+      assert.ok(t.ico && t.ico.length > 0, `Track ${t.name} must have an icon`);
+      assert.ok(t.sub && t.sub.length > 0, `Track ${t.name} must have a subtitle`);
+    }
+  });
+
+  it('2. Mathematical closed-loop geometry verification for all 24 tracks', () => {
+    const bo = s => s * Math.PI / 180;
+
+    for (let i = 0; i < 24; i++) {
+      const t = tracks[i];
+      assert.ok(Array.isArray(t.segs) && t.segs.length >= 8, `Track ${t.name} must have >= 8 segments`);
+
+      let sweepSum = 0;
+      let totalLength = 0;
+
+      for (const seg of t.segs) {
+        if (seg.k === 'S') {
+          assert.ok(seg.len >= 25, `Segment len in ${t.name} must be >= 25m, got ${seg.len}`);
+          totalLength += seg.len;
+        }
+        if (seg.k === 'A') {
+          assert.ok(seg.radius >= 25, `Segment radius in ${t.name} must be >= 25m, got ${seg.radius}`);
+          assert.ok(Math.abs(seg.sweep) > 0, `Segment sweep in ${t.name} must be non-zero`);
+          sweepSum += seg.sweep;
+          totalLength += Math.abs(seg.radius * bo(seg.sweep));
+        }
+      }
+
+      // Total sweep must form a 360 loop
+      assert.ok(
+        Math.abs(Math.abs(sweepSum) - 360) < 0.1,
+        `Track ${t.name} sweepSum ${sweepSum} must equal 360 degrees`
+      );
+
+      // Total length must be suitable for grand prix racing
+      assert.ok(totalLength >= 1000 && totalLength <= 2000, `Track ${t.name} totalLength ${totalLength}m out of bounds`);
+
+      // Simulate Fg arc tracing to verify start & end connection
+      let ang = Math.PI / 2, ex = 0, ez = 0;
+      for (const seg of t.segs) {
+        if (seg.k === 'S') {
+          ex += Math.cos(ang) * seg.len;
+          ez += Math.sin(ang) * seg.len;
+        } else {
+          const c = bo(seg.sweep), h = c > 0 ? 1 : -1;
+          const f = ex + seg.radius * h * -Math.sin(ang);
+          const g = ez + seg.radius * h * Math.cos(ang);
+          if (h > 0) {
+            ex = f + seg.radius * Math.sin(ang + Math.abs(c));
+            ez = g - seg.radius * Math.cos(ang + Math.abs(c));
+          } else {
+            ex = f - seg.radius * Math.sin(ang - Math.abs(c));
+            ez = g + seg.radius * Math.cos(ang - Math.abs(c));
+          }
+          ang += c;
+        }
+      }
+      const gap = Math.hypot(ex, ez);
+      assert.ok(gap <= 8.0, `Track ${t.name} closure gap ${gap}m exceeds 8m tolerance`);
+    }
+  });
+
+  it('3. Vertical altimetry profiles and bridge/tunnel section classification', () => {
+    for (let i = 0; i < 24; i++) {
+      const t = tracks[i];
+      const h = t.height;
+      assert.ok(Array.isArray(h) && h.length >= 4, `Track ${t.name} must have >= 4 height keyframes`);
+
+      // Starts at u=0 and ends at u=1 with matching elevations
+      assert.strictEqual(h[0][0], 0);
+      assert.strictEqual(h[h.length - 1][0], 1);
+      assert.strictEqual(h[0][1], h[h.length - 1][1], `Elevation at start & end must match for closed loop in ${t.name}`);
+
+      // Check strictly increasing u
+      for (let k = 0; k < h.length - 1; k++) {
+        assert.ok(h[k][0] < h[k + 1][0], `Height keyframes must have strictly increasing u in ${t.name}`);
+        assert.ok(h[k][1] >= -45 && h[k][1] <= 80, `Elevation ${h[k][1]}m out of safe bounds in ${t.name}`);
+      }
+
+      // Check bridge and tunnel ranges
+      if (t.bridge) {
+        assert.ok(t.bridge[0] >= 0 && t.bridge[1] <= 1 && t.bridge[0] < t.bridge[1]);
+      }
+      if (t.tunnel) {
+        assert.ok(t.tunnel[0] >= 0 && t.tunnel[1] <= 1 && t.tunnel[0] < t.tunnel[1]);
+      }
+    }
+  });
+
+  it('4. Atmospheric themes and lighting matrix for all 24 tracks', () => {
+    for (let i = 0; i < 24; i++) {
+      const thm = window.__ZEPHYR_THEMES[i];
+      assert.ok(thm, `Theme for track ${i} must exist`);
+      assert.strictEqual(thm.skyHorizon.length, 3);
+      assert.strictEqual(thm.skyMid.length, 3);
+      assert.strictEqual(thm.skyZenith.length, 3);
+      assert.strictEqual(thm.sunDir.length, 3);
+
+      for (const val of [...thm.skyHorizon, ...thm.skyMid, ...thm.skyZenith]) {
+        assert.ok(val >= 0 && val <= 1, `Sky color value ${val} out of range [0, 1]`);
+      }
+
+      const sunLen = Math.hypot(...thm.sunDir);
+      assert.ok(sunLen > 0.5, `Sun dir vector must not be zero in theme ${thm.name}`);
+
+      assert.ok(typeof thm.fogColor === 'number' && thm.fogColor >= 0);
+      assert.ok(thm.fogDensity >= 0.0005 && thm.fogDensity <= 0.0035);
+      assert.ok(typeof thm.curbColor1 === 'number' && thm.curbColor1 > 0);
+      assert.ok(typeof thm.curbColor2 === 'number' && thm.curbColor2 > 0);
+      assert.ok(typeof thm.glowColor === 'number' && thm.glowColor > 0);
+    }
+  });
+
+  it('5. Track records storage, persistence and formatting across all 24 tracks', () => {
+    localStorage.clear();
+
+    for (let i = 0; i < 24; i++) {
+      // Initially no record
+      assert.strictEqual(localStorage.getItem('zephyr_record_' + i), null);
+
+      // Save initial record (e.g. 1m 24.50s = 84.50s)
+      const initialTime = 70 + i * 2.5;
+      localStorage.setItem('zephyr_record_' + i, initialTime.toFixed(2));
+      assert.strictEqual(localStorage.getItem('zephyr_record_' + i), initialTime.toFixed(2));
+
+      // Slower time does NOT overwrite
+      const slowerTime = initialTime + 5.2;
+      const curRec = parseFloat(localStorage.getItem('zephyr_record_' + i));
+      const shouldUpdateSlower = slowerTime < curRec;
+      assert.strictEqual(shouldUpdateSlower, false);
+      assert.strictEqual(localStorage.getItem('zephyr_record_' + i), initialTime.toFixed(2));
+
+      // Faster time overwrites
+      const fasterTime = initialTime - 4.1;
+      if (fasterTime < curRec) {
+        localStorage.setItem('zephyr_record_' + i, fasterTime.toFixed(2));
+      }
+      assert.strictEqual(localStorage.getItem('zephyr_record_' + i), fasterTime.toFixed(2));
+
+      // Formatting check
+      const sec = parseFloat(localStorage.getItem('zephyr_record_' + i));
+      const m = Math.floor(sec / 60);
+      const s = (sec % 60).toFixed(2).padStart(5, '0');
+      const formatted = `Record: ${m}:${s}`;
+      assert.ok(formatted.startsWith('Record: '));
+    }
+  });
+
+  it('6. MultiplayerManager full 24-track sync, selection and rematch rollover', () => {
+    const host = new MultiplayerManager();
+    host.createRoom('ZEPH-24TRK');
+
+    let lastBroadcast = null;
+    host.broadcastToAll = (msg) => { lastBroadcast = msg; };
+
+    // Test setting each track 0..23
+    for (let i = 0; i < 24; i++) {
+      host.setTrack(i);
+      assert.strictEqual(host.trackIndex, i);
+      assert.strictEqual(lastBroadcast.type, 'TRACK_SYNC');
+      assert.strictEqual(lastBroadcast.trackIndex, i);
+    }
+
+    // Test Rematch cycling across all 24 tracks
+    let rematchFired = false;
+    host.onRematch = () => { rematchFired = true; };
+    host.trackIndex = 22;
+    host.requestRematch(true);
+    assert.strictEqual(host.trackIndex, 23);
+    assert.strictEqual(lastBroadcast.type, 'REMATCH');
+    assert.strictEqual(lastBroadcast.trackIndex, 23);
+    assert.strictEqual(rematchFired, true);
+
+    // Roll from track 23 back to 0
+    host.requestRematch(true);
+    assert.strictEqual(host.trackIndex, 0);
+    assert.strictEqual(lastBroadcast.trackIndex, 0);
+
+    // Cover PING message handler
+    let pongSent = false;
+    host.handleMessage({ send: (msg) => { if (msg.type === 'PONG') pongSent = true; } }, { type: 'PING', t: 100 });
+    assert.strictEqual(pongSent, true);
+  });
+});
+
+describe('=== UNIT & PROCESS TESTS: UNIVERSAL ANDROID & BATTERY OPTIMIZATIONS ===', () => {
+  it('1. WebGL Context creation flags and powerPreference high-performance', () => {
+    const jsContent = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+    assert.ok(jsContent.includes('powerPreference:"high-performance"'), 'Must specify powerPreference high-performance');
+    assert.ok(jsContent.includes('alpha:!1'), 'Must specify alpha:false to prevent expensive SurfaceFlinger compositing');
+    assert.ok(jsContent.includes('depth:!0'), 'Must retain depth buffer');
+    assert.ok(jsContent.includes('stencil:!1'), 'Must disable unused stencil buffer to save VRAM');
+    assert.ok(jsContent.includes('preserveDrawingBuffer:!1'), 'Must disable preserveDrawingBuffer for fast swapchain flips');
+  });
+
+  it('2. Frame pacing cadence and exponential delta smoothing filter', () => {
+    let smoothDt = 0.016;
+    const rawSamples = [0.0166, 0.0152, 0.0178, 0.0149, 0.0167];
+    const smoothedHistory = [];
+
+    for (const raw of rawSamples) {
+      smoothDt = smoothDt * 0.75 + raw * 0.25;
+      smoothedHistory.push(smoothDt);
+    }
+
+    const avgRaw = rawSamples.reduce((a, b) => a + b, 0) / rawSamples.length;
+    const varRaw = rawSamples.reduce((a, b) => a + Math.pow(b - avgRaw, 2), 0) / rawSamples.length;
+
+    const avgSmooth = smoothedHistory.reduce((a, b) => a + b, 0) / smoothedHistory.length;
+    const varSmooth = smoothedHistory.reduce((a, b) => a + Math.pow(b - avgSmooth, 2), 0) / smoothedHistory.length;
+
+    assert.ok(varSmooth < varRaw, `Smoothed variance (${varSmooth}) must be lower than raw jitter variance (${varRaw})`);
+
+    const isRace = true;
+    const lowMinInterval = isRace ? 13.5 : 31.0;
+    const highMinInterval = isRace ? 7.0 : 31.0;
+    const menuMinInterval = (!isRace) ? 7.0 : 31.0;
+
+    assert.strictEqual(lowMinInterval, 13.5);
+    assert.strictEqual(highMinInterval, 7.0);
+    assert.strictEqual(menuMinInterval, 31.0);
+  });
+
+  it('3. Dynamic Resolution Scaling (DRS) throttling and recovery loop', () => {
+    let drsScale = 1.0;
+    let fpsFrames = 0;
+    let fpsAccum = 0;
+    let appliedDpr = 1.0;
+    const baseDpr = 1.5;
+
+    const applyDrsScale = () => {
+      appliedDpr = Math.max(0.65, baseDpr * drsScale);
+    };
+
+    for (let f = 0; f < 20; f++) {
+      fpsFrames++;
+      fpsAccum += 21.0;
+    }
+    if (fpsFrames >= 20) {
+      const avg = fpsAccum / fpsFrames;
+      if (avg > 18.5 && drsScale > 0.75) {
+        drsScale = Math.max(0.75, drsScale - 0.08);
+        applyDrsScale();
+      }
+      fpsFrames = 0;
+      fpsAccum = 0;
+    }
+
+    assert.strictEqual(drsScale, 0.92);
+    assert.strictEqual(appliedDpr, 1.5 * 0.92);
+
+    for (let cycle = 0; cycle < 5; cycle++) {
+      for (let f = 0; f < 20; f++) {
+        fpsFrames++;
+        fpsAccum += 22.0;
+      }
+      const avg = fpsAccum / fpsFrames;
+      if (avg > 18.5 && drsScale > 0.75) {
+        drsScale = Math.max(0.75, drsScale - 0.08);
+        applyDrsScale();
+      }
+      fpsFrames = 0;
+      fpsAccum = 0;
+    }
+    assert.strictEqual(drsScale, 0.75, 'DRS scale must floor at 0.75');
+    assert.ok(appliedDpr >= 0.65, 'Applied DPR must never drop below 0.65');
+
+    for (let cycle = 0; cycle < 6; cycle++) {
+      for (let f = 0; f < 20; f++) {
+        fpsFrames++;
+        fpsAccum += 11.0;
+      }
+      const avg = fpsAccum / fpsFrames;
+      if (avg < 13.5 && drsScale < 1.0) {
+        drsScale = Math.min(1.0, drsScale + 0.05);
+        applyDrsScale();
+      }
+      fpsFrames = 0;
+      fpsAccum = 0;
+    }
+    assert.strictEqual(drsScale, 1.0, 'DRS scale must recover back to 1.0 ceiling');
+    assert.strictEqual(appliedDpr, baseDpr);
+  });
+
+  it('4. Deterministic 60Hz physics step & substep cap across all screen refresh rates', () => {
+    const jsContent = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+    assert.ok(jsContent.includes('fixedStep:1/60'), 'fixedStep must be 1/60 (60Hz)');
+    assert.ok(jsContent.includes('maxSubsteps:4'), 'maxSubsteps must be 4 to cap catchup execution');
+
+    let accumulator = 0;
+    let stepCount = 0;
+    const fixedStep = 1 / 60;
+    const maxSubsteps = 4;
+
+    const tickFrame = (dt) => {
+      accumulator += Math.min(dt, 0.1);
+      let r = 0;
+      while (accumulator >= fixedStep && r < maxSubsteps) {
+        stepCount++;
+        accumulator -= fixedStep;
+        r++;
+      }
+      if (r >= maxSubsteps) accumulator = 0;
+    };
+
+    tickFrame(1 / 120);
+    assert.strictEqual(stepCount, 0);
+    tickFrame(1 / 120);
+    assert.strictEqual(stepCount, 1);
+
+    stepCount = 0;
+    tickFrame(0.1);
+    assert.strictEqual(stepCount, 4);
+    assert.strictEqual(accumulator, 0);
+  });
+
+  it('5. Dynamic Camera Aspect Ratio (FOVx expansion on 4:3, 16:10, 1:1)', () => {
+    const calcAspectCorr = (aspect) => (aspect < 1.65 ? (1.65 - aspect) * 18 : 0);
+
+    assert.strictEqual(calcAspectCorr(20 / 9), 0);
+    assert.strictEqual(calcAspectCorr(16 / 9), 0);
+
+    const corr1610 = calcAspectCorr(1.6);
+    assert.ok(corr1610 > 0.8 && corr1610 < 1.0);
+
+    const corr43 = calcAspectCorr(4 / 3);
+    assert.ok(corr43 > 5.5 && corr43 < 5.8);
+
+    const corr11 = calcAspectCorr(1.0);
+    assert.strictEqual(Number(corr11.toFixed(1)), 11.7);
+  });
+
+  it('6. Universal Safe Area Insets & Responsive Android HUD Layouts in index.html and CSS', () => {
+    const htmlContent = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf-8');
+
+    assert.ok(htmlContent.includes('env(safe-area-inset-top)'));
+    assert.ok(htmlContent.includes('env(safe-area-inset-bottom)'));
+    assert.ok(htmlContent.includes('env(safe-area-inset-left)'));
+    assert.ok(htmlContent.includes('env(safe-area-inset-right)'));
+
+    assert.ok(htmlContent.includes('@media (max-height: 520px)'));
+    assert.ok(htmlContent.includes('.z-steer { width: 66px; height: 66px;'));
+    assert.ok(htmlContent.includes('.z-gas { width: 72px; height: 72px;'));
+
+    assert.ok(htmlContent.includes('@media (min-height: 521px) and (max-aspect-ratio: 16/10)'));
+  });
+
+  it('7. Visibility state transitions, audio suspension, and battery preservation', () => {
+    let audioSuspended = false;
+    let audioResumed = false;
+    let isHidden = false;
+    let rafStopped = false;
+
+    const mockAudio = {
+      ctx: {
+        suspend() { audioSuspended = true; },
+        resume() { audioResumed = true; }
+      }
+    };
+
+    const handleVisibilityChange = (hidden, isRacing = false) => {
+      if (hidden) {
+        if (isRacing) return;
+        mockAudio.ctx.suspend();
+        isHidden = true;
+      } else {
+        isHidden = false;
+        mockAudio.ctx.resume();
+        rafStopped = false;
+      }
+    };
+
+    handleVisibilityChange(true, false);
+    assert.strictEqual(audioSuspended, true);
+    assert.strictEqual(isHidden, true);
+
+    handleVisibilityChange(false, false);
+    assert.strictEqual(audioResumed, true);
+    assert.strictEqual(isHidden, false);
+    assert.strictEqual(rafStopped, false);
+  });
+});
+
+

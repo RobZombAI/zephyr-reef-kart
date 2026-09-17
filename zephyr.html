@@ -28,8 +28,10 @@
     <meta name="twitter:title" content="🌴 Zephyr Reef Grand Prix — 3D Fantasy Kart Racer" />
     <meta name="twitter:description" content="Play Zephyr Reef Grand Prix in your browser! 3D arcade kart racer with 4 fantasy tracks, dynamic AI racers, power-ups, and full touch controls." />
     <meta name="twitter:image" content="https://robzombai.github.io/zephyr-reef-kart/og-image.jpg" />
-
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%8F%81%3C/text%3E%3C/svg%3E" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="64x64" href="./assets/favicon.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="./assets/icon-192.png" />
+    <link rel="shortcut icon" href="./assets/favicon.png" />
     <script>
       // Clean legacy caches and service workers
       if ('serviceWorker' in navigator) {
@@ -417,23 +419,95 @@
         100% { transform: translate(-50%, -100%) scale(1); opacity: 1; }
       }
 
+      /* Universal Safe Area Insets & Responsive Android HUD Layouts */
+      .hud__pos {
+        top: max(16px, env(safe-area-inset-top)) !important;
+        left: max(16px, env(safe-area-inset-left)) !important;
+      }
+      .hud__timers {
+        top: max(16px, env(safe-area-inset-top)) !important;
+      }
+      .hud__standings {
+        top: max(16px, env(safe-area-inset-top)) !important;
+        right: max(16px, env(safe-area-inset-right)) !important;
+      }
+      .hud__speed {
+        bottom: max(22px, env(safe-area-inset-bottom)) !important;
+        left: max(18px, env(safe-area-inset-left)) !important;
+      }
+      .hud__minimap {
+        bottom: max(22px, env(safe-area-inset-bottom)) !important;
+        right: max(18px, env(safe-area-inset-right)) !important;
+      }
+
       /* Mobile HUD layout adjustments to avoid pedal overlap */
       @media (max-width: 900px) {
         .hud__speed {
           bottom: 120px !important;
-          left: 18px !important;
+          left: max(14px, env(safe-area-inset-left)) !important;
           transform: scale(0.85);
           transform-origin: bottom left;
         }
         .hud__minimap {
           bottom: 140px !important;
-          right: 18px !important;
+          right: max(14px, env(safe-area-inset-right)) !important;
           width: 140px !important;
           height: 140px !important;
         }
         .hud__drift {
-          bottom: 16px !important;
+          bottom: max(16px, env(safe-area-inset-bottom)) !important;
           width: 180px !important;
+        }
+      }
+
+      /* Android Ultra-Wide Landscape Phones (360px - 520px height) */
+      @media (max-height: 520px) {
+        .z-steer { width: 66px; height: 66px; font-size: 24px; }
+        .z-gas { width: 72px; height: 72px; font-size: 14px; }
+        .z-brake { width: 60px; height: 60px; font-size: 12px; }
+        .z-drift, .z-item { width: 102px; height: 42px; font-size: 13px; }
+        .hud__speed {
+          bottom: 106px !important;
+          left: max(12px, env(safe-area-inset-left)) !important;
+          transform: scale(0.78);
+          transform-origin: bottom left;
+        }
+        .hud__minimap {
+          bottom: 122px !important;
+          right: max(12px, env(safe-area-inset-right)) !important;
+          width: 120px !important;
+          height: 120px !important;
+        }
+        .hud__pos {
+          top: max(8px, env(safe-area-inset-top)) !important;
+          left: max(10px, env(safe-area-inset-left)) !important;
+          transform: scale(0.82);
+          transform-origin: top left;
+        }
+        .hud__timers {
+          top: max(8px, env(safe-area-inset-top)) !important;
+          transform: translate(-50%) scale(0.85);
+          transform-origin: top center;
+        }
+        .hud__standings {
+          top: max(8px, env(safe-area-inset-top)) !important;
+          right: max(68px, calc(env(safe-area-inset-right) + 60px)) !important;
+          transform: scale(0.82);
+          transform-origin: top right;
+        }
+      }
+
+      /* Tablets & Foldables (4:3, 16:10, 1:1) */
+      @media (min-height: 521px) and (max-aspect-ratio: 16/10) {
+        .hud__minimap {
+          bottom: 155px !important;
+          right: max(22px, env(safe-area-inset-right)) !important;
+          width: 160px !important;
+          height: 160px !important;
+        }
+        .hud__speed {
+          bottom: 135px !important;
+          left: max(22px, env(safe-area-inset-left)) !important;
         }
       }
     </style>
