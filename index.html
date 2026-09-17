@@ -1,248 +1,719 @@
 <!doctype html>
-<html lang="it">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>Augusta Grand Prix: Fuga dall'Inquinamento, Concerti e Politica</title>
-    <meta name="description" content="Gioco di corse 3D ad Augusta (Sicilia): scappa dallo smog delle raffinerie, dai concerti trap assordanti e dai volantini dei politici verso Capo Santa Croce!" />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%8F%8E%EF%B8%8F%3C/text%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="/style.css">
+    <title>Zephyr Reef Grand Prix</title>
+    <meta name="description" content="Zephyr Reef Grand Prix — an original 3D fantasy kart racer." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%8F%81%3C/text%3E%3C/svg%3E" />
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          for (var r of regs) r.unregister();
+        });
+      }
+      if ('caches' in window) {
+        caches.keys().then(function(names) {
+          for (var n of names) caches.delete(n);
+        });
+      }
+    </script>
+    <script type="module" crossorigin src="./assets/index-C9rd31_W.js?v=zephyr-5.2.0"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DMliwuo_.css?v=zephyr-5.2.0">
+    <style>
+      /* Mobile Touch Controls for Zephyr Reef */
+      .zephyr-touch-layer {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 99999;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        padding: 16px 20px;
+        box-sizing: border-box;
+      }
+      .touch-group {
+        pointer-events: auto;
+        display: flex;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: none;
+      }
+      .touch-group-left {
+        gap: 14px;
+        align-items: center;
+        margin-bottom: 6px;
+      }
+      .touch-group-top {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        gap: 10px;
+      }
+      .touch-group-right {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 10px;
+        margin-bottom: 6px;
+      }
+      .z-actions-row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .touch-pedals {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+      }
+      .z-btn {
+        pointer-events: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: rgba(16, 44, 56, 0.85);
+        border: 2px solid rgba(118, 255, 240, 0.6);
+        border-radius: 50%;
+        color: #ffffff;
+        font-family: sans-serif;
+        font-weight: 800;
+        text-shadow: 0 0 8px rgba(118, 255, 240, 0.8);
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6), inset 0 0 14px rgba(118, 255, 240, 0.2);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        transition: transform 0.06s ease, background 0.06s ease;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: none;
+      }
+      .z-btn:active, .z-btn.active {
+        transform: scale(0.92);
+        background: rgba(118, 255, 240, 0.45);
+        box-shadow: 0 0 25px rgba(118, 255, 240, 0.95);
+      }
+      .z-steer {
+        width: 74px;
+        height: 74px;
+        font-size: 26px;
+        color: #76fff0;
+      }
+      .z-gas {
+        width: 82px;
+        height: 82px;
+        border-color: rgba(255, 176, 236, 0.8);
+        color: #ffb0ec;
+        font-size: 16px;
+        letter-spacing: 0.1em;
+      }
+      .z-gas:active, .z-gas.active {
+        background: rgba(255, 47, 208, 0.45);
+        box-shadow: 0 0 28px rgba(255, 47, 208, 0.95);
+      }
+      .z-brake {
+        width: 68px;
+        height: 68px;
+        border-color: rgba(255, 100, 100, 0.7);
+        color: #ff6464;
+        font-size: 13px;
+      }
+      .z-drift {
+        width: 114px;
+        height: 48px;
+        border-radius: 24px;
+        border-color: rgba(255, 219, 173, 0.8);
+        color: #f1dbad;
+        flex-direction: row;
+        gap: 6px;
+        font-size: 14px;
+      }
+      .z-item {
+        width: 114px;
+        height: 48px;
+        border-radius: 24px;
+        border-color: rgba(251, 191, 36, 0.7);
+        color: #fbbf24;
+        flex-direction: row;
+        gap: 6px;
+        font-size: 14px;
+        opacity: 0.65;
+      }
+      .z-item.ready {
+        opacity: 1;
+        background: rgba(251, 191, 36, 0.4);
+        border-color: #f59e0b;
+        color: #ffffff;
+        box-shadow: 0 0 25px rgba(251, 191, 36, 0.95);
+        animation: z-pulse 0.9s infinite alternate;
+      }
+      @keyframes z-pulse {
+        0% { transform: scale(1); }
+        100% { transform: scale(1.08); }
+      }
+      .z-mini {
+        pointer-events: auto;
+        padding: 8px 14px;
+        background: rgba(16, 44, 56, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 16px;
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 700;
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+      }
+      .z-mini:active {
+        background: rgba(255, 255, 255, 0.25);
+      }
+
+      /* Track modal overlay */
+      .z-modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(5, 15, 25, 0.92);
+        backdrop-filter: blur(12px);
+        z-index: 100000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      .hidden {
+        display: none !important;
+      }
+      .z-modal.hidden {
+        display: none !important;
+      }
+      .z-modal-card {
+        background: rgba(16, 44, 56, 0.95);
+        border: 2px solid rgba(118, 255, 240, 0.6);
+        border-radius: 20px;
+        padding: 24px 32px;
+        max-width: 650px;
+        width: 100%;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+      }
+      .z-track-list {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin: 18px 0;
+      }
+      .z-track-item {
+        background: rgba(8, 26, 36, 0.8);
+        border: 2px solid rgba(255, 255, 255, 0.15);
+        border-radius: 12px;
+        padding: 14px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        transition: all 0.15s ease;
+      }
+      .z-track-item:hover, .z-track-item.active {
+        border-color: #76fff0;
+        background: rgba(20, 60, 80, 0.9);
+        box-shadow: 0 0 20px rgba(118, 255, 240, 0.4);
+      }
+
+      /* Enhanced HUD & Overlays (Items 48, 49, 53, 55, 57) */
+      .z-speedometer {
+        position: fixed;
+        bottom: 24px;
+        left: 200px;
+        pointer-events: none;
+        background: rgba(16, 44, 56, 0.85);
+        border: 1.5px solid rgba(118, 255, 240, 0.45);
+        border-radius: 12px;
+        padding: 8px 16px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        z-index: 1000;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.5);
+      }
+      .z-speed-val {
+        font-size: 26px;
+        font-weight: 900;
+        color: #76fff0;
+        font-family: sans-serif;
+        text-shadow: 0 0 10px rgba(118, 255, 240, 0.8);
+      }
+      .z-speed-unit {
+        font-size: 10px;
+        color: #94a3b8;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+      }
+      .z-speed-bar {
+        width: 70px;
+        height: 4px;
+        background: rgba(255,255,255,0.15);
+        border-radius: 2px;
+        margin-top: 4px;
+        overflow: hidden;
+      }
+      .z-speed-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #76fff0, #ff2fd0);
+        transition: width 0.05s linear;
+      }
+      .z-banner {
+        position: fixed;
+        top: 30%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 16px 36px;
+        border-radius: 14px;
+        font-size: 26px;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        pointer-events: none;
+        z-index: 10000;
+        text-align: center;
+        font-family: sans-serif;
+      }
+      .z-banner-wrong {
+        background: rgba(220, 38, 38, 0.95);
+        border: 3px solid #ffffff;
+        color: #ffffff;
+        box-shadow: 0 0 40px rgba(220, 38, 38, 1);
+        animation: z-flash 0.35s infinite alternate;
+      }
+      .z-banner-lap {
+        background: linear-gradient(135deg, rgba(255, 47, 208, 0.95), rgba(118, 255, 240, 0.95));
+        border: 3px solid #ffffff;
+        color: #ffffff;
+        box-shadow: 0 0 45px rgba(255, 47, 208, 0.95);
+        animation: z-bounce 0.6s infinite alternate;
+      }
+      @keyframes z-flash {
+        0% { transform: translate(-50%, -50%) scale(1); }
+        100% { transform: translate(-50%, -50%) scale(1.08); background: #ffffff; color: #dc2626; }
+      }
+      @keyframes z-bounce {
+        0% { transform: translate(-50%, -50%) scale(1); }
+        100% { transform: translate(-50%, -50%) scale(1.1); }
+      }
+      .z-retro {
+        width: 82px;
+        height: 48px;
+        border-radius: 24px;
+        border-color: rgba(118, 255, 240, 0.6);
+        color: #76fff0;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      /* Enhanced HUD & Overlays (Items 48, 49, 53, 55, 57) */
+      .z-speedometer {
+        position: fixed;
+        bottom: 24px;
+        left: 200px;
+        pointer-events: none;
+        background: rgba(16, 44, 56, 0.85);
+        border: 1.5px solid rgba(118, 255, 240, 0.45);
+        border-radius: 12px;
+        padding: 8px 16px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        z-index: 1000;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.5);
+      }
+      .z-speed-val {
+        font-size: 26px;
+        font-weight: 900;
+        color: #76fff0;
+        font-family: sans-serif;
+        text-shadow: 0 0 10px rgba(118, 255, 240, 0.8);
+      }
+      .z-speed-unit {
+        font-size: 10px;
+        color: #94a3b8;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+      }
+      .z-speed-bar {
+        width: 70px;
+        height: 4px;
+        background: rgba(255,255,255,0.15);
+        border-radius: 2px;
+        margin-top: 4px;
+        overflow: hidden;
+      }
+      .z-speed-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #76fff0, #ff2fd0);
+        transition: width 0.05s linear;
+      }
+      .z-banner {
+        position: fixed;
+        top: 30%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 16px 36px;
+        border-radius: 14px;
+        font-size: 26px;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        pointer-events: none;
+        z-index: 10000;
+        text-align: center;
+        font-family: sans-serif;
+      }
+      .z-banner-wrong {
+        background: rgba(220, 38, 38, 0.95);
+        border: 3px solid #ffffff;
+        color: #ffffff;
+        box-shadow: 0 0 40px rgba(220, 38, 38, 1);
+        animation: z-flash 0.35s infinite alternate;
+      }
+      .z-banner-lap {
+        background: linear-gradient(135deg, rgba(255, 47, 208, 0.95), rgba(118, 255, 240, 0.95));
+        border: 3px solid #ffffff;
+        color: #ffffff;
+        box-shadow: 0 0 45px rgba(255, 47, 208, 0.95);
+        animation: z-bounce 0.6s infinite alternate;
+      }
+      @keyframes z-flash {
+        0% { transform: translate(-50%, -50%) scale(1); }
+        100% { transform: translate(-50%, -50%) scale(1.08); background: #ffffff; color: #dc2626; }
+      }
+      @keyframes z-bounce {
+        0% { transform: translate(-50%, -50%) scale(1); }
+        100% { transform: translate(-50%, -50%) scale(1.1); }
+      }
+      .z-retro {
+        width: 82px;
+        height: 48px;
+        border-radius: 24px;
+        border-color: rgba(118, 255, 240, 0.6);
+        color: #76fff0;
+        font-size: 12px;
+        font-weight: 800;
+      }
+    </style>
   </head>
   <body>
     <div id="app">
-      <!-- 3D WebGL Canvas -->
       <canvas id="gl"></canvas>
+      <div id="ui"></div>
+      <div id="boot">Loading Zephyr Reef…</div>
 
-      <!-- UI Layer -->
-      <div id="ui">
-        
-        <!-- 1. TITLE SCREEN -->
-        <section id="screen-title" class="screen-title">
-          <div class="title-sublogo">⚡ SICILIAN FANTASY KART RACER ⚡</div>
-          <h1 class="title-logo">AUGUSTA GRAND PRIX</h1>
-          <div class="title-sublogo" style="font-size: 22px; color: #00f7ff; margin-bottom: 12px;">
-            Fuga dall'Inquinamento, dai Concerti e dalla Propaganda
-          </div>
-          <div id="title-track-badge" class="track-badge">📍 PISTA: POLO PETROLCHIMICO</div>
-          <p class="title-desc">
-            Sei piloti. Tre giri. Guardrail continui e scatole con super-poteri siciliani! Schiva le ciminiere petrolchimiche, i mega-subwoofer trap e i comizi per tagliare il traguardo!
-          </p>
-          <div class="title-actions">
-            <button id="btn-start-race" class="btn btn--primary">Inizia Gara</button>
-            <button id="btn-choose-track" class="btn">Scegli Pista</button>
-            <button id="btn-choose-racer" class="btn">Scegli Pilota</button>
-            <button id="btn-mute" class="btn">Audio: ON</button>
-          </div>
-          <div class="controls-bar">
-            <strong>W A S D</strong> GUIDA &nbsp;·&nbsp; 
-            <strong>SHIFT</strong> DERAPATA &nbsp;·&nbsp; 
-            <strong>SPAZIO / E</strong> LANCIA POTERE &nbsp;·&nbsp; 
-            <strong>R</strong> RESET &nbsp;·&nbsp; 
-            <strong>Q</strong> RETRO
-          </div>
-        </section>
-
-        <!-- 2. TRACK SELECT SCREEN -->
-        <section id="screen-track" class="screen-select hidden">
-          <div class="select-title">SCEGLI IL CIRCUITO DI GARA</div>
-          <div class="select-content">
-            <div id="track-grid" class="track-grid"></div>
-            <div id="track-detail" class="track-detail panel"></div>
-          </div>
-          <div class="select-actions">
-            <button id="btn-track-back" class="btn">Indietro</button>
-            <button id="btn-confirm-track" class="btn btn--primary">Conferma Circuito!</button>
-          </div>
-        </section>
-
-        <!-- 3. RACER SELECT SCREEN -->
-        <section id="screen-select" class="screen-select hidden">
-          <div class="select-title">SCEGLI IL TUO PILOTA & KART</div>
-          <div class="select-content">
-            <div id="select-grid" class="select-grid"></div>
-            <div id="racer-detail" class="racer-detail panel"></div>
-          </div>
-          <div class="select-actions">
-            <button id="btn-select-back" class="btn">Indietro</button>
-            <button id="btn-confirm-racer" class="btn btn--primary">Conferma e Corri!</button>
-          </div>
-        </section>
-
-        <!-- 4. RACE HUD -->
-        <section id="hud" class="hud hidden">
-          <!-- Top Left: Pos & Lap -->
-          <div class="hud-top-left">
-            <div class="hud-badge panel">
-              <span class="badge-label">POSIZIONE</span>
-              <span id="val-pos" class="badge-val">1°</span>
-            </div>
-            <div class="hud-badge panel">
-              <span class="badge-label">GIRO</span>
-              <span id="val-lap" class="badge-val">1 / 3</span>
-            </div>
-          </div>
-
-          <!-- Top Center: Timer & Held Item Box -->
-          <div class="hud-top-center">
-            <div id="val-time" class="hud-timer panel">00:00.000</div>
-            <div id="hud-item-box" class="hud-item-card panel hidden">
-              <span id="hud-item-icon" class="item-ico-lg">🍋</span>
-              <div class="item-text-box">
-                <span class="item-sub">POTERE PRONTO</span>
-                <span id="hud-item-name" class="item-name">GRANITA NITRO</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Top Right: Live Field Standings -->
-          <div class="hud-standings panel">
-            <div style="font-size: 10px; letter-spacing: 0.15em; color: #8fb4c9; text-transform: uppercase; margin-bottom: 4px;">
-              CLASSIFICA LIVE
-            </div>
-            <div id="standings-rows"></div>
-          </div>
-
-          <!-- Center: Countdown & Warnings -->
-          <div id="countdown" class="countdown-box">3</div>
-          <div id="hud-warn" class="hud-warn hidden">SMOG CRITICO! MOTORE IN BLOCCO!</div>
-          <div id="hud-wrong-way" class="hud-wrong-way hidden">⚠️ SENSO CONTRARIO! GIRA IL KART! ⚠️</div>
-          <div id="hud-final-lap" class="hud-final-lap hidden">🏁 ULTIMO GIRO! FINAL LAP! 🏁</div>
-          <div id="hud-sector-split" class="hud-sector-split hidden">S1: +0.24s</div>
-
-          <!-- Touch Controls (Mobile / Android) -->
-          <div id="touch-controls" class="touch-controls">
-            <!-- Left Cluster: Steer Left / Right -->
-            <div class="touch-cluster touch-cluster-left">
-              <button id="touch-steer-left" class="touch-btn touch-btn-steer" aria-label="Sterza a Sinistra">◀</button>
-              <button id="touch-steer-right" class="touch-btn touch-btn-steer" aria-label="Sterza a Destra">▶</button>
-            </div>
-
-            <!-- Top Actions: Reset & Mute -->
-            <div class="touch-cluster touch-cluster-top">
-              <button id="touch-btn-pause" class="touch-btn-mini" aria-label="Pausa">⏸️ MENU</button>
-              <button id="touch-btn-settings" class="touch-btn-mini" aria-label="Impostazioni">⚙️ OPZIONI</button>
-              <button id="touch-btn-reset" class="touch-btn-mini" aria-label="Riposiziona Kart">↻ RESET</button>
-              <button id="touch-btn-mute" class="touch-btn-mini" aria-label="Audio">🔊 AUDIO</button>
-            </div>
-
-            <!-- Right Cluster: Drift, Item Power, Brake, Gas -->
-            <div class="touch-cluster touch-cluster-right">
-              <div class="touch-actions-row">
-                <button id="touch-btn-drift" class="touch-btn touch-btn-drift" aria-label="Turbo Derapata">
-                  <span class="drift-bolt">⚡</span>
-                  <span class="drift-txt">TURBO</span>
-                </button>
-                <button id="touch-btn-item" class="touch-btn touch-btn-item" aria-label="Lancia Potere">
-                  <span id="touch-item-icon" class="item-bolt">❓</span>
-                  <span id="touch-item-text" class="item-txt">POTERE</span>
-                </button>
-              </div>
-              <div class="pedals-group">
-                <button id="touch-btn-brake" class="touch-btn touch-btn-brake" aria-label="Freno / Retromarcia">
-                  <span>FRENO</span>
-                </button>
-                <button id="touch-btn-gas" class="touch-btn touch-btn-gas" aria-label="Acceleratore">
-                  <span>GAS</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Bottom Left: Speedometer -->
-          <div class="hud-speedometer panel">
-            <div>
-              <span id="val-speed" class="speed-number">0</span>
-              <span class="speed-unit">KM/H</span>
-            </div>
-            <div class="speed-bar-container">
-              <div id="bar-speed" class="speed-bar-fill"></div>
-            </div>
-          </div>
-
-          <!-- Bottom Left: Smog / AQI Gauge -->
-          <div class="hud-smog panel">
-            <div class="smog-label-row">
-              <span>INDICE SMOG AUGUSTA</span>
-              <span id="val-smog" style="color: #39ff14;">0% AQI</span>
-            </div>
-            <div class="smog-bar-container">
-              <div id="bar-smog" class="smog-bar-fill"></div>
-            </div>
-          </div>
-
-          <!-- Bottom Center: Drift Mini-Turbo Bar -->
-          <div id="hud-drift" class="hud-drift-bar panel hidden">
-            <div id="bar-drift" class="drift-fill"></div>
-          </div>
-
-          <!-- Bottom Right: Minimap -->
-          <div class="hud-minimap panel">
-            <canvas id="minimap-canvas" width="220" height="220"></canvas>
-          </div>
-        </section>
-
-        <!-- 5. RESULTS SCREEN -->
-        <section id="screen-results" class="screen-results hidden">
-          <div class="results-card panel">
-            <div class="results-title">CLASSIFICA FINALE</div>
-            <div class="results-sub">GRAN PREMIO DI AUGUSTA: FUGA RIUSCITA!</div>
-            <table class="results-table">
-              <thead>
-                <tr>
-                  <th>POS</th>
-                  <th>PILOTA & KART</th>
-                  <th>TEMPO</th>
-                </tr>
-              </thead>
-              <tbody id="results-body"></tbody>
-            </table>
-            <button id="btn-restart-race" class="btn btn--primary">Corri Ancora</button>
-          </div>
-        </section>
-
-        <!-- 6. PAUSE MODAL (Item 33) -->
-        <div id="modal-pause" class="modal-overlay hidden">
-          <div class="modal-card panel">
-            <h2 class="modal-title">⏸️ GARA IN PAUSA</h2>
-            <div class="modal-desc">Gran Premio di Augusta: Fuga dall'Inquinamento</div>
-            <div class="modal-actions">
-              <button id="btn-pause-resume" class="btn btn--primary">Riprendi Corsa</button>
-              <button id="btn-pause-restart" class="btn">Ricomincia Gara</button>
-              <button id="btn-pause-settings" class="btn">⚙️ Impostazioni Audio/Grafica</button>
-              <button id="btn-pause-exit" class="btn" style="border-color: #ef4444; color: #f87171;">Esci a Selezione Piste</button>
-            </div>
-          </div>
+      <!-- Mobile Touch Controls -->
+      <div id="zephyr-touch" class="zephyr-touch-layer">
+        <div class="touch-group touch-group-left">
+          <button id="z-btn-left" class="z-btn z-steer" aria-label="Steer Left">◀</button>
+          <button id="z-btn-right" class="z-btn z-steer" aria-label="Steer Right">▶</button>
         </div>
-
-        <!-- 7. SETTINGS MODAL (Item 34) -->
-        <div id="modal-settings" class="modal-overlay hidden">
-          <div class="modal-card panel">
-            <h2 class="modal-title">⚙️ IMPOSTAZIONI</h2>
-            <div class="settings-group">
-              <div class="setting-item">
-                <label for="slider-music">Volume Musica BGM</label>
-                <input type="range" id="slider-music" min="0" max="100" value="80" class="custom-slider" />
-              </div>
-              <div class="setting-item">
-                <label for="slider-sfx">Volume Effetti SFX</label>
-                <input type="range" id="slider-sfx" min="0" max="100" value="90" class="custom-slider" />
-              </div>
-              <div class="setting-item">
-                <label for="slider-steer">Sensibilità Sterzo Touch</label>
-                <input type="range" id="slider-steer" min="50" max="150" value="100" class="custom-slider" />
-              </div>
-              <div class="setting-item-check">
-                <label for="toggle-shadows">Ombre Dinamiche 3D</label>
-                <input type="checkbox" id="toggle-shadows" checked />
-              </div>
-            </div>
-            <button id="btn-settings-close" class="btn btn--primary" style="margin-top: 18px; width: 100%;">Salva e Chiudi</button>
+        <div class="touch-group touch-group-top">
+          <button id="z-btn-menu" class="z-mini" aria-label="Menu Pausa">⏸️ MENU</button>
+          <button id="z-btn-track" class="z-mini" aria-label="Cambia Pista">🗺️ PISTA</button>
+          <button id="z-btn-reset" class="z-mini" aria-label="Reset Kart">↻ RESET</button>
+          <button id="z-btn-audio" class="z-mini" aria-label="Toggle Audio">🔊 AUDIO</button>
+        </div>
+        <div class="touch-group touch-group-right">
+          <div class="z-actions-row">
+            <button id="z-btn-retro" class="z-btn z-retro" aria-label="Retrocamera">👀 RETRO</button>
+            <button id="z-btn-drift" class="z-btn z-drift" aria-label="Drift">⚡ DRIFT</button>
+            <button id="z-btn-item" class="z-btn z-item" aria-label="Use Item">
+              <span id="z-item-ico">🎯</span>
+              <span id="z-item-txt">POTERE</span>
+            </button>
+          </div>
+          <div class="touch-pedals">
+            <button id="z-btn-brake" class="z-btn z-brake" aria-label="Brake">BRAKE</button>
+            <button id="z-btn-gas" class="z-btn z-gas" aria-label="Accelerate">GAS</button>
           </div>
         </div>
       </div>
+
+      <!-- Speedometer HUD (Item 49) -->
+      <div id="z-speedometer" class="z-speedometer">
+        <div id="z-val-speed" class="z-speed-val">0</div>
+        <div class="z-speed-unit">KM/H</div>
+        <div class="z-speed-bar"><div id="z-fill-speed" class="z-speed-fill"></div></div>
+      </div>
+
+      <!-- Banners (Items 55, 57) -->
+      <div id="z-hud-wrong-way" class="z-banner z-banner-wrong hidden">⚠️ WRONG WAY! TURN AROUND! ⚠️</div>
+      <div id="z-hud-final-lap" class="z-banner z-banner-lap hidden">🏁 FINAL LAP! 🏁</div>
+
+      <!-- In-race Pause Menu (Item 53) -->
+      <div id="z-pause-modal" class="z-modal hidden">
+        <div class="z-modal-card" style="max-width: 440px; text-align: center;">
+          <h2 style="font-size: 22px; font-weight: 800; color: #76fff0; margin-bottom: 8px;">⏸️ RACE PAUSED</h2>
+          <p style="font-size: 13px; color: #94a3b8; margin-bottom: 20px;">Zephyr Reef Grand Prix</p>
+          <div style="display: flex; flex-direction: column; gap: 12px; width: 100%;">
+            <button id="z-pause-resume" class="z-mini" style="padding: 14px; font-size: 14px; background: rgba(118, 255, 240, 0.35); border-color: #76fff0;">RESUME RACE</button>
+            <button id="z-pause-restart" class="z-mini" style="padding: 14px; font-size: 14px;">RESTART RACE</button>
+            <button id="z-pause-change-track" class="z-mini" style="padding: 14px; font-size: 14px;">SELECT TRACK</button>
+          </div>
+        </div>
+      </div>
+      <!-- Track Selector Modal -->
+      <div id="z-track-modal" class="z-modal hidden">
+        <div class="z-modal-card">
+          <h2 style="font-size: 22px; font-weight: 800; color: #76fff0; margin: 0 0 6px 0;">SCEGLI CIRCUITO ZEPHYR REEF</h2>
+          <p style="font-size: 13px; color: #94a3b8; margin: 0 0 16px 0;">Seleziona il tracciato con guardrail protettivo continuo (Zero cadute nel vuoto):</p>
+          <div class="z-track-list">
+            <div class="z-track-item" data-index="0">
+              <span style="font-size: 28px;">🪸</span>
+              <div>
+                <div style="font-weight: 800; color: #ffffff; font-size: 15px;">Coral Sanctuary</div>
+                <div style="font-size: 11px; color: #76fff0;">Laguna Corallina Classica</div>
+              </div>
+            </div>
+            <div class="z-track-item" data-index="1">
+              <span style="font-size: 28px;">🌊</span>
+              <div>
+                <div style="font-weight: 800; color: #ffffff; font-size: 15px;">Abyssal Trench</div>
+                <div style="font-size: 11px; color: #76fff0;">Fossa degli Abissi Profonda</div>
+              </div>
+            </div>
+            <div class="z-track-item" data-index="2">
+              <span style="font-size: 28px;">☁️</span>
+              <div>
+                <div style="font-weight: 800; color: #ffffff; font-size: 15px;">Sky Reef</div>
+                <div style="font-size: 11px; color: #76fff0;">Arcipelago Celeste Sospeso</div>
+              </div>
+            </div>
+            <div class="z-track-item" data-index="3">
+              <span style="font-size: 28px;">🏛️</span>
+              <div>
+                <div style="font-weight: 800; color: #ffffff; font-size: 15px;">Temple of Nix</div>
+                <div style="font-size: 11px; color: #76fff0;">Il Tempio Sommerso Antico</div>
+              </div>
+            </div>
+          </div>
+          <button id="z-modal-close" class="z-mini" style="width: 100%; padding: 12px; font-size: 14px; cursor: pointer;">CHIUDI</button>
+        </div>
+      </div>
+
     </div>
 
-    <!-- Main Module Script -->
-    <script type="module" src="/src/main.js"></script>
+    <script>
+      (function() {
+        const haptic = (ms = 15) => {
+          if (window.AndroidHaptics && window.AndroidHaptics.vibrate) {
+            try { window.AndroidHaptics.vibrate(ms); } catch (e) {}
+          } else if (navigator.vibrate) {
+            try { navigator.vibrate(ms); } catch (e) {}
+          }
+        };
+
+        const bind = (id, code) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          const press = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            el.classList.add('active');
+            window.dispatchEvent(new KeyboardEvent('keydown', { code, key: code, bubbles: true }));
+            haptic(15);
+          };
+          const release = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            el.classList.remove('active');
+            window.dispatchEvent(new KeyboardEvent('keyup', { code, key: code, bubbles: true }));
+          };
+          el.addEventListener('touchstart', press, { passive: false });
+          el.addEventListener('touchend', release, { passive: false });
+          el.addEventListener('touchcancel', release, { passive: false });
+          el.addEventListener('mousedown', press);
+          el.addEventListener('mouseup', release);
+          el.addEventListener('mouseleave', release);
+        };
+
+        bind('z-btn-left', 'KeyA');
+        bind('z-btn-right', 'KeyD');
+        bind('z-btn-gas', 'KeyW');
+        bind('z-btn-brake', 'KeyS');
+        bind('z-btn-drift', 'ShiftLeft');
+        bind('z-btn-item', 'Space');
+        bind('z-btn-retro', 'KeyQ');
+
+        // Dynamic Item Monitor & Trigger (Item 42)
+        const itemBtn = document.getElementById('z-btn-item');
+        if (itemBtn) {
+          itemBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', bubbles: true }));
+            setTimeout(() => {
+              window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space', key: ' ', bubbles: true }));
+            }, 60);
+            haptic(35);
+          });
+        }
+
+        // Live HUD, Auto-recovery & Lap Monitor (Items 43, 49, 55, 57)
+        let stuckTime = 0;
+        let lastLap = 1;
+        const speedVal = document.getElementById('z-val-speed');
+        const speedFill = document.getElementById('z-fill-speed');
+        const wrongWayEl = document.getElementById('z-hud-wrong-way');
+        const finalLapEl = document.getElementById('z-hud-final-lap');
+
+        setInterval(() => {
+          if (!window.__zephyr || !window.__zephyr.director) return;
+          const director = window.__zephyr.director;
+          const player = director.player;
+
+          if (player) {
+            const kmh = Math.round(Math.abs(player.speed || 0) * 3.6);
+            if (speedVal) speedVal.textContent = kmh;
+            if (speedFill) {
+              const pct = Math.min(100, (kmh / 140) * 100);
+              speedFill.style.width = pct + '%';
+            }
+
+            const item = player.item;
+            const ico = document.getElementById('z-item-ico');
+            const txt = document.getElementById('z-item-txt');
+            if (itemBtn && ico && txt) {
+              if (item) {
+                itemBtn.classList.add('ready');
+                const icons = { bolt: '⚡', mine: '💣', blast: '💥', shield: '🛡️', turbo: '🚀' };
+                ico.textContent = icons[item] || '🎯';
+                txt.textContent = item.toUpperCase();
+              } else {
+                itemBtn.classList.remove('ready');
+                ico.textContent = '🎯';
+                txt.textContent = 'POTERE';
+              }
+            }
+
+            // Auto-recovery: if stuck < 2 kmh for > 3.0 seconds during race
+            if (director.raceState === 'racing' && kmh < 2) {
+              stuckTime += 0.12;
+              if (stuckTime > 3.0) {
+                director.manualReset();
+                stuckTime = 0;
+                haptic(30);
+              }
+            } else {
+              stuckTime = 0;
+            }
+
+            // Wrong way
+            if (wrongWayEl) {
+              if (player.wrongWay && kmh > 5) {
+                wrongWayEl.classList.remove('hidden');
+              } else {
+                wrongWayEl.classList.add('hidden');
+              }
+            }
+
+            // Final lap
+            if (player.lap === 3 && lastLap === 2) {
+              lastLap = 3;
+              if (finalLapEl) {
+                finalLapEl.classList.remove('hidden');
+                haptic(45);
+                setTimeout(() => finalLapEl.classList.add('hidden'), 2800);
+              }
+            }
+          }
+        }, 120);
+
+        // Track modal logic
+        const trackModal = document.getElementById('z-track-modal');
+        const trackBtn = document.getElementById('z-btn-track');
+        const closeBtn = document.getElementById('z-modal-close');
+
+        if (trackBtn && trackModal) {
+          const openTrack = (e) => {
+            e.preventDefault();
+            trackModal.classList.remove('hidden');
+            haptic(15);
+          };
+          trackBtn.addEventListener('click', openTrack);
+          trackBtn.addEventListener('touchstart', openTrack);
+        }
+        if (closeBtn && trackModal) {
+          closeBtn.addEventListener('click', () => {
+            trackModal.classList.add('hidden');
+            haptic(15);
+          });
+        }
+
+        const curTrack = localStorage.getItem('zephyr_track') || '0';
+        document.querySelectorAll('.z-track-item').forEach(item => {
+          if (item.dataset.index === curTrack) item.classList.add('active');
+          item.addEventListener('click', () => {
+            haptic(25);
+            localStorage.setItem('zephyr_track', item.dataset.index);
+            window.location.reload();
+          });
+        });
+
+        // Pause Modal logic (Item 53)
+        const pauseModal = document.getElementById('z-pause-modal');
+        const menuBtn = document.getElementById('z-btn-menu');
+        if (menuBtn && pauseModal) {
+          const openPause = (e) => {
+            e.preventDefault();
+            pauseModal.classList.remove('hidden');
+            haptic(20);
+          };
+          menuBtn.addEventListener('click', openPause);
+          menuBtn.addEventListener('touchstart', openPause);
+        }
+
+        document.getElementById('z-pause-resume')?.addEventListener('click', () => {
+          pauseModal?.classList.add('hidden');
+          haptic(15);
+        });
+
+        document.getElementById('z-pause-restart')?.addEventListener('click', () => {
+          pauseModal?.classList.add('hidden');
+          window.location.reload();
+        });
+
+        document.getElementById('z-pause-change-track')?.addEventListener('click', () => {
+          pauseModal?.classList.add('hidden');
+          trackModal?.classList.remove('hidden');
+          haptic(15);
+        });
+
+        // Reset button
+        const resetBtn = document.getElementById('z-btn-reset');
+        if (resetBtn) {
+          const doReset = (e) => {
+            e.preventDefault();
+            if (window.__zephyr && window.__zephyr.director) {
+              window.__zephyr.director.manualReset();
+            }
+            haptic(25);
+          };
+          resetBtn.addEventListener('touchstart', doReset, { passive: false });
+          resetBtn.addEventListener('click', doReset);
+        }
+
+        // Audio toggle
+        const audioBtn = document.getElementById('z-btn-audio');
+        if (audioBtn) {
+          const toggleAudio = (e) => {
+            e.preventDefault();
+            if (window.__zephyr) {
+              window.__zephyr.toggleMute();
+              audioBtn.textContent = window.__zephyr.userSettings.muted ? '🔇 MUTED' : '🔊 AUDIO';
+            }
+            haptic(15);
+          };
+          audioBtn.addEventListener('touchstart', toggleAudio, { passive: false });
+          audioBtn.addEventListener('click', toggleAudio);
+        }
+      })();
+    </script>
   </body>
 </html>

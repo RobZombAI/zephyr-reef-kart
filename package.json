@@ -1,7 +1,7 @@
 {
-  "name": "japanese-shrine-garden",
-  "version": "1.0.0",
-  "description": "Interactive 3D Japanese Shrine Garden Three.js experience with retro dithering shader, dynamic water ripples, sakura petals, and atmospheric music",
+  "name": "zephyr-reef-kart",
+  "version": "5.2.0",
+  "description": "Zephyr Reef Grand Prix - 3D fantasy kart racer powered by Three.js and Android Native WebView",
   "type": "module",
   "scripts": {
     "dev": "vite",
