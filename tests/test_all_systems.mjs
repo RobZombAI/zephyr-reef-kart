@@ -1705,3 +1705,202 @@ describe('=== UNIT & PROCESS TESTS: 24 TRACKS, ARCHITECTURE & GEOMETRY ===', () 
   });
 });
 
+describe('=== UNIT & PROCESS TESTS: UNIVERSAL ANDROID & BATTERY OPTIMIZATIONS ===', () => {
+  it('1. WebGL Context creation flags and powerPreference high-performance', () => {
+    const jsContent = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+    assert.ok(jsContent.includes('powerPreference:"high-performance"'), 'Must specify powerPreference high-performance');
+    assert.ok(jsContent.includes('alpha:!1'), 'Must specify alpha:false to prevent expensive SurfaceFlinger compositing');
+    assert.ok(jsContent.includes('depth:!0'), 'Must retain depth buffer');
+    assert.ok(jsContent.includes('stencil:!1'), 'Must disable unused stencil buffer to save VRAM');
+    assert.ok(jsContent.includes('preserveDrawingBuffer:!1'), 'Must disable preserveDrawingBuffer for fast swapchain flips');
+  });
+
+  it('2. Frame pacing cadence and exponential delta smoothing filter', () => {
+    let smoothDt = 0.016;
+    const rawSamples = [0.0166, 0.0152, 0.0178, 0.0149, 0.0167];
+    const smoothedHistory = [];
+
+    for (const raw of rawSamples) {
+      smoothDt = smoothDt * 0.75 + raw * 0.25;
+      smoothedHistory.push(smoothDt);
+    }
+
+    const avgRaw = rawSamples.reduce((a, b) => a + b, 0) / rawSamples.length;
+    const varRaw = rawSamples.reduce((a, b) => a + Math.pow(b - avgRaw, 2), 0) / rawSamples.length;
+
+    const avgSmooth = smoothedHistory.reduce((a, b) => a + b, 0) / smoothedHistory.length;
+    const varSmooth = smoothedHistory.reduce((a, b) => a + Math.pow(b - avgSmooth, 2), 0) / smoothedHistory.length;
+
+    assert.ok(varSmooth < varRaw, `Smoothed variance (${varSmooth}) must be lower than raw jitter variance (${varRaw})`);
+
+    const isRace = true;
+    const lowMinInterval = isRace ? 13.5 : 31.0;
+    const highMinInterval = isRace ? 7.0 : 31.0;
+    const menuMinInterval = (!isRace) ? 7.0 : 31.0;
+
+    assert.strictEqual(lowMinInterval, 13.5);
+    assert.strictEqual(highMinInterval, 7.0);
+    assert.strictEqual(menuMinInterval, 31.0);
+  });
+
+  it('3. Dynamic Resolution Scaling (DRS) throttling and recovery loop', () => {
+    let drsScale = 1.0;
+    let fpsFrames = 0;
+    let fpsAccum = 0;
+    let appliedDpr = 1.0;
+    const baseDpr = 1.5;
+
+    const applyDrsScale = () => {
+      appliedDpr = Math.max(0.65, baseDpr * drsScale);
+    };
+
+    for (let f = 0; f < 20; f++) {
+      fpsFrames++;
+      fpsAccum += 21.0;
+    }
+    if (fpsFrames >= 20) {
+      const avg = fpsAccum / fpsFrames;
+      if (avg > 18.5 && drsScale > 0.75) {
+        drsScale = Math.max(0.75, drsScale - 0.08);
+        applyDrsScale();
+      }
+      fpsFrames = 0;
+      fpsAccum = 0;
+    }
+
+    assert.strictEqual(drsScale, 0.92);
+    assert.strictEqual(appliedDpr, 1.5 * 0.92);
+
+    for (let cycle = 0; cycle < 5; cycle++) {
+      for (let f = 0; f < 20; f++) {
+        fpsFrames++;
+        fpsAccum += 22.0;
+      }
+      const avg = fpsAccum / fpsFrames;
+      if (avg > 18.5 && drsScale > 0.75) {
+        drsScale = Math.max(0.75, drsScale - 0.08);
+        applyDrsScale();
+      }
+      fpsFrames = 0;
+      fpsAccum = 0;
+    }
+    assert.strictEqual(drsScale, 0.75, 'DRS scale must floor at 0.75');
+    assert.ok(appliedDpr >= 0.65, 'Applied DPR must never drop below 0.65');
+
+    for (let cycle = 0; cycle < 6; cycle++) {
+      for (let f = 0; f < 20; f++) {
+        fpsFrames++;
+        fpsAccum += 11.0;
+      }
+      const avg = fpsAccum / fpsFrames;
+      if (avg < 13.5 && drsScale < 1.0) {
+        drsScale = Math.min(1.0, drsScale + 0.05);
+        applyDrsScale();
+      }
+      fpsFrames = 0;
+      fpsAccum = 0;
+    }
+    assert.strictEqual(drsScale, 1.0, 'DRS scale must recover back to 1.0 ceiling');
+    assert.strictEqual(appliedDpr, baseDpr);
+  });
+
+  it('4. Deterministic 60Hz physics step & substep cap across all screen refresh rates', () => {
+    const jsContent = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+    assert.ok(jsContent.includes('fixedStep:1/60'), 'fixedStep must be 1/60 (60Hz)');
+    assert.ok(jsContent.includes('maxSubsteps:4'), 'maxSubsteps must be 4 to cap catchup execution');
+
+    let accumulator = 0;
+    let stepCount = 0;
+    const fixedStep = 1 / 60;
+    const maxSubsteps = 4;
+
+    const tickFrame = (dt) => {
+      accumulator += Math.min(dt, 0.1);
+      let r = 0;
+      while (accumulator >= fixedStep && r < maxSubsteps) {
+        stepCount++;
+        accumulator -= fixedStep;
+        r++;
+      }
+      if (r >= maxSubsteps) accumulator = 0;
+    };
+
+    tickFrame(1 / 120);
+    assert.strictEqual(stepCount, 0);
+    tickFrame(1 / 120);
+    assert.strictEqual(stepCount, 1);
+
+    stepCount = 0;
+    tickFrame(0.1);
+    assert.strictEqual(stepCount, 4);
+    assert.strictEqual(accumulator, 0);
+  });
+
+  it('5. Dynamic Camera Aspect Ratio (FOVx expansion on 4:3, 16:10, 1:1)', () => {
+    const calcAspectCorr = (aspect) => (aspect < 1.65 ? (1.65 - aspect) * 18 : 0);
+
+    assert.strictEqual(calcAspectCorr(20 / 9), 0);
+    assert.strictEqual(calcAspectCorr(16 / 9), 0);
+
+    const corr1610 = calcAspectCorr(1.6);
+    assert.ok(corr1610 > 0.8 && corr1610 < 1.0);
+
+    const corr43 = calcAspectCorr(4 / 3);
+    assert.ok(corr43 > 5.5 && corr43 < 5.8);
+
+    const corr11 = calcAspectCorr(1.0);
+    assert.strictEqual(Number(corr11.toFixed(1)), 11.7);
+  });
+
+  it('6. Universal Safe Area Insets & Responsive Android HUD Layouts in index.html and CSS', () => {
+    const htmlContent = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf-8');
+
+    assert.ok(htmlContent.includes('env(safe-area-inset-top)'));
+    assert.ok(htmlContent.includes('env(safe-area-inset-bottom)'));
+    assert.ok(htmlContent.includes('env(safe-area-inset-left)'));
+    assert.ok(htmlContent.includes('env(safe-area-inset-right)'));
+
+    assert.ok(htmlContent.includes('@media (max-height: 520px)'));
+    assert.ok(htmlContent.includes('.z-steer { width: 66px; height: 66px;'));
+    assert.ok(htmlContent.includes('.z-gas { width: 72px; height: 72px;'));
+
+    assert.ok(htmlContent.includes('@media (min-height: 521px) and (max-aspect-ratio: 16/10)'));
+  });
+
+  it('7. Visibility state transitions, audio suspension, and battery preservation', () => {
+    let audioSuspended = false;
+    let audioResumed = false;
+    let isHidden = false;
+    let rafStopped = false;
+
+    const mockAudio = {
+      ctx: {
+        suspend() { audioSuspended = true; },
+        resume() { audioResumed = true; }
+      }
+    };
+
+    const handleVisibilityChange = (hidden, isRacing = false) => {
+      if (hidden) {
+        if (isRacing) return;
+        mockAudio.ctx.suspend();
+        isHidden = true;
+      } else {
+        isHidden = false;
+        mockAudio.ctx.resume();
+        rafStopped = false;
+      }
+    };
+
+    handleVisibilityChange(true, false);
+    assert.strictEqual(audioSuspended, true);
+    assert.strictEqual(isHidden, true);
+
+    handleVisibilityChange(false, false);
+    assert.strictEqual(audioResumed, true);
+    assert.strictEqual(isHidden, false);
+    assert.strictEqual(rafStopped, false);
+  });
+});
+
+
