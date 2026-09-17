@@ -1967,7 +1967,15 @@ describe('=== UNIT & PROCESS TESTS: REAR FLICKER PREVENTION & CAMERA OCCLUSION =
     assert.ok(bundle.includes('mobileHeight:1.98'), 'mobile camera height should be 1.98m');
     assert.ok(bundle.includes('isMob=(typeof window!=="undefined")'), 'must dynamically detect mobile touch device viewport');
   });
+
+  it('7. Elevated Minimap and HUD telemetry layouts guarantee zero touch button overlap across all viewports', () => {
+    const htmlContent = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf-8');
+    assert.ok(htmlContent.includes('.hud__minimap {\n        bottom: max(180px'), 'minimap base bottom must be at least 180px');
+    assert.ok(htmlContent.includes('.hud__speed {\n        bottom: max(116px'), 'speedometer base bottom must be at least 116px');
+    assert.ok(htmlContent.includes('.hud__coins {\n        bottom: max(226px'), 'coins/energy counter base bottom must be at least 226px');
+    assert.ok(htmlContent.includes('bottom: max(152px, calc(env(safe-area-inset-bottom) + 146px)) !important;'), 'minimap mobile bottom must clear action buttons');
+    assert.ok(htmlContent.includes('bottom: max(96px, calc(env(safe-area-inset-bottom) + 90px)) !important;'), 'speedometer mobile bottom must clear steering buttons');
+    assert.ok(htmlContent.includes('bottom: max(176px, calc(env(safe-area-inset-bottom) + 170px)) !important;'), 'coins mobile bottom must clear speedometer');
+  });
 });
-
-
 
