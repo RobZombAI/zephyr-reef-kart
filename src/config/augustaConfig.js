@@ -1,0 +1,293 @@
+import * as THREE from 'three';
+
+export const RACERS = [
+  {
+    id: 'turi',
+    name: "Turi 'u Furastero",
+    nickname: "Il Cittadino Disperato",
+    kartName: "Ape Piaggio 50cc Racing",
+    desc: "Sogna solo una boccata d'aria fresca a Capo Santa Croce. Marmitta Polini a serpentina e assetto rasoterra.",
+    color: '#1a73e8',
+    kartColor: '#2b82d9',
+    accentColor: '#ffd700',
+    avatarIco: '🛺',
+    stats: { speed: 1.04, accel: 1.12, handling: 1.10, weight: 0.85, drift: 1.15 }
+  },
+  {
+    id: 'politico',
+    name: "L'Assessore Bompensante",
+    nickname: "Candidato Perpetuo",
+    kartName: "SUV Blu Ministeriale",
+    desc: "Ha promesso di rimuovere la raffineria entro il 2090. Pesa due tonnellate e viaggia a sirene spiegate.",
+    color: '#0d2b5c',
+    kartColor: '#12376d',
+    accentColor: '#ff2244',
+    avatarIco: '👔',
+    stats: { speed: 1.10, accel: 0.95, handling: 0.90, weight: 1.35, drift: 0.92 }
+  },
+  {
+    id: 'trapstar',
+    name: "Tony Trap Augusta",
+    nickname: "Re dell'Autotune",
+    kartName: "SoundSystem 10.000W",
+    desc: "Ha montato quattro subwoofer da 18 pollici sul telaio. Ti supera e ti spacca i timpani a colpi di 808.",
+    color: '#ff2a85',
+    kartColor: '#220033',
+    accentColor: '#00ffcc',
+    avatarIco: '🎤',
+    stats: { speed: 1.06, accel: 1.02, handling: 1.05, weight: 1.05, drift: 1.12 }
+  },
+  {
+    id: 'chimico',
+    name: "Dott. Greggio",
+    nickname: "Il Chimico Notturno",
+    kartName: "Fusto Tossico Turbo",
+    desc: "Lavora al petrolchimico da 40 anni. Dice che l'odore di zolfo la mattina è solo iodio concentrato.",
+    color: '#28a745',
+    kartColor: '#ffcc00',
+    accentColor: '#76ff03',
+    avatarIco: '☣️',
+    stats: { speed: 1.08, accel: 1.00, handling: 0.98, weight: 1.15, drift: 1.04 }
+  },
+  {
+    id: 'zia',
+    name: "Zia Concetta",
+    nickname: "La Signora del Mercato",
+    kartName: "Turbo Spesa V8",
+    desc: "Carrello della spesa rinforzato con motore a reazione e cassetta di arance sanguigne come zavorra.",
+    color: '#ff6f00',
+    kartColor: '#e0e0e0',
+    accentColor: '#ff9100',
+    avatarIco: '👵',
+    stats: { speed: 1.02, accel: 1.15, handling: 1.14, weight: 0.82, drift: 1.20 }
+  },
+  {
+    id: 'ecologista',
+    name: "Greta di Brucoli",
+    nickname: "L'Eco-Guerriera",
+    kartName: "E-Bike Solare 3.0",
+    desc: "Trike aerodinamico a pannelli fotovoltaici. Immune al veleno delle ciminiere e silenziosissima.",
+    color: '#00e5ff',
+    kartColor: '#00b0ff',
+    accentColor: '#69f0ae',
+    avatarIco: '🌱',
+    stats: { speed: 1.07, accel: 1.08, handling: 1.08, weight: 0.90, drift: 1.08 }
+  }
+];
+
+export const POWERUPS = {
+  granita: {
+    id: 'granita',
+    name: 'Granita al Limone Nitro',
+    icon: '🍋',
+    desc: 'Super scatto nitro e fiamme dal retro (+45% per 3s)!',
+    duration: 3.2,
+    speedBoost: 1.45,
+    sound: 'boost'
+  },
+  greggio: {
+    id: 'greggio',
+    name: 'Barile di Greggio Tossico',
+    icon: '🛢️',
+    desc: "Lancia un barile d'olio che fa testacoda a chi lo calpesta!",
+    trapRadius: 3.2,
+    sound: 'slick'
+  },
+  trap: {
+    id: 'trap',
+    name: 'Megafono Trap 10.000W',
+    icon: '📢',
+    desc: "Onda d'urto a 808 Hz che sbalza tutti i kart vicini!",
+    blastRadius: 32.0,
+    sound: 'bass_hit'
+  },
+  politica: {
+    id: 'politica',
+    name: 'Scudo Elettorale Blindato',
+    icon: '📜',
+    desc: 'Promesse elettorali ti rendono immune a ostacoli e smog per 5s!',
+    duration: 5.0,
+    sound: 'shield'
+  },
+  fico: {
+    id: 'fico',
+    name: "Fico d'India Missile",
+    icon: '🛵',
+    desc: 'Missile tracciante verde che centra il rivale che ti precede!',
+    speed: 70.0,
+    sound: 'launch'
+  }
+};
+
+export const TRACKS = [
+  {
+    id: 'refinery',
+    name: "Polo Petrolchimico",
+    subtitle: "Refinery Inferno GP",
+    desc: "Tra 8 ciminiere infuocate, torce fiammeggianti, gasometri giganti e nubi di smog sulfureo.",
+    icon: "🏭",
+    difficulty: "Difficile",
+    skyColor: 0x141820,
+    fogColor: 0x222a33,
+    fogNear: 25,
+    fogFar: 420,
+    ambientColor: 0x334155,
+    dirLightColor: 0xff8c42,
+    asphaltColor: "#1c2026",
+    theme: 'refinery',
+    waypoints: [
+      new THREE.Vector3(0, 0.5, 0),
+      new THREE.Vector3(15, 0.8, 60),
+      new THREE.Vector3(35, 1.2, 130),
+      new THREE.Vector3(70, 2.0, 190),
+      new THREE.Vector3(120, 2.8, 230),
+      new THREE.Vector3(175, 3.2, 240),
+      new THREE.Vector3(220, 3.0, 210),
+      new THREE.Vector3(245, 2.2, 160),
+      new THREE.Vector3(235, 1.5, 110),
+      new THREE.Vector3(255, 1.2, 60),
+      new THREE.Vector3(240, 1.0, 0),
+      new THREE.Vector3(205, 1.4, -60),
+      new THREE.Vector3(160, 2.0, -110),
+      new THREE.Vector3(105, 2.5, -145),
+      new THREE.Vector3(45, 2.2, -160),
+      new THREE.Vector3(-20, 2.0, -155),
+      new THREE.Vector3(-85, 2.5, -130),
+      new THREE.Vector3(-140, 3.5, -90),
+      new THREE.Vector3(-180, 5.2, -40),
+      new THREE.Vector3(-205, 6.0, 20),
+      new THREE.Vector3(-210, 6.0, 85),
+      new THREE.Vector3(-190, 5.0, 145),
+      new THREE.Vector3(-150, 3.2, 190),
+      new THREE.Vector3(-100, 1.8, 200),
+      new THREE.Vector3(-55, 1.0, 180),
+      new THREE.Vector3(-30, 0.6, 120),
+      new THREE.Vector3(-15, 0.5, 50)
+    ]
+  },
+  {
+    id: 'lighthouse',
+    name: "Capo Santa Croce & Faro",
+    subtitle: "Coastal Sunset GP",
+    desc: "Scogliere panoramiche a picco sul Mar Ionio, il maestoso faro a strisce e brezza marina.",
+    icon: "🏮",
+    difficulty: "Medio",
+    skyColor: 0xff7e5f,
+    fogColor: 0xfeb47b,
+    fogNear: 35,
+    fogFar: 500,
+    ambientColor: 0xffd194,
+    dirLightColor: 0xffeedd,
+    asphaltColor: "#2a2d34",
+    theme: 'lighthouse',
+    waypoints: [
+      new THREE.Vector3(0, 0.5, 0),
+      new THREE.Vector3(40, 1.5, 75),
+      new THREE.Vector3(100, 3.2, 140),
+      new THREE.Vector3(180, 5.8, 185),
+      new THREE.Vector3(260, 8.5, 195),
+      new THREE.Vector3(320, 10.0, 150),
+      new THREE.Vector3(350, 11.2, 70),
+      new THREE.Vector3(330, 9.4, -30),
+      new THREE.Vector3(270, 7.0, -110),
+      new THREE.Vector3(190, 4.8, -170),
+      new THREE.Vector3(100, 3.0, -195),
+      new THREE.Vector3(0, 2.0, -180),
+      new THREE.Vector3(-90, 3.5, -140),
+      new THREE.Vector3(-160, 6.2, -70),
+      new THREE.Vector3(-195, 8.0, 10),
+      new THREE.Vector3(-180, 6.5, 95),
+      new THREE.Vector3(-130, 4.0, 160),
+      new THREE.Vector3(-60, 1.8, 130),
+      new THREE.Vector3(-25, 0.8, 55)
+    ]
+  },
+  {
+    id: 'trapcity',
+    name: "Trap City & Viale Propaganda",
+    subtitle: "Neon Night GP",
+    desc: "Notte cyberpunk al neon tra palchi da 10.000W, laser rotanti e cartelloni elettorali satirici.",
+    icon: "🎤",
+    difficulty: "Esperto",
+    skyColor: 0x0a0515,
+    fogColor: 0x1f0d3d,
+    fogNear: 20,
+    fogFar: 380,
+    ambientColor: 0x581c87,
+    dirLightColor: 0x06b6d4,
+    asphaltColor: "#151022",
+    theme: 'trapcity',
+    waypoints: [
+      new THREE.Vector3(0, 0.5, 0),
+      new THREE.Vector3(0, 0.5, 90),
+      new THREE.Vector3(30, 1.0, 160),
+      new THREE.Vector3(90, 1.5, 200),
+      new THREE.Vector3(160, 1.2, 180),
+      new THREE.Vector3(190, 0.8, 120),
+      new THREE.Vector3(150, 0.6, 60),
+      new THREE.Vector3(160, 0.8, -10),
+      new THREE.Vector3(200, 1.4, -70),
+      new THREE.Vector3(190, 2.0, -140),
+      new THREE.Vector3(130, 2.2, -180),
+      new THREE.Vector3(50, 1.8, -185),
+      new THREE.Vector3(-30, 1.2, -160),
+      new THREE.Vector3(-90, 0.8, -100),
+      new THREE.Vector3(-110, 0.6, -30),
+      new THREE.Vector3(-90, 0.5, 40),
+      new THREE.Vector3(-50, 0.5, 80),
+      new THREE.Vector3(-20, 0.5, 30)
+    ]
+  },
+  {
+    id: 'saline',
+    name: "Saline & Baia di Brucoli",
+    subtitle: "Nature & Lagoons GP",
+    desc: "All'alba tra specchi d'acqua salmastra rosa, fenicotteri, ponti rialzati e il castello sul mare.",
+    icon: "🦩",
+    difficulty: "Veloce",
+    skyColor: 0xffd1dc,
+    fogColor: 0xffe5ec,
+    fogNear: 35,
+    fogFar: 460,
+    ambientColor: 0xfbcfe8,
+    dirLightColor: 0xf43f5e,
+    asphaltColor: "#2d2a32",
+    theme: 'saline',
+    waypoints: [
+      new THREE.Vector3(0, 0.5, 0),
+      new THREE.Vector3(20, 0.6, 80),
+      new THREE.Vector3(60, 1.0, 160),
+      new THREE.Vector3(120, 1.8, 220),
+      new THREE.Vector3(200, 2.5, 240),
+      new THREE.Vector3(270, 2.8, 210),
+      new THREE.Vector3(300, 2.4, 130),
+      new THREE.Vector3(270, 1.8, 40),
+      new THREE.Vector3(210, 1.2, -40),
+      new THREE.Vector3(140, 1.0, -110),
+      new THREE.Vector3(60, 1.4, -160),
+      new THREE.Vector3(-20, 2.0, -180),
+      new THREE.Vector3(-100, 2.5, -160),
+      new THREE.Vector3(-160, 2.8, -100),
+      new THREE.Vector3(-180, 2.4, -20),
+      new THREE.Vector3(-150, 1.6, 60),
+      new THREE.Vector3(-90, 1.0, 120),
+      new THREE.Vector3(-30, 0.6, 60)
+    ]
+  }
+];
+
+export const TRACK_WAYPOINTS = TRACKS[0].waypoints;
+
+export const GAME_CONFIG = {
+  totalLaps: 3,
+  trackWidth: 16.0,
+  baseSpeed: 48.0,
+  maxNormalSpeed: 135.0,
+  nitroSpeed: 175.0,
+  accelRate: 36.0,
+  brakeRate: 55.0,
+  steerSpeed: 2.3,
+  driftGrip: 0.88,
+  smogSlowdown: 0.65,
+  oilSpinDuration: 0.65
+};

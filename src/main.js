@@ -1,396 +1,489 @@
 import * as THREE from 'three';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { RACERS, TRACKS, GAME_CONFIG } from './config/augustaConfig.js';
+import { AugustaTrack } from './track/trackGenerator.js';
+import { createAugustaScenery } from './scenery/augustaScenery.js';
+import { createKartMesh } from './karts/kartModels.js';
+import { KartController } from './physics/kartController.js';
+import { AIRacersManager } from './ai/aiRacers.js';
+import { AugustaSoundManager } from './audio/augustaAudio.js';
+import { AugustaMinimap } from './ui/minimap.js';
+import { AugustaUI } from './ui/augustaUI.js';
 
-import { CONFIG } from './config.js';
-import { RetroShader } from './shaders/retroShader.js';
-import { createSkyDome } from './scene/sky.js';
-import { createToriiGate } from './scene/torii.js';
-import { createSakuraTree } from './scene/sakura.js';
-import { createStoneLantern } from './scene/lantern.js';
-import { createTsukubai } from './scene/tsukubai.js';
-import { createShrinePavilion } from './scene/shrine.js';
-import { createGarden } from './scene/garden.js';
-import { createPetalSystem } from './effects/petals.js';
-import { createFireflies } from './effects/fireflies.js';
-import { RippleManager } from './effects/ripples.js';
-import { CameraController } from './camera/cinematicPath.js';
-import { SoundManager } from './audio/soundManager.js';
-import { setupUI } from './ui/controls.js';
-
-class App {
+class AugustaGame {
   constructor() {
-    this.container = document.getElementById('canvas-container');
-    this.currentPresetKey = 'twilight';
-    this.currentPreset = CONFIG.presets.twilight;
+    this.canvas = document.getElementById('gl');
+    this.minimapCanvas = document.getElementById('minimap-canvas');
 
-    this.lastTime = performance.now();
-    this.soundManager = new SoundManager();
+    // 1. Scene, Camera, Renderer
+    this.scene = new THREE.Scene();
+    this.currentTrackDef = TRACKS[0];
 
-    this.initRenderer();
-    this.initScene();
-    this.initCamera();
-    this.initPostProcessing();
-    this.initGardenScene();
-    this.initInteractions();
+    this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.2, 1400);
+    this.camera.position.set(0, 8, -18);
 
-    this.ui = setupUI(this);
-
-    window.addEventListener('resize', () => this.onResize());
-    this.animate = this.animate.bind(this);
-    requestAnimationFrame(this.animate);
-  }
-
-  initRenderer() {
     this.renderer = new THREE.WebGLRenderer({
+      canvas: this.canvas,
       antialias: true,
       powerPreference: 'high-performance'
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.15;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.15;
 
-    this.container.appendChild(this.renderer.domElement);
+    // 2. Lighting & Atmosphere
+    this.sunLight = null;
+    this.hemiLight = null;
+    this.ambientLight = null;
+    this.initLighting();
+
+    // 3. Audio & Sound Manager
+    this.soundManager = new AugustaSoundManager();
+
+    // 4. Track & Scenery
+    this.track = new AugustaTrack(this.currentTrackDef, GAME_CONFIG);
+    this.scene.add(this.track.group);
+
+    this.scenery = createAugustaScenery(this.track);
+    this.scene.add(this.scenery.group);
+
+    // 5. Game State
+    this.state = 'title';
+    this.raceTime = 0;
+    this.countdownTimer = 0;
+    this.cameraTrauma = 0;
+
+    // 6. Player Racer & Opponents
+    this.playerRacerConfig = RACERS[0];
+    this.playerController = null;
+    this.playerMeshData = null;
+    this.allKartControllers = [];
+
+    this.aiManager = null;
+
+    // 7. Minimap & UI
+    this.minimap = new AugustaMinimap(this.minimapCanvas, this.track);
+    this.ui = new AugustaUI(this);
+
+    // Setup initial racers
+    this.setupRacers();
+
+    // Input handlers
+    this.initInput();
+
+    // Resize handler
+    window.addEventListener('resize', () => this.onResize());
+
+    // Loop
+    this.lastTime = performance.now();
+    this.animate = this.animate.bind(this);
+    requestAnimationFrame(this.animate);
   }
 
-  initScene() {
-    this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.Fog(
-      this.currentPreset.sky.fogColor,
-      this.currentPreset.sky.fogNear,
-      this.currentPreset.sky.fogFar
-    );
+  initLighting() {
+    const t = this.currentTrackDef;
+    this.scene.background = new THREE.Color(t.skyColor || 0x141820);
+    this.scene.fog = new THREE.FogExp2(t.fogColor || 0x222a33, 0.0022);
 
-    // Sky dome (fog: false ensures sky is always visible and radiant)
-    this.sky = createSkyDome(this.currentPreset);
-    this.scene.add(this.sky.mesh);
+    if (!this.sunLight) {
+      this.sunLight = new THREE.DirectionalLight(t.dirLightColor || 0xffeedd, 2.2);
+      this.sunLight.position.set(120, 90, 80);
+      this.sunLight.castShadow = true;
+      this.sunLight.shadow.mapSize.width = 2048;
+      this.sunLight.shadow.mapSize.height = 2048;
+      this.sunLight.shadow.camera.near = 10;
+      this.sunLight.shadow.camera.far = 400;
+      const d = 140;
+      this.sunLight.shadow.camera.left = -d;
+      this.sunLight.shadow.camera.right = d;
+      this.sunLight.shadow.camera.top = d;
+      this.sunLight.shadow.camera.bottom = -d;
+      this.scene.add(this.sunLight);
 
-    // Ambient light
-    this.ambientLight = new THREE.AmbientLight(
-      this.currentPreset.lights.ambient.color,
-      this.currentPreset.lights.ambient.intensity
-    );
-    this.scene.add(this.ambientLight);
+      this.hemiLight = new THREE.HemisphereLight(0x76b5d9, 0x443322, 1.1);
+      this.scene.add(this.hemiLight);
 
-    // Hemisphere light for natural sky-to-ground bounce
-    this.hemiLight = new THREE.HemisphereLight(
-      this.currentPreset.lights.hemi.skyColor,
-      this.currentPreset.lights.hemi.groundColor,
-      this.currentPreset.lights.hemi.intensity
-    );
-    this.scene.add(this.hemiLight);
-
-    // Main directional sunlight
-    this.sunLight = new THREE.DirectionalLight(
-      this.currentPreset.lights.sun.color,
-      this.currentPreset.lights.sun.intensity
-    );
-    const sunPos = this.currentPreset.lights.sun.position;
-    this.sunLight.position.set(sunPos[0], sunPos[1], sunPos[2]);
-    this.sunLight.castShadow = true;
-    this.sunLight.shadow.mapSize.width = 2048;
-    this.sunLight.shadow.mapSize.height = 2048;
-    this.sunLight.shadow.camera.near = 0.5;
-    this.sunLight.shadow.camera.far = 140;
-    this.sunLight.shadow.camera.left = -30;
-    this.sunLight.shadow.camera.right = 30;
-    this.sunLight.shadow.camera.top = 30;
-    this.sunLight.shadow.camera.bottom = -30;
-    this.sunLight.shadow.bias = -0.0005;
-    this.scene.add(this.sunLight);
+      this.ambientLight = new THREE.AmbientLight(t.ambientColor || 0x334155, 0.65);
+      this.scene.add(this.ambientLight);
+    } else {
+      this.sunLight.color.setHex(t.dirLightColor || 0xffeedd);
+      this.ambientLight.color.setHex(t.ambientColor || 0x334155);
+    }
   }
 
-  initCamera() {
-    this.camera = new THREE.PerspectiveCamera(
-      48,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      250
-    );
+  selectTrack(trackDef) {
+    this.currentTrackDef = trackDef;
+    
+    // Remove old track & scenery
+    if (this.track) this.scene.remove(this.track.group);
+    if (this.scenery) this.scene.remove(this.scenery.group);
 
-    this.cameraController = new CameraController(
-      this.camera,
-      this.renderer.domElement,
-      CONFIG
-    );
-    this.cameraController.updateCameraSpline();
+    // Build new track & scenery
+    this.track = new AugustaTrack(this.currentTrackDef, GAME_CONFIG);
+    this.scene.add(this.track.group);
+
+    this.scenery = createAugustaScenery(this.track);
+    this.scene.add(this.scenery.group);
+
+    // Update lighting & fog
+    this.initLighting();
+
+    // Rebuild minimap
+    this.minimap = new AugustaMinimap(this.minimapCanvas, this.track);
+
+    // Re-setup racers on new track
+    this.setupRacers();
   }
 
-  initPostProcessing() {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
+  setupRacers() {
+    // Clear old meshes
+    if (this.playerMeshData) {
+      this.scene.remove(this.playerMeshData.root);
+    }
+    if (this.aiManager) {
+      this.aiManager.racers.forEach(r => this.scene.remove(r.meshData.root));
+    }
 
-    this.composer = new EffectComposer(this.renderer);
+    this.allKartControllers = [];
 
-    const renderPass = new RenderPass(this.scene, this.camera);
-    this.composer.addPass(renderPass);
+    // 1. Player Setup
+    this.playerController = new KartController(this.playerRacerConfig, this.track, true, this.allKartControllers);
+    this.playerMeshData = createKartMesh(this.playerRacerConfig);
+    this.scene.add(this.playerMeshData.root);
+    this.allKartControllers.push(this.playerController);
 
-    // Atmospheric bloom for lantern fire and horizon
-    this.bloomPass = new UnrealBloomPass(
-      new THREE.Vector2(width, height),
-      CONFIG.postprocessing.bloomStrength,
-      CONFIG.postprocessing.bloomRadius,
-      CONFIG.postprocessing.bloomThreshold
-    );
-    this.composer.addPass(this.bloomPass);
-
-    // Custom Retro Dither & Posterization shader pass
-    this.retroPass = new ShaderPass(RetroShader);
-    this.retroPass.uniforms.uResolution.value.set(width, height);
-    this.retroPass.uniforms.uPosterizeLevels.value = CONFIG.postprocessing.posterizeLevels;
-    this.retroPass.uniforms.uDitherStrength.value = CONFIG.postprocessing.ditherStrength;
-    this.retroPass.uniforms.uTiltShiftFocus.value = CONFIG.postprocessing.tiltShiftFocus;
-    this.retroPass.uniforms.uTiltShiftRange.value = CONFIG.postprocessing.tiltShiftRange;
-    this.retroPass.uniforms.uTiltShiftBlur.value = CONFIG.postprocessing.tiltShiftBlur;
-    this.retroPass.uniforms.uVignetteDarkness.value = CONFIG.postprocessing.vignetteDarkness;
-    this.retroPass.uniforms.uVignetteOffset.value = CONFIG.postprocessing.vignetteOffset;
-    this.retroPass.uniforms.uEnabled.value = CONFIG.postprocessing.enabled ? 1.0 : 0.0;
-
-    this.composer.addPass(this.retroPass);
-  }
-
-  initGardenScene() {
-    // 1. Garden terrain, pond, stepping stones, grass
-    this.garden = createGarden(CONFIG);
-    this.scene.add(this.garden.group);
-
-    // Ripple manager for pond water
-    this.rippleManager = new RippleManager(this.garden.waterMaterial, this.soundManager);
-
-    // 2. Torii Gate at garden entrance - framing right side of entry view
-    this.torii = createToriiGate();
-    this.torii.position.set(4.8, 0.05, 11.0);
-    this.torii.rotation.y = -0.15;
-    this.scene.add(this.torii);
-
-    // 3. Cherry Blossom Trees
-    // Primary iconic sakura tree on pond left bank, leaning over water
-    this.sakuraPrimary = createSakuraTree({ scale: 1.25 });
-    this.sakuraPrimary.position.set(-5.0, 0.05, -2.8);
-    this.sakuraPrimary.rotation.y = 0.55;
-    this.scene.add(this.sakuraPrimary);
-
-    // Secondary sakura tree across the pond
-    this.sakuraSecondary = createSakuraTree({ scale: 0.95 });
-    this.sakuraSecondary.position.set(1.6, 0.35, -11.5);
-    this.sakuraSecondary.rotation.y = -1.1;
-    this.scene.add(this.sakuraSecondary);
-
-    // Distant background sakura tree
-    this.sakuraDistant = createSakuraTree({ scale: 0.8 });
-    this.sakuraDistant.position.set(-7.8, 0.7, -13.0);
-    this.sakuraDistant.rotation.y = 2.0;
-    this.scene.add(this.sakuraDistant);
-
-    // 4. Japanese Stone Lanterns (Tōrō) with flickering warm lights
-    this.lanterns = [];
-
-    // Lantern 1: Entrance beside Torii gate on the right (matches frame 001!)
-    const lantern1 = createStoneLantern({
-      lightColor: this.currentPreset.lights.lanterns.color,
-      lightIntensity: this.currentPreset.lights.lanterns.intensity,
-      distance: this.currentPreset.lights.lanterns.distance
-    });
-    lantern1.position.set(6.8, 0.05, 10.5);
-    lantern1.rotation.y = 0.35;
-    this.scene.add(lantern1);
-    this.lanterns.push(lantern1);
-
-    // Lantern 2: Beside the pond path
-    const lantern2 = createStoneLantern({
-      lightColor: this.currentPreset.lights.lanterns.color,
-      lightIntensity: this.currentPreset.lights.lanterns.intensity,
-      distance: this.currentPreset.lights.lanterns.distance
-    });
-    lantern2.position.set(2.8, 0.05, -0.6);
-    lantern2.rotation.y = -0.35;
-    this.scene.add(lantern2);
-    this.lanterns.push(lantern2);
-
-    // Lantern 3: Near the shrine entrance steps
-    const lantern3 = createStoneLantern({
-      lightColor: this.currentPreset.lights.lanterns.color,
-      lightIntensity: this.currentPreset.lights.lanterns.intensity,
-      distance: this.currentPreset.lights.lanterns.distance
-    });
-    lantern3.position.set(-1.2, 0.45, -13.0);
-    lantern3.rotation.y = 1.1;
-    this.scene.add(lantern3);
-    this.lanterns.push(lantern3);
-
-    // Water shader lantern light pos
-    this.garden.waterMaterial.uniforms.uLanternLightPos.value.copy(lantern2.position).add(new THREE.Vector3(0, 1.8, 0));
-
-    // 5. Tsukubai (Stone Water Basin)
-    this.tsukubai = createTsukubai();
-    this.tsukubai.position.set(1.4, 0.05, 1.4);
-    this.tsukubai.rotation.y = 0.8;
-    this.scene.add(this.tsukubai);
-
-    // 6. Shrine Pavilion on the Hill
-    this.shrine = createShrinePavilion();
-    this.shrine.position.set(1.8, 0.95, -19.5);
-    this.shrine.rotation.y = 0.25;
-    this.scene.add(this.shrine);
-
-    // 7. Sakura Petals Simulation
-    this.petals = createPetalSystem(CONFIG);
-    this.scene.add(this.petals.mesh);
-
-    // 8. Fireflies Simulation
-    this.fireflies = createFireflies(CONFIG);
-    this.scene.add(this.fireflies.points);
-  }
-
-  initInteractions() {
-    this.raycaster = new THREE.Raycaster();
-    this.mouse = new THREE.Vector2();
-
-    const onPointerDown = (event) => {
-      if (!this.soundManager.hasUserInteracted) {
-        this.soundManager.play();
-      }
-
-      this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-      this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-      this.raycaster.setFromCamera(this.mouse, this.camera);
-      const intersects = this.raycaster.intersectObject(this.garden.waterMesh);
-
-      if (intersects.length > 0) {
-        const pt = intersects[0].point;
-        this.rippleManager.addRipple(pt.x, pt.z, 5.5);
+    // Grid positions
+    // Event Hooks for SFX, Haptics and Visuals
+    this.playerController.onWallHit = () => {
+      this.soundManager.playWallHit(0.85);
+      this.track.spawnSparks(this.playerController.position);
+      this.addTrauma(0.35);
+    };
+    this.playerController.onKartBump = () => {
+      this.soundManager.playWallHit(0.4);
+      this.addTrauma(0.2);
+    };
+    this.playerController.onItemPickup = (item) => {
+      this.soundManager.playItemPickup();
+    };
+    this.playerController.onItemUse = (item) => {
+      this.soundManager.playPowerup(item.id);
+      this.addTrauma(0.25);
+    };
+    this.playerController.onFinalLap = () => {
+      this.ui.showFinalLapBanner();
+      this.soundManager.playLapSound(3, true);
+    };
+    this.playerController.onSectorSplit = (sector) => {
+      this.ui.showSectorSplit(sector, (Math.random() * 0.4 - 0.2));
+    };
+    this.playerController.onSpin = () => {
+      this.soundManager.playSpin();
+      this.addTrauma(0.5);
+      if (window.AndroidHaptics && window.AndroidHaptics.vibrate) {
+        try { window.AndroidHaptics.vibrate(40); } catch (e) {}
+      } else if (window.navigator && window.navigator.vibrate) {
+        try { window.navigator.vibrate(40); } catch (e) {}
       }
     };
 
-    window.addEventListener('pointerdown', onPointerDown);
+    this.playerController.resetToTrack(0.015, -2.4);
+    this.playerMeshData.root.position.copy(this.playerController.position);
+
+    // 2. AI Opponents Setup
+    const aiConfigs = RACERS.filter(r => r.id !== this.playerRacerConfig.id);
+    this.aiManager = new AIRacersManager(aiConfigs, this.track, this.scene);
+    this.aiManager.racers.forEach((r, idx) => {
+      const uOffset = 0.022 + idx * 0.014;
+      const lane = (idx % 2 === 0 ? 1 : -1) * 2.8;
+      r.controller.allKarts = this.allKartControllers;
+      r.controller.resetToTrack(uOffset, lane);
+      r.meshData.root.position.copy(r.controller.position);
+      this.allKartControllers.push(r.controller);
+    });
   }
 
-  setPreset(presetKey) {
-    const p = CONFIG.presets[presetKey];
-    if (!p) return;
-    this.currentPresetKey = presetKey;
-    this.currentPreset = p;
+  addTrauma(amount) {
+    this.cameraTrauma = Math.min(1.0, this.cameraTrauma + amount);
+  }
 
-    // Update sky
-    this.sky.material.uniforms.uZenith.value.set(p.sky.zenith);
-    this.sky.material.uniforms.uUpper.value.set(p.sky.upper);
-    this.sky.material.uniforms.uMid.value.set(p.sky.mid);
-    this.sky.material.uniforms.uHorizon.value.set(p.sky.horizon);
-    this.sky.material.uniforms.uGlow.value.set(p.sky.glow);
-    this.sky.material.uniforms.uSunPos.value.copy(p.lights.sun.position).normalize();
+  setPlayerRacer(racerConfig) {
+    this.playerRacerConfig = racerConfig;
+    this.setupRacers();
+  }
 
-    // Fog
-    this.scene.fog.color.set(p.sky.fogColor);
-    this.scene.fog.near = p.sky.fogNear;
-    this.scene.fog.far = p.sky.fogFar;
+  startCountdown() {
+    this.state = 'countdown';
+    this.countdownTimer = 3.4;
+    this.raceTime = 0;
+    this.ui.showScreen('hud');
+    this.soundManager.startBackgroundMusic();
+    this.soundManager.playCountdown(3);
 
-    // Lights
-    this.ambientLight.color.set(p.lights.ambient.color);
-    this.ambientLight.intensity = p.lights.ambient.intensity;
+    // Event Hooks for SFX, Haptics and Visuals
+    this.playerController.onWallHit = () => {
+      this.soundManager.playWallHit(0.85);
+      this.track.spawnSparks(this.playerController.position);
+      this.addTrauma(0.35);
+    };
+    this.playerController.onKartBump = () => {
+      this.soundManager.playWallHit(0.4);
+      this.addTrauma(0.2);
+    };
+    this.playerController.onItemPickup = (item) => {
+      this.soundManager.playItemPickup();
+    };
+    this.playerController.onItemUse = (item) => {
+      this.soundManager.playPowerup(item.id);
+      this.addTrauma(0.25);
+    };
+    this.playerController.onFinalLap = () => {
+      this.ui.showFinalLapBanner();
+      this.soundManager.playLapSound(3, true);
+    };
+    this.playerController.onSectorSplit = (sector) => {
+      this.ui.showSectorSplit(sector, (Math.random() * 0.4 - 0.2));
+    };
+    this.playerController.onSpin = () => {
+      this.soundManager.playSpin();
+      this.addTrauma(0.5);
+      if (window.AndroidHaptics && window.AndroidHaptics.vibrate) {
+        try { window.AndroidHaptics.vibrate(40); } catch (e) {}
+      } else if (window.navigator && window.navigator.vibrate) {
+        try { window.navigator.vibrate(40); } catch (e) {}
+      }
+    };
 
-    this.hemiLight.color.set(p.lights.hemi.skyColor);
-    this.hemiLight.groundColor.set(p.lights.hemi.groundColor);
-    this.hemiLight.intensity = p.lights.hemi.intensity;
+    this.playerController.resetToTrack(0.015, -2.4);
+    this.aiManager.racers.forEach((r, idx) => {
+      const uOffset = 0.022 + idx * 0.014;
+      const lane = (idx % 2 === 0 ? 1 : -1) * 2.8;
+      r.controller.resetToTrack(uOffset, lane);
+    });
+  }
 
-    this.sunLight.color.set(p.lights.sun.color);
-    this.sunLight.intensity = p.lights.sun.intensity;
-    this.sunLight.position.set(...p.lights.sun.position);
+  resetRace() {
+    this.state = 'title';
+    this.raceTime = 0;
+    this.soundManager.stopEngine();
+    this.setupRacers();
+  }
 
-    // Water
-    this.garden.waterMaterial.uniforms.uBaseColor.value.set(p.water.baseColor);
-    this.garden.waterMaterial.uniforms.uReflectPeach.value.set(p.water.reflectionPeach);
-    this.garden.waterMaterial.uniforms.uReflectMauve.value.set(p.water.reflectionMauve);
-    this.garden.waterMaterial.uniforms.uSunDirection.value.copy(this.sunLight.position).normalize();
+  initInput() {
+    window.addEventListener('keydown', (e) => {
+      if (!this.playerController) return;
+      const key = e.code;
+      if (key === 'KeyW' || key === 'ArrowUp') this.playerController.input.accel = true;
+      if (key === 'KeyS' || key === 'ArrowDown') this.playerController.input.brake = true;
+      if (key === 'KeyA' || key === 'ArrowLeft') this.playerController.input.left = true;
+      if (key === 'KeyD' || key === 'ArrowRight') this.playerController.input.right = true;
+      if (key === 'ShiftLeft' || key === 'ShiftRight') this.playerController.input.drift = true;
+      if (key === 'Space' || key === 'KeyE') {
+        this.playerController.input.item = true;
+        this.playerController.useCurrentItem();
+      }
+      if (key === 'KeyQ') this.playerController.input.lookBack = true;
+      if (key === 'KeyR') {
+        this.playerController.resetToTrack(this.playerController.u);
+      }
+    });
 
-    // Lanterns
-    for (const l of this.lanterns) {
-      l.userData.baseIntensity = p.lights.lanterns.intensity;
-      l.userData.light.color.set(p.lights.lanterns.color);
-    }
+    window.addEventListener('keyup', (e) => {
+      if (!this.playerController) return;
+      const key = e.code;
+      if (key === 'KeyW' || key === 'ArrowUp') this.playerController.input.accel = false;
+      if (key === 'KeyS' || key === 'ArrowDown') this.playerController.input.brake = false;
+      if (key === 'KeyA' || key === 'ArrowLeft') this.playerController.input.left = false;
+      if (key === 'KeyD' || key === 'ArrowRight') this.playerController.input.right = false;
+      if (key === 'ShiftLeft' || key === 'ShiftRight') this.playerController.input.drift = false;
+      if (key === 'Space' || key === 'KeyE') this.playerController.input.item = false;
+      if (key === 'KeyQ') this.playerController.input.lookBack = false;
+    });
   }
 
   onResize() {
     const w = window.innerWidth;
     const h = window.innerHeight;
-
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
-
     this.renderer.setSize(w, h);
-    this.composer.setSize(w, h);
+  }
 
-    if (this.retroPass) {
-      this.retroPass.uniforms.uResolution.value.set(w, h);
+  updateCamera(dt) {
+    if (this.state === 'title' || this.state === 'select') {
+      const time = performance.now() * 0.0003;
+      const r = 28;
+      this.camera.position.set(Math.sin(time) * r, 12, Math.cos(time) * r);
+      this.camera.lookAt(0, 4, 30);
+      return;
     }
-    if (this.bloomPass) {
-      this.bloomPass.resolution.set(w, h);
+
+    // Racing Dynamic Chase Camera
+    const player = this.playerController;
+    const forward = player.forward;
+    const lookBack = player.input.lookBack ? -1 : 1;
+
+    const speedRatio = Math.abs(player.speed) / (GAME_CONFIG.nitroSpeed / 3.6);
+    const targetDist = (7.5 + speedRatio * 3.5) * lookBack;
+    const targetHeight = 3.2 + speedRatio * 0.8;
+
+    const idealCamPos = player.position.clone()
+      .addScaledVector(forward, -targetDist)
+      .add(new THREE.Vector3(0, targetHeight, 0));
+
+    this.camera.position.lerp(idealCamPos, dt * 9.0);
+
+    if (this.cameraTrauma > 0) {
+      this.cameraTrauma = Math.max(0, this.cameraTrauma - dt * 2.0);
+      const shake = this.cameraTrauma * this.cameraTrauma * 0.9;
+      this.camera.position.x += (Math.random() - 0.5) * shake;
+      this.camera.position.y += (Math.random() - 0.5) * shake * 0.6;
+      this.camera.position.z += (Math.random() - 0.5) * shake;
     }
+
+    const targetFov = 65 + speedRatio * 18;
+    this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, targetFov, dt * 6.0);
+    this.camera.updateProjectionMatrix();
+
+    const lookTarget = player.position.clone().add(new THREE.Vector3(0, 1.3, 0)).addScaledVector(forward, 6.0 * lookBack);
+    this.camera.lookAt(lookTarget);
+  }
+
+  computeStandings() {
+    const list = [
+      { isPlayer: true, racer: this.playerRacerConfig, totalProgress: this.playerController.totalProgress, controller: this.playerController }
+    ];
+
+    if (this.aiManager) {
+      this.aiManager.racers.forEach(r => {
+        list.push({
+          isPlayer: false,
+          racer: r.config,
+          totalProgress: r.controller.totalProgress,
+          controller: r.controller
+        });
+      });
+    }
+
+    list.sort((a, b) => b.totalProgress - a.totalProgress);
+
+    list.forEach((item, idx) => {
+      item.controller.rank = idx + 1;
+    });
+
+    return list;
   }
 
   animate() {
     requestAnimationFrame(this.animate);
 
     const now = performance.now();
-    const delta = Math.min((now - this.lastTime) / 1000, 0.1);
+    const dt = Math.min(0.08, (now - this.lastTime) / 1000);
     this.lastTime = now;
-    const time = now / 1000;
 
-    // 1. Update camera flythrough
-    this.cameraController.update(delta);
+    // 1. Scenery & Track update (flames, lasers, subwoofers, mystery boxes)
+    this.scenery.update(now * 0.001);
+    this.track.update(dt);
 
-    // Keep sky dome centered on camera
-    if (this.sky && this.sky.mesh) {
-      this.sky.mesh.position.copy(this.camera.position);
-    }
+    // 2. State Machine
+    if (this.state === 'countdown') {
+      this.countdownTimer -= dt;
+      if (this.countdownTimer > 2.2) {
+        this.ui.showCountdown('3');
+        this.track.setGantryLight('3');
+      } else if (this.countdownTimer > 1.2) {
+        this.ui.showCountdown('2');
+        this.track.setGantryLight('2');
+      } else if (this.countdownTimer > 0.2) {
+        this.ui.showCountdown('1');
+        this.track.setGantryLight('1');
+      } else {
+        this.ui.showCountdown("VIA! FUGA DALL'INQUINAMENTO!", true);
+        this.track.setGantryLight('go');
+        this.soundManager.playCountdown(0);
+        this.state = 'racing';
+      }
+    } else if (this.state === 'racing') {
+      if (this.ui.isPaused) {
+        this.renderer.render(this.scene, this.camera);
+        return;
+      }
 
-    // 2. Sync BGM
-    if (this.cameraController.mode === 'cinematic' && this.soundManager.bgmAudio && !this.soundManager.bgmAudio.paused) {
-      const targetTime = this.cameraController.currentTime;
-      if (Math.abs(this.soundManager.bgmAudio.currentTime - targetTime) > 1.2) {
-        this.soundManager.seek(targetTime);
+      this.raceTime += dt;
+
+      // Update player
+      this.playerController.update(dt);
+      this.playerMeshData.root.position.copy(this.playerController.position);
+      this.playerMeshData.root.rotation.order = 'YXZ';
+      this.playerMeshData.root.rotation.set(
+        this.playerController.pitch,
+        this.playerController.yaw + this.playerController.driftAngle,
+        this.playerController.roll
+      );
+      this.playerMeshData.update(
+        this.playerController.speed,
+        dt,
+        this.playerController.steerAngle,
+        this.playerController.boostTimer > 0,
+        this.playerController.shieldTimer > 0
+      );
+
+      // Update AI
+      this.aiManager.update(dt, this.playerController);
+
+      // Sound update
+      this.soundManager.updateEngine(
+        this.playerController.speed,
+        this.playerController.input.accel,
+        this.playerController.isDrifting,
+        this.playerController.driftLevel
+      );
+
+      // Standings
+      const standings = this.computeStandings();
+
+      // HUD update
+      this.ui.updateHUD(this.playerController, this.raceTime, standings);
+
+      // Check win condition
+      if (this.playerController.finished && this.state !== 'finished') {
+        this.state = 'finished';
+        this.track.spawnConfetti();
+        this.soundManager.playVictoryFanfare();
+
+        const m = Math.floor(this.raceTime / 60);
+        const s = Math.floor(this.raceTime % 60);
+        const ms = Math.floor((this.raceTime * 1000) % 1000);
+        const finalTimeStr = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;
+        const bestLapSec = (this.raceTime / 3) * 0.94;
+        const bm = Math.floor(bestLapSec / 60);
+        const bs = Math.floor(bestLapSec % 60);
+        const bms = Math.floor((bestLapSec * 1000) % 1000);
+        const bestLapStr = `${String(bm).padStart(2, '0')}:${String(bs).padStart(2, '0')}.${String(bms).padStart(3, '0')}`;
+
+        const formattedResults = standings.map(st => ({
+          isPlayer: st.isPlayer,
+          racer: st.racer,
+          timeStr: finalTimeStr
+        }));
+        this.ui.showResults(formattedResults, finalTimeStr, bestLapStr);
       }
     }
 
-    // 3. Update shaders
-    if (this.garden.waterMaterial) {
-      this.garden.waterMaterial.uniforms.uTime.value = time;
-    }
-    if (this.garden.grassMaterial) {
-      this.garden.grassMaterial.uniforms.uTime.value = time;
-    }
-    if (this.retroPass) {
-      this.retroPass.uniforms.uTime.value = time;
+    // 3. Minimap update
+    if (this.state === 'racing' || this.state === 'countdown') {
+      this.minimap.render(this.playerController, this.aiManager);
     }
 
-    // 4. Update ripples
-    this.rippleManager.update(time);
-
-    // 5. Update petals & trigger water ripples when landing
-    this.petals.update(delta, time, (px, pz) => {
-      this.rippleManager.addRipple(px, pz, 4.0);
-    });
-
-    // 6. Update fireflies
-    this.fireflies.update(time);
-
-    // 7. Update lanterns flicker
-    for (const l of this.lanterns) {
-      if (l.userData.update) {
-        l.userData.update(time);
-      }
-    }
-
-    // 8. Render composer
-    this.composer.render();
+    // 4. Camera Update & Render
+    this.updateCamera(dt);
+    this.renderer.render(this.scene, this.camera);
   }
 }
 
+// Boot application
 window.addEventListener('DOMContentLoaded', () => {
-  window.app = new App();
+  window.game = new AugustaGame();
 });

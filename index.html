@@ -1,163 +1,248 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Japanese Shrine Garden - 3D Three.js Experience (@loktar00 Replica)</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛩️</text></svg>">
-  <link rel="stylesheet" href="/style.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Noto+Serif+JP:wght@300;500;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-</head>
-<body>
-  <div id="canvas-container"></div>
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Augusta Grand Prix: Fuga dall'Inquinamento, Concerti e Politica</title>
+    <meta name="description" content="Gioco di corse 3D ad Augusta (Sicilia): scappa dallo smog delle raffinerie, dai concerti trap assordanti e dai volantini dei politici verso Capo Santa Croce!" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%8F%8E%EF%B8%8F%3C/text%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="/style.css">
+  </head>
+  <body>
+    <div id="app">
+      <!-- 3D WebGL Canvas -->
+      <canvas id="gl"></canvas>
 
-  <!-- Start Experience Screen -->
-  <div id="start-overlay" class="start-overlay">
-    <div class="start-card">
-      <div class="kanji-title">神社庭園</div>
-      <h1 class="main-title">Japanese Shrine Garden</h1>
-      <p class="subtitle">High-Fidelity 3D Interactive Three.js Experience</p>
-      <div class="tags-badge">
-        <span>Three.js</span>
-        <span>Retro Dither Shader</span>
-        <span>Dynamic Ripples</span>
-        <span>YuE2 Audio</span>
+      <!-- UI Layer -->
+      <div id="ui">
+        
+        <!-- 1. TITLE SCREEN -->
+        <section id="screen-title" class="screen-title">
+          <div class="title-sublogo">⚡ SICILIAN FANTASY KART RACER ⚡</div>
+          <h1 class="title-logo">AUGUSTA GRAND PRIX</h1>
+          <div class="title-sublogo" style="font-size: 22px; color: #00f7ff; margin-bottom: 12px;">
+            Fuga dall'Inquinamento, dai Concerti e dalla Propaganda
+          </div>
+          <div id="title-track-badge" class="track-badge">📍 PISTA: POLO PETROLCHIMICO</div>
+          <p class="title-desc">
+            Sei piloti. Tre giri. Guardrail continui e scatole con super-poteri siciliani! Schiva le ciminiere petrolchimiche, i mega-subwoofer trap e i comizi per tagliare il traguardo!
+          </p>
+          <div class="title-actions">
+            <button id="btn-start-race" class="btn btn--primary">Inizia Gara</button>
+            <button id="btn-choose-track" class="btn">Scegli Pista</button>
+            <button id="btn-choose-racer" class="btn">Scegli Pilota</button>
+            <button id="btn-mute" class="btn">Audio: ON</button>
+          </div>
+          <div class="controls-bar">
+            <strong>W A S D</strong> GUIDA &nbsp;·&nbsp; 
+            <strong>SHIFT</strong> DERAPATA &nbsp;·&nbsp; 
+            <strong>SPAZIO / E</strong> LANCIA POTERE &nbsp;·&nbsp; 
+            <strong>R</strong> RESET &nbsp;·&nbsp; 
+            <strong>Q</strong> RETRO
+          </div>
+        </section>
+
+        <!-- 2. TRACK SELECT SCREEN -->
+        <section id="screen-track" class="screen-select hidden">
+          <div class="select-title">SCEGLI IL CIRCUITO DI GARA</div>
+          <div class="select-content">
+            <div id="track-grid" class="track-grid"></div>
+            <div id="track-detail" class="track-detail panel"></div>
+          </div>
+          <div class="select-actions">
+            <button id="btn-track-back" class="btn">Indietro</button>
+            <button id="btn-confirm-track" class="btn btn--primary">Conferma Circuito!</button>
+          </div>
+        </section>
+
+        <!-- 3. RACER SELECT SCREEN -->
+        <section id="screen-select" class="screen-select hidden">
+          <div class="select-title">SCEGLI IL TUO PILOTA & KART</div>
+          <div class="select-content">
+            <div id="select-grid" class="select-grid"></div>
+            <div id="racer-detail" class="racer-detail panel"></div>
+          </div>
+          <div class="select-actions">
+            <button id="btn-select-back" class="btn">Indietro</button>
+            <button id="btn-confirm-racer" class="btn btn--primary">Conferma e Corri!</button>
+          </div>
+        </section>
+
+        <!-- 4. RACE HUD -->
+        <section id="hud" class="hud hidden">
+          <!-- Top Left: Pos & Lap -->
+          <div class="hud-top-left">
+            <div class="hud-badge panel">
+              <span class="badge-label">POSIZIONE</span>
+              <span id="val-pos" class="badge-val">1°</span>
+            </div>
+            <div class="hud-badge panel">
+              <span class="badge-label">GIRO</span>
+              <span id="val-lap" class="badge-val">1 / 3</span>
+            </div>
+          </div>
+
+          <!-- Top Center: Timer & Held Item Box -->
+          <div class="hud-top-center">
+            <div id="val-time" class="hud-timer panel">00:00.000</div>
+            <div id="hud-item-box" class="hud-item-card panel hidden">
+              <span id="hud-item-icon" class="item-ico-lg">🍋</span>
+              <div class="item-text-box">
+                <span class="item-sub">POTERE PRONTO</span>
+                <span id="hud-item-name" class="item-name">GRANITA NITRO</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top Right: Live Field Standings -->
+          <div class="hud-standings panel">
+            <div style="font-size: 10px; letter-spacing: 0.15em; color: #8fb4c9; text-transform: uppercase; margin-bottom: 4px;">
+              CLASSIFICA LIVE
+            </div>
+            <div id="standings-rows"></div>
+          </div>
+
+          <!-- Center: Countdown & Warnings -->
+          <div id="countdown" class="countdown-box">3</div>
+          <div id="hud-warn" class="hud-warn hidden">SMOG CRITICO! MOTORE IN BLOCCO!</div>
+          <div id="hud-wrong-way" class="hud-wrong-way hidden">⚠️ SENSO CONTRARIO! GIRA IL KART! ⚠️</div>
+          <div id="hud-final-lap" class="hud-final-lap hidden">🏁 ULTIMO GIRO! FINAL LAP! 🏁</div>
+          <div id="hud-sector-split" class="hud-sector-split hidden">S1: +0.24s</div>
+
+          <!-- Touch Controls (Mobile / Android) -->
+          <div id="touch-controls" class="touch-controls">
+            <!-- Left Cluster: Steer Left / Right -->
+            <div class="touch-cluster touch-cluster-left">
+              <button id="touch-steer-left" class="touch-btn touch-btn-steer" aria-label="Sterza a Sinistra">◀</button>
+              <button id="touch-steer-right" class="touch-btn touch-btn-steer" aria-label="Sterza a Destra">▶</button>
+            </div>
+
+            <!-- Top Actions: Reset & Mute -->
+            <div class="touch-cluster touch-cluster-top">
+              <button id="touch-btn-pause" class="touch-btn-mini" aria-label="Pausa">⏸️ MENU</button>
+              <button id="touch-btn-settings" class="touch-btn-mini" aria-label="Impostazioni">⚙️ OPZIONI</button>
+              <button id="touch-btn-reset" class="touch-btn-mini" aria-label="Riposiziona Kart">↻ RESET</button>
+              <button id="touch-btn-mute" class="touch-btn-mini" aria-label="Audio">🔊 AUDIO</button>
+            </div>
+
+            <!-- Right Cluster: Drift, Item Power, Brake, Gas -->
+            <div class="touch-cluster touch-cluster-right">
+              <div class="touch-actions-row">
+                <button id="touch-btn-drift" class="touch-btn touch-btn-drift" aria-label="Turbo Derapata">
+                  <span class="drift-bolt">⚡</span>
+                  <span class="drift-txt">TURBO</span>
+                </button>
+                <button id="touch-btn-item" class="touch-btn touch-btn-item" aria-label="Lancia Potere">
+                  <span id="touch-item-icon" class="item-bolt">❓</span>
+                  <span id="touch-item-text" class="item-txt">POTERE</span>
+                </button>
+              </div>
+              <div class="pedals-group">
+                <button id="touch-btn-brake" class="touch-btn touch-btn-brake" aria-label="Freno / Retromarcia">
+                  <span>FRENO</span>
+                </button>
+                <button id="touch-btn-gas" class="touch-btn touch-btn-gas" aria-label="Acceleratore">
+                  <span>GAS</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Left: Speedometer -->
+          <div class="hud-speedometer panel">
+            <div>
+              <span id="val-speed" class="speed-number">0</span>
+              <span class="speed-unit">KM/H</span>
+            </div>
+            <div class="speed-bar-container">
+              <div id="bar-speed" class="speed-bar-fill"></div>
+            </div>
+          </div>
+
+          <!-- Bottom Left: Smog / AQI Gauge -->
+          <div class="hud-smog panel">
+            <div class="smog-label-row">
+              <span>INDICE SMOG AUGUSTA</span>
+              <span id="val-smog" style="color: #39ff14;">0% AQI</span>
+            </div>
+            <div class="smog-bar-container">
+              <div id="bar-smog" class="smog-bar-fill"></div>
+            </div>
+          </div>
+
+          <!-- Bottom Center: Drift Mini-Turbo Bar -->
+          <div id="hud-drift" class="hud-drift-bar panel hidden">
+            <div id="bar-drift" class="drift-fill"></div>
+          </div>
+
+          <!-- Bottom Right: Minimap -->
+          <div class="hud-minimap panel">
+            <canvas id="minimap-canvas" width="220" height="220"></canvas>
+          </div>
+        </section>
+
+        <!-- 5. RESULTS SCREEN -->
+        <section id="screen-results" class="screen-results hidden">
+          <div class="results-card panel">
+            <div class="results-title">CLASSIFICA FINALE</div>
+            <div class="results-sub">GRAN PREMIO DI AUGUSTA: FUGA RIUSCITA!</div>
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>POS</th>
+                  <th>PILOTA & KART</th>
+                  <th>TEMPO</th>
+                </tr>
+              </thead>
+              <tbody id="results-body"></tbody>
+            </table>
+            <button id="btn-restart-race" class="btn btn--primary">Corri Ancora</button>
+          </div>
+        </section>
+
+        <!-- 6. PAUSE MODAL (Item 33) -->
+        <div id="modal-pause" class="modal-overlay hidden">
+          <div class="modal-card panel">
+            <h2 class="modal-title">⏸️ GARA IN PAUSA</h2>
+            <div class="modal-desc">Gran Premio di Augusta: Fuga dall'Inquinamento</div>
+            <div class="modal-actions">
+              <button id="btn-pause-resume" class="btn btn--primary">Riprendi Corsa</button>
+              <button id="btn-pause-restart" class="btn">Ricomincia Gara</button>
+              <button id="btn-pause-settings" class="btn">⚙️ Impostazioni Audio/Grafica</button>
+              <button id="btn-pause-exit" class="btn" style="border-color: #ef4444; color: #f87171;">Esci a Selezione Piste</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 7. SETTINGS MODAL (Item 34) -->
+        <div id="modal-settings" class="modal-overlay hidden">
+          <div class="modal-card panel">
+            <h2 class="modal-title">⚙️ IMPOSTAZIONI</h2>
+            <div class="settings-group">
+              <div class="setting-item">
+                <label for="slider-music">Volume Musica BGM</label>
+                <input type="range" id="slider-music" min="0" max="100" value="80" class="custom-slider" />
+              </div>
+              <div class="setting-item">
+                <label for="slider-sfx">Volume Effetti SFX</label>
+                <input type="range" id="slider-sfx" min="0" max="100" value="90" class="custom-slider" />
+              </div>
+              <div class="setting-item">
+                <label for="slider-steer">Sensibilità Sterzo Touch</label>
+                <input type="range" id="slider-steer" min="50" max="150" value="100" class="custom-slider" />
+              </div>
+              <div class="setting-item-check">
+                <label for="toggle-shadows">Ombre Dinamiche 3D</label>
+                <input type="checkbox" id="toggle-shadows" checked />
+              </div>
+            </div>
+            <button id="btn-settings-close" class="btn btn--primary" style="margin-top: 18px; width: 100%;">Salva e Chiudi</button>
+          </div>
+        </div>
       </div>
-      <p class="desc">
-        A recreation of the atmospheric twilight Japanese shrine garden by <strong>@loktar00</strong>.
-        Features procedural Torii gate, cherry blossoms, water ripple physics, flickering stone lanterns, and 90s aesthetic post-processing.
-      </p>
-      <button id="start-btn" class="start-button">
-        <span class="btn-kanji">入園</span> Enter Shrine Garden
-      </button>
-      <div class="hint">Click anywhere on the pond to trigger water ripples</div>
-    </div>
-  </div>
-
-  <!-- Top Navigation / Watermark -->
-  <header class="top-nav">
-    <div class="brand">
-      <span class="brand-kanji">神社</span>
-      <div class="brand-text">
-        <div class="title">Japanese Shrine Garden</div>
-        <div class="author">Replica of <a href="https://x.com/loktar00/status/2099667407887307257" target="_blank" rel="noopener">@loktar00</a></div>
-      </div>
     </div>
 
-    <div class="top-actions">
-      <!-- Camera Mode Toggle -->
-      <div class="mode-toggle">
-        <button id="btn-mode-cinematic" class="mode-btn active" title="Follow original 60s video camera flight">
-          🎥 Cinematic Tour
-        </button>
-        <button id="btn-mode-orbit" class="mode-btn" title="Free orbit and zoom camera controls">
-          🌐 Free Explore
-        </button>
-      </div>
-
-      <!-- Quick Action Buttons -->
-      <button id="btn-bell" class="icon-btn" title="Ring Temple Bell (Bonshō)">🔔</button>
-      <button id="btn-screenshot" class="icon-btn" title="Capture High-Res Photo">📷</button>
-      <button id="btn-fullscreen" class="icon-btn" title="Toggle Fullscreen">⛶</button>
-      <button id="btn-info" class="icon-btn" title="Information & Controls">ℹ</button>
-    </div>
-  </header>
-
-  <!-- Side Settings Drawer (Collapsible) -->
-  <div class="side-controls">
-    <div class="panel-header">
-      <span class="panel-title">Atmosphere & Shaders</span>
-    </div>
-
-    <!-- Atmosphere Presets -->
-    <div class="control-group">
-      <label for="preset-select">Time of Day</label>
-      <select id="preset-select" class="styled-select">
-        <option value="twilight" selected>Twilight (Original Video)</option>
-        <option value="night">Midnight Moon</option>
-        <option value="sunset">Golden Sunset</option>
-        <option value="dawn">Misty Dawn</option>
-      </select>
-    </div>
-
-    <!-- Retro Shader Toggle -->
-    <div class="control-group switch-group">
-      <label for="toggle-retro">Retro Dither & Color Banding</label>
-      <input type="checkbox" id="toggle-retro" class="styled-checkbox" checked>
-    </div>
-
-    <!-- Posterize Levels Slider -->
-    <div class="control-group">
-      <div class="label-row">
-        <span>Color Steps (Posterize)</span>
-        <span id="val-posterize" class="val-badge">16</span>
-      </div>
-      <input type="range" id="slider-posterize" min="4" max="28" step="1" value="16" class="styled-slider">
-    </div>
-
-    <!-- Bayer Dither Slider -->
-    <div class="control-group">
-      <div class="label-row">
-        <span>Bayer Dither Intensity</span>
-        <span id="val-dither" class="val-badge">0.04</span>
-      </div>
-      <input type="range" id="slider-dither" min="0.0" max="0.30" step="0.01" value="0.04" class="styled-slider">
-    </div>
-
-    <!-- Bloom Slider -->
-    <div class="control-group">
-      <div class="label-row">
-        <span>Lantern Glow (Bloom)</span>
-        <span id="val-bloom" class="val-badge">0.60</span>
-      </div>
-      <input type="range" id="slider-bloom" min="0.0" max="1.5" step="0.05" value="0.60" class="styled-slider">
-    </div>
-  </div>
-
-  <!-- Bottom Timeline & Audio Player Bar -->
-  <footer class="bottom-bar">
-    <button id="btn-play-pause" class="player-btn" title="Play / Pause">
-      <span id="play-pause-icon">&#10074;&#10074;</span>
-    </button>
-
-    <div class="timeline-container">
-      <input type="range" id="timeline-scrubber" min="0" max="1" step="0.001" value="0" class="timeline-slider">
-      <div class="time-meta">
-        <span id="time-display" class="time-display">0:00 / 1:00</span>
-        <span class="tour-status">60s Cinematic Spline Flythrough</span>
-      </div>
-    </div>
-
-    <!-- Audio Player Controls -->
-    <div class="audio-controls">
-      <button id="btn-audio-toggle" class="audio-btn" title="Toggle Mute">🔊</button>
-      <input type="range" id="audio-volume" min="0" max="1" step="0.02" value="0.75" class="volume-slider" title="Volume">
-    </div>
-  </footer>
-
-  <!-- Info Modal -->
-  <div id="info-modal" class="modal hidden">
-    <div class="modal-content">
-      <button id="close-info" class="close-btn">&times;</button>
-      <h2>Japanese Shrine Garden</h2>
-      <p class="modal-jp">神社庭園（じんじゃていえん）</p>
-      <p>
-        An exact 3D real-time replica of the viral demo created by <strong>@loktar00</strong> on X.
-      </p>
-      <h3>Features & Mechanics</h3>
-      <ul>
-        <li><strong>Original Audio Track:</strong> Atmospheric music generated with YuE2 + interactive procedural temple bells & water drops.</li>
-        <li><strong>Dynamic Water Ripples:</strong> Falling sakura petals and user clicks generate interactive expanding concentric wave rings.</li>
-        <li><strong>Authentic Shaders:</strong> 4x4 Bayer Matrix ordered dithering, color quantization/posterization, tilt-shift depth of field, and soft lantern bloom.</li>
-        <li><strong>Procedural Architecture:</strong> Traditional Japanese Myōjin Torii gate, stone lanterns (Tōrō), Tsukubai water basin, and curved kawara-tiled shrine roof.</li>
-        <li><strong>Dual Camera Modes:</strong> Switch between the exact 60-second video flythrough and free 360° orbital exploration.</li>
-      </ul>
-      <p class="modal-tip">Tip: Click on the pond to trigger ripples or click the 🔔 bell to ring the Japanese temple chime.</p>
-    </div>
-  </div>
-
-  <script type="module" src="/src/main.js"></script>
-</body>
+    <!-- Main Module Script -->
+    <script type="module" src="/src/main.js"></script>
+  </body>
 </html>

@@ -1,0 +1,11 @@
+node_modules/
+.DS_Store
+*.log
+scratch/
+.gradle/
+build/
+android/*/.gradle/
+android/*/build/
+android/*/app/build/
+android/*/*.iml
+.idea/
