@@ -419,19 +419,38 @@ export class KartController {
       const sign = Math.sign(lateralDist);
       this.position.copy(proj.nearestPos).addScaledVector(proj.normal, sign * maxLateral);
 
-      const dotNormal = this.forward.dot(proj.normal);
-      if (dotNormal * sign > 0) {
-        // Continuous forward drive along guardrail with gentle deflection
-        const targetYaw = Math.atan2(proj.tangent.x, proj.tangent.z);
-        this.yaw = THREE.MathUtils.lerp(this.yaw, targetYaw, 0.35);
+      // Track forward orientation & angle difference
+      const targetYaw = Math.atan2(proj.tangent.x, proj.tangent.z);
+      let dYaw = (targetYaw - this.yaw) % (Math.PI * 2);
+      if (dYaw > Math.PI) dYaw -= Math.PI * 2;
+      if (dYaw < -Math.PI) dYaw += Math.PI * 2;
+
+      // Limit nose angle into barrier (max 22 degrees)
+      if (dYaw * sign > 0.38) {
+        this.yaw = targetYaw - sign * 0.38;
+        dYaw = targetYaw - this.yaw;
+      }
+      // Absolute clamp: cannot deviate more than 45 degrees from track forward heading
+      if (Math.abs(dYaw) > 0.78) {
+        this.yaw = targetYaw - Math.sign(dYaw) * 0.78;
+        dYaw = targetYaw - this.yaw;
+      }
+      // Continuous forward alignment pull
+      this.yaw += dYaw * 0.35;
+
+      // Continuous forward drive along guardrail
+      const isAccelerating = this.input.forward || Math.abs(this.speed) > 2.0;
+      if (isAccelerating) {
         this.speed = Math.max(14.0, this.speed * 0.96);
+        this.forward.copy(proj.tangent).normalize();
+        this.velocity.copy(this.forward).multiplyScalar(this.speed);
       }
 
       // Wall Glance Assist: immediately disengage nose and push inwards if steering away from wall
       const steerInput = (this.input.right ? 1 : 0) - (this.input.left ? 1 : 0);
       if (steerInput * sign < 0) {
-        this.yaw += -sign * Math.abs(steerInput) * dt * 3.2;
-        this.position.addScaledVector(proj.normal, -sign * 0.15);
+        this.yaw += sign * Math.abs(steerInput) * dt * 3.2;
+        this.position.addScaledVector(proj.normal, -sign * 0.22);
       }
 
       this.wallHit = true;
