@@ -330,10 +330,12 @@ export class KartController {
         this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, this.driftDir * 0.38, dt * 8);
       }
     } else {
-      if (Math.abs(this.speed) > 1.0) {
-        const speedFactor = THREE.MathUtils.clamp(Math.abs(this.speed) / (this.maxSpeed * 0.5), 0.35, 1.0);
-        this.yaw += steerDir * this.handling * speedFactor * dt * (this.speed >= 0 ? 1 : -1);
-      }
+      const spd = Math.abs(this.speed);
+      const lowSpeedBoost = 1.65 * Math.max(0, 1.0 - spd / 16.0);
+      const cruiseFactor = THREE.MathUtils.clamp(spd / (this.maxSpeed * 0.5), 0.5, 1.0);
+      const speedFactor = Math.max(0.72, Math.max(cruiseFactor, lowSpeedBoost));
+      const steerDirection = (this.speed < -0.4 && this.input.brake && !this.input.accel) ? -1 : 1;
+      this.yaw += steerDir * this.handling * speedFactor * dt * steerDirection;
       this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, 0, dt * 10);
     }
 
@@ -422,6 +424,12 @@ export class KartController {
         const targetYaw = Math.atan2(proj.tangent.x, proj.tangent.z);
         this.yaw = THREE.MathUtils.lerp(this.yaw, targetYaw, 0.25);
         this.speed = Math.max(12.0, this.speed * 0.94);
+      }
+
+      // Wall Glance Assist: immediately disengage nose if steering away from wall
+      const steerInput = (this.input.right ? 1 : 0) - (this.input.left ? 1 : 0);
+      if (steerInput * sign < 0) {
+        this.yaw += -sign * Math.abs(steerInput) * dt * 2.5;
       }
 
       this.wallHit = true;
