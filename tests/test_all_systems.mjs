@@ -3064,9 +3064,10 @@ describe('=== UNIT & PROCESS TESTS: REAR & CLOSE-KART VISUAL STABILITY ===', () 
   it('3. Proximity Camera Fading & Lens Near-Clip Protection', () => {
     assert.ok(bundleCode.includes('updateProximityFade('), 'ac class defines updateProximityFade method');
     assert.ok(bundleCode.includes('resetProximityFade()'), 'ac class defines resetProximityFade method');
-    assert.ok(bundleCode.includes('if(o<.85){this.kart.object.visible=!1'), 'Karts closer than 0.85m to camera lens are culled to prevent interior slicing');
-    assert.ok(bundleCode.includes('if(o<2.4){const a=Math.max(.12,(o-.85)/1.55)'), 'Karts within 2.4m smoothly interpolate alpha opacity to ghost through near camera');
-    assert.ok(bundleCode.includes('this.camera.camera.position;for(const _rk of this.racers){_rk.updateProximityFade?.(_cPos)}'), 'Ev.syncVisual updates proximity fade for all racers every frame');
+    assert.ok(bundleCode.includes('if(o<1.75){this.kart.object.visible=!1'), 'Karts closer than 1.75m to camera lens are culled to prevent interior slicing');
+    assert.ok(bundleCode.includes('if(dLOS<1.45){this.kart.object.visible=!1'), 'Opponents directly behind player in line of sight are culled to prevent occluding player');
+    assert.ok(bundleCode.includes('occA=Math.max(.12,(dLOS-1.45)/.95)'), 'Opponents moving to overtake smoothly fade in laterally');
+    assert.ok(bundleCode.includes('this.camera.camera.position,_lb=this.camera.lookBack>0.5,_pl=this.player;for(const _rk of this.racers){_rk.updateProximityFade?.(_cPos,_pl,_lb)}'), 'Ev.syncVisual updates proximity fade with player and lookback mode');
   });
 
   it('4. Opponent Exhaust Smoke Suppression in Proximity Zone', () => {
@@ -3082,8 +3083,8 @@ describe('=== UNIT & PROCESS TESTS: REAR & CLOSE-KART VISUAL STABILITY ===', () 
 
   it('5. Dynamic Chase Camera Height Elevation Buffer', () => {
     assert.ok(
-      bundleCode.includes('(8.5-extra.trailingCloseDist)*.24'),
-      'Camera dynamically elevates height when pursuers draft closely behind player'
+      bundleCode.includes('(8.5-extra.trailingCloseDist)*.04'),
+      'Camera dynamically elevates height gently when pursuers draft closely behind player'
     );
   });
 });
