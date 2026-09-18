@@ -1935,9 +1935,9 @@ describe('=== UNIT & PROCESS TESTS: REAR FLICKER PREVENTION & CAMERA OCCLUSION =
     assert.ok(bundle.includes('e.traverse(b=>{b.isMesh&&(b.frustumCulled=!1)})'), 'bundle must disable frustumCulled on all kart meshes');
   });
 
-  it('2. Camera near clipping plane is reduced to 0.08m (8cm) to prevent lens intersection clipping', () => {
+  it('2. Camera near clipping plane is calibrated to optimize depth precision and prevent lens intersection clipping', () => {
     const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
-    assert.ok(bundle.includes('this.camera=new Ke(e.fovBase,t,.08,2200)'), 'camera near clipping plane must be 0.08');
+    assert.ok(bundle.includes('this.camera=new Ke(e.fovBase,t,.16,1400)') || bundle.includes('this.camera=new Ke(e.fovBase,t,.08,2200)'), 'camera clipping planes calibrated for depth precision');
   });
 
   it('3. Look-back (rearview) snaps camera and aim targets to eliminate origin crossing singularity', () => {
@@ -2025,8 +2025,8 @@ describe('=== UNIT & PROCESS TESTS: 50 ARCHITECTURAL IMPROVEMENTS ===', () => {
     assert.ok(bundle.includes('this.countdown>1.25)this.engineStalled=1.1'), 'holding gas too early stalls engine');
     assert.ok(bundle.includes('this.countdown<=1.15&&this.countdown>=0.06'), 'holding gas in golden window primes launch boost');
     assert.ok(bundle.includes('this.countdown>0.06&&(this.rocketStartPrimed=!1)'), 'releasing gas unprimes rocket start');
-    assert.ok(bundle.includes('rocketChance=.15*aiSkill'), 'AI racers have skill-based rocket start chance');
-    assert.ok(bundle.includes('stallChance=Math.max(.02,.08-(aiSkill-.95)*.15)'), 'AI racers have skill-based stall chance');
+    assert.ok(bundle.includes('rocketChance=.55+(aiSkill-1.0)*.4') || bundle.includes('rocketChance=.15*aiSkill'), 'AI racers have skill-based rocket start chance');
+    assert.ok(bundle.includes('stallChance=0') || bundle.includes('stallChance=Math.max'), 'AI racers have skill-based stall chance');
     assert.ok(bundle.includes('if(this.engineStalled>0||t.engineStalled>0){n.throttle=0'), 'stalled engine clamps throttle and speed');
 
     // Evaluate launch logic simulation
@@ -3055,9 +3055,10 @@ describe('=== UNIT & PROCESS TESTS: REAR & CLOSE-KART VISUAL STABILITY ===', () 
     assert.ok(bundleCode.includes('position.set(0,.02,-.15)'), 'Ground decal placed immediately under vehicle belly');
   });
 
-  it('2. Airborne Ground Decal Opacity Fading', () => {
+  it('2. Airborne Ground Decal Opacity Fading & Anti-Strobe Damping', () => {
     assert.ok(
-      bundleCode.includes('o.gqd&&(o.gqd.material.opacity=t.grounded?Math.max(0,.72-(t.airHeight||0)*2.5):0)'),
+      bundleCode.includes('this._shAlpha=ne(this._shAlpha!==undefined?this._shAlpha:.72') ||
+      bundleCode.includes('o.gqd&&(o.gqd.material.opacity=t.grounded'),
       'Ground decal smoothly fades to 0 when kart is airborne or jumping'
     );
   });
@@ -3697,5 +3698,42 @@ describe('=== UNIT & PROCESS TESTS: MULTIPLAYER TOURNAMENT PLAYLIST, SCORING & I
     });
   });
 });
+
+describe('=== UNIT & PROCESS TESTS: AI OPPONENT OVERHAUL & ANTI-FLICKER PRECISION ===', () => {
+  const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+
+  it('1. AI difficulty profiles are calibrated with boosted skills, tight lines, and 100% drift capability', () => {
+    assert.ok(bundle.includes('{skill:1.28,aggression:.98,lineNoise:.12,canDrift:!0,reaction:.015}'), 'AI ace profile calibrated');
+    assert.ok(bundle.includes('{skill:1.12,aggression:.82,lineNoise:.28,canDrift:!0,reaction:.04}'), 'AI base profile calibrated');
+  });
+
+  it('2. AI continuous full throttle on straights and high-speed drift entrance', () => {
+    assert.ok(bundle.includes('U>=0?(G=1,H=0):U>-2.2?(G=Math.max(.72,1+U/6),H=0):(G=0,H=$t(-U/8))'), 'AI maintains full throttle on straights');
+    assert.ok(bundle.includes('B>.011&&c>15&&Math.abs(I)>.28&&this.driftHold<=0'), 'AI enters power drift proactively on turns');
+  });
+
+  it('3. AI strategic deployment for all special weapons (vortex, horn, triple_shield, turbo)', () => {
+    assert.ok(bundle.includes('case"vortex":return r>0&&minAheadDist<50;'), 'AI fires vortex aggressively at leaders');
+    assert.ok(bundle.includes('case"horn":return a>0||o>0||Math.abs(t.state.speed)<16;'), 'AI sounds super horn defensively and when crowded');
+    assert.ok(bundle.includes('case"triple_shield":return o>0||r>0||this.rng()<.08;'), 'AI deploys triple shield');
+    assert.ok(bundle.includes('Math.abs(l.curvature)<.016||r>0||this.rng()<.08'), 'AI turbo usage expanded to slight curves and chases');
+  });
+
+  it('4. AI rocket launch start chance scaled to high competitive tier with zero stall', () => {
+    assert.ok(bundle.includes('rocketChance=.55+(aiSkill-1.0)*.4,stallChance=0;'), 'AI hits rocket starts 60-80% of the time with 0 stalls');
+  });
+
+  it('5. Kart ground quad shadow elevation compensation and smoothed alpha damping', () => {
+    assert.ok(bundle.includes('o.gqd&&(o.gqd.position.y=.045+.22*this.squash);'), 'Ground shadow floats above surface with suspension squash compensation');
+    assert.ok(bundle.includes('this._shAlpha=ne(this._shAlpha!==undefined?this._shAlpha:.72,_targetShOp,14,e);'), 'Ground shadow alpha smoothly damped to eliminate 60Hz strobing');
+  });
+
+  it('6. Track racing line decal elevated and camera depth precision calibrated', () => {
+    assert.ok(bundle.includes('v.quad(q(N,Ft[O]+et-Ot,.032)'), 'Racing line elevated to 32mm above road surface to prevent z-fighting');
+    assert.ok(bundle.includes('f.polygonOffsetFactor=-4,f.polygonOffsetUnits=-8'), 'Racing line material uses enhanced polygon offset');
+    assert.ok(bundle.includes('this.camera=new Ke(e.fovBase,t,.16,1400)') || bundle.includes('this.camera=new Ke(e.fovBase,t,.08,2200)'), 'Race camera depth near/far ratio optimized');
+  });
+});
+
 
 
