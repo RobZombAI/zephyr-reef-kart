@@ -3089,3 +3089,208 @@ describe('=== UNIT & PROCESS TESTS: REAR & CLOSE-KART VISUAL STABILITY ===', () 
   });
 });
 
+describe('=== UNIT & PROCESS TESTS: MULTIPLAYER READY CHECK, 5S COUNTDOWN & LOBBY SYNC ===', () => {
+  it('1. Host initializes as ready and guest initializes as unready upon joining', () => {
+    const host = new MultiplayerManager();
+    host.createRoom('ZEPH-CONF');
+    assert.strictEqual(host.players[0].isReady, true, 'Host should default to isReady: true');
+    assert.strictEqual(host.allPlayersReady(), true, 'Host alone in room should be considered ready');
+
+    // Simulate guest join
+    let welcomeSent = null;
+    const mockGuestConn = {
+      peer: 'guest_peer_1',
+      send: (data) => { welcomeSent = data; },
+      close: () => {}
+    };
+
+    host.handleIncomingData(mockGuestConn, {
+      type: 'JOIN_REQUEST',
+      name: 'GuestRacer',
+      kartId: 'zuzu'
+    });
+
+    assert.strictEqual(host.players.length, 2);
+    const guestPlayer = host.players.find(p => p.slot === 1);
+    assert.ok(guestPlayer, 'Guest should be assigned slot 1');
+    assert.strictEqual(guestPlayer.isReady, false, 'New guest player must start with isReady: false');
+    assert.strictEqual(host.allPlayersReady(), false, 'allPlayersReady must return false when guest has not confirmed ready');
+    host.leaveRoom();
+  });
+
+  it('2. Ready status toggling and PLAYER_READY message propagation', () => {
+    const host = new MultiplayerManager();
+    host.createRoom('ZEPH-TOGG');
+    host.players = [
+      { peerId: 'p0', slot: 0, name: 'Host', kartId: 'nix', isHost: true, ping: 0, isAI: false, isReady: true },
+      { peerId: 'p1', slot: 1, name: 'Guest1', kartId: 'bruno', isHost: false, ping: 30, isAI: false, isReady: false }
+    ];
+
+    assert.strictEqual(host.allPlayersReady(), false);
+
+    // Guest sends PLAYER_READY: true
+    let lobbyUpdated = false;
+    host.notifyLobbyUpdate = () => { lobbyUpdated = true; };
+    host.broadcastToAll = () => {};
+
+    host.handleIncomingData({ peer: 'p1' }, {
+      type: 'PLAYER_READY',
+      slot: 1,
+      isReady: true
+    });
+
+    assert.strictEqual(host.players[1].isReady, true, 'Guest player should now be marked ready');
+    assert.strictEqual(host.allPlayersReady(), true, 'All players should now be confirmed ready');
+
+    // Guest toggles back to unready
+    host.handleIncomingData({ peer: 'p1' }, {
+      type: 'PLAYER_READY',
+      slot: 1,
+      isReady: false
+    });
+    assert.strictEqual(host.players[1].isReady, false);
+    assert.strictEqual(host.allPlayersReady(), false, 'Unready guest must revoke allPlayersReady');
+    host.leaveRoom();
+  });
+
+  it('3. Host startRace prevents race launch when not all players are ready', () => {
+    const host = new MultiplayerManager();
+    host.createRoom('ZEPH-GATE');
+    host.players = [
+      { peerId: 'p0', slot: 0, name: 'Host', kartId: 'nix', isHost: true, ping: 0, isAI: false, isReady: true },
+      { peerId: 'p1', slot: 1, name: 'Guest1', kartId: 'sable', isHost: false, ping: 20, isAI: false, isReady: false }
+    ];
+
+    let toastMsg = '';
+    host.onToast = (msg) => { toastMsg = msg; };
+    let broadcastSent = null;
+    host.broadcastToAll = (msg) => { broadcastSent = msg; };
+
+    const startResult = host.startRace(5);
+    assert.strictEqual(startResult, false, 'startRace must return false when human player is unready');
+    assert.strictEqual(host.state, 'HOST_LOBBY', 'State must remain HOST_LOBBY');
+    assert.strictEqual(broadcastSent, null, 'No countdown or start message should be broadcasted');
+    assert.ok(toastMsg.includes('confermare') || toastMsg.includes('pronti'), 'Must toast informative warning message');
+
+    // Now confirm guest readiness and try again
+    host.players[1].isReady = true;
+    const okResult = host.startRace(5);
+    assert.strictEqual(okResult, true, 'startRace must succeed when all players are confirmed ready');
+    assert.strictEqual(host.state, 'COUNTDOWN', 'Host state must transition to COUNTDOWN');
+    assert.ok(broadcastSent, 'Should broadcast countdown payload');
+    assert.strictEqual(broadcastSent.type, 'START_COUNTDOWN');
+    assert.strictEqual(broadcastSent.countdownSec, 5);
+
+    // Clean up timer
+    host.leaveRoom();
+  });
+
+  it('4. 5-Second Synchronized Countdown lifecycle and tick notifications', () => {
+    const host = new MultiplayerManager();
+    host.createRoom('ZEPH-5SEC');
+    host.players = [
+      { peerId: 'p0', slot: 0, name: 'Host', kartId: 'nix', isHost: true, ping: 0, isAI: false, isReady: true }
+    ];
+
+    let ticks = [];
+    host.onCountdownTick = (remaining, data) => {
+      ticks.push(remaining);
+    };
+
+    host.startCountdown(5);
+    assert.strictEqual(host.state, 'COUNTDOWN');
+    assert.strictEqual(ticks[0], 5, 'Immediate tick notification at 5 seconds');
+    assert.ok(host.countdownTimer !== null, 'Countdown timer interval must be active');
+
+    // Clean up timer
+    host.leaveRoom();
+    assert.strictEqual(host.countdownTimer, null, 'leaveRoom must clear countdown timer');
+  });
+
+  it('5. Disconnection during 5-second countdown aborts countdown and notifies lobby', () => {
+    const host = new MultiplayerManager();
+    host.createRoom('ZEPH-DROP');
+    host.players = [
+      { peerId: 'p0', slot: 0, name: 'Host', kartId: 'nix', isHost: true, ping: 0, isAI: false, isReady: true },
+      { peerId: 'guest_drop', slot: 1, name: 'LeavingGuest', kartId: 'marlow', isHost: false, ping: 40, isAI: false, isReady: true }
+    ];
+
+    let countdownCancelled = false;
+    let cancelReason = '';
+    host.onCountdownCancel = (reason) => {
+      countdownCancelled = true;
+      cancelReason = reason;
+    };
+
+    let broadcastMsgs = [];
+    host.broadcastToAll = (msg) => { broadcastMsgs.push(msg); };
+
+    // Start 5-second countdown
+    host.startRace(5);
+    assert.strictEqual(host.state, 'COUNTDOWN');
+    assert.ok(host.countdownTimer !== null);
+
+    // Client drops during countdown
+    host.handlePeerDisconnect('guest_drop');
+
+    assert.strictEqual(host.state, 'HOST_LOBBY', 'State must revert from COUNTDOWN back to HOST_LOBBY');
+    assert.strictEqual(host.countdownTimer, null, 'Countdown timer must be terminated');
+    assert.strictEqual(countdownCancelled, true, 'onCountdownCancel callback must be triggered');
+    assert.ok(cancelReason.includes('disconnesso'), 'Cancel reason should report peer disconnect');
+    assert.ok(broadcastMsgs.some(m => m.type === 'COUNTDOWN_CANCEL'), 'Must broadcast COUNTDOWN_CANCEL to any remaining peers');
+
+    host.leaveRoom();
+  });
+
+  it('6. Changing character resets ready check to require re-confirmation', () => {
+    const guest = new MultiplayerManager();
+    guest.state = 'GUEST_LOBBY';
+    guest.mySlot = 1;
+    guest.players = [
+      { peerId: 'p0', slot: 0, name: 'Host', kartId: 'nix', isHost: true, isAI: false, isReady: true },
+      { peerId: 'p1', slot: 1, name: 'Guest', kartId: 'bruno', isHost: false, isAI: false, isReady: true }
+    ];
+
+    let sentUpdate = null;
+    guest.broadcastToAll = (msg) => { sentUpdate = msg; };
+
+    assert.strictEqual(guest.players[1].isReady, true);
+
+    // Guest picks different kart
+    guest.setSelectedKart('rustam');
+
+    assert.strictEqual(guest.players[1].kartId, 'rustam', 'Guest kart must update to rustam');
+    assert.strictEqual(guest.players[1].isReady, false, 'Guest isReady must reset to false when character is changed');
+    assert.strictEqual(sentUpdate?.type, 'PLAYER_UPDATE');
+    assert.strictEqual(sentUpdate?.kartId, 'rustam');
+    assert.strictEqual(sentUpdate?.isReady, false, 'Broadcasted update must reflect unready state');
+
+    guest.leaveRoom();
+  });
+
+  it('7. Track synchronization broadcasts across all connected peers in room', () => {
+    const host = new MultiplayerManager();
+    host.createRoom('ZEPH-TRK');
+    let syncBroadcast = null;
+    host.broadcastToAll = (msg) => { syncBroadcast = msg; };
+
+    host.setTrack(14); // Stratos Hairpins
+    assert.strictEqual(host.trackIndex, 14);
+    assert.strictEqual(syncBroadcast?.type, 'TRACK_SYNC');
+    assert.strictEqual(syncBroadcast?.trackIndex, 14);
+
+    // Guest receives TRACK_SYNC
+    const guest = new MultiplayerManager();
+    guest.state = 'GUEST_LOBBY';
+    guest.handleIncomingData({}, {
+      type: 'TRACK_SYNC',
+      trackIndex: 14,
+      laps: 3
+    });
+    assert.strictEqual(guest.trackIndex, 14, 'Guest must synchronize track index from TRACK_SYNC');
+
+    host.leaveRoom();
+    guest.leaveRoom();
+  });
+});
+

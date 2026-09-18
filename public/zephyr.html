@@ -1034,10 +1034,50 @@
             <div id="z-mp-guest-waiting" class="hidden" style="background: rgba(8, 26, 36, 0.8); border: 1px solid #76fff0; border-radius: 12px; padding: 14px; margin-top: 10px; text-align: left;">
               <div style="font-size: 14px; font-weight: 800; color: #34d399; margin-bottom: 4px;">✓ Connesso alla Stanza!</div>
               <div id="z-mp-guest-info" style="font-size: 12px; color: #94a3b8; margin-bottom: 10px;">In attesa che l'Host avvii la gara...</div>
+
+              <!-- In-Room Character Selector for Guests -->
+              <div style="margin-bottom: 10px; background: rgba(0,0,0,0.3); padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(118,255,240,0.25);">
+                <label style="font-size: 11px; color: #76fff0; font-weight: 700; display: block; margin-bottom: 4px;">CAMBIA PERSONAGGIO / KART:</label>
+                <select id="z-mp-guest-lobby-kart" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.95); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 8px 10px; border-radius: 8px; font-weight: 700;">
+                  <option value="nix">🦦 Nix (Wave-Runner)</option>
+                  <option value="bruno">🪨 Bruno (Landslide)</option>
+                  <option value="sable">🦋 Sable (Nightflyer)</option>
+                  <option value="zuzu">⚡ Zuzu (Drifter)</option>
+                  <option value="rustam">⚙️ Rustam (Tinkerer)</option>
+                  <option value="marlow">🐸 Marlow (Corsair)</option>
+                </select>
+              </div>
+
+              <!-- Ready Check Button for Guest -->
+              <button id="z-mp-guest-ready-btn" class="z-mini" style="width: 100%; padding: 12px; font-size: 15px; font-weight: 900; background: linear-gradient(135deg, #f59e0b, #d97706); border: 2px solid #fbbf24; color: #ffffff; border-radius: 12px; cursor: pointer; margin-bottom: 12px; box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); transition: all 0.2s ease;">
+                ✋ CONFERMA: SONO PRONTO!
+              </button>
+
               <div style="font-size: 11px; color: #94a3b8; font-weight: 700; margin-bottom: 6px;">AMICI IN STANZA:</div>
               <div id="z-mp-guest-players" style="display: flex; flex-direction: column; gap: 6px; max-height: 140px; overflow-y: auto; background: rgba(6, 20, 28, 0.6); padding: 8px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);"></div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- 5-Second Synchronized Pre-Race Countdown / Loading Overlay -->
+      <div id="z-mp-countdown-overlay" class="hidden" style="position: fixed; inset: 0; background: radial-gradient(circle at center, rgba(8, 26, 36, 0.97) 0%, rgba(2, 8, 14, 0.99) 100%); z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); text-align: center; padding: 20px;">
+        <div style="font-size: 13px; font-weight: 900; letter-spacing: 0.2em; color: #76fff0; text-transform: uppercase; margin-bottom: 6px;">
+          TUTTI I PILOTI CONFERMATI!
+        </div>
+        <div id="z-mp-countdown-track" style="font-size: 24px; font-weight: 900; color: #ffc857; margin-bottom: 20px; text-shadow: 0 0 20px rgba(255,200,87,0.6);">
+          🪸 Coral Sanctuary (3 Giri)
+        </div>
+        
+        <div id="z-mp-countdown-num" style="font-size: 120px; font-weight: 950; font-family: monospace, sans-serif; color: #ffffff; text-shadow: 0 0 35px #76fff0, 0 0 70px #38bdf8; line-height: 1; transform: scale(1); transition: transform 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+          5
+        </div>
+        
+        <div id="z-mp-countdown-status" style="margin-top: 24px; font-size: 14px; font-weight: 700; color: #cbd5e1; letter-spacing: 0.05em;">
+          Sincronizzazione piloti e griglia di partenza...
+        </div>
+        <div style="width: 280px; height: 6px; background: rgba(255,255,255,0.12); border-radius: 3px; overflow: hidden; margin-top: 14px;">
+          <div id="z-mp-countdown-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #38bdf8, #76fff0); transition: width 1s linear;"></div>
         </div>
       </div>
 
@@ -1644,6 +1684,12 @@
         const guestWaitingBox = document.getElementById('z-mp-guest-waiting');
         const guestInfoEl = document.getElementById('z-mp-guest-info');
         const guestPlayersEl = document.getElementById('z-mp-guest-players');
+        const guestReadyBtn = document.getElementById('z-mp-guest-ready-btn');
+        const guestLobbyKartSelect = document.getElementById('z-mp-guest-lobby-kart');
+        const mpCountdownOverlay = document.getElementById('z-mp-countdown-overlay');
+        const mpCountdownNum = document.getElementById('z-mp-countdown-num');
+        const mpCountdownTrack = document.getElementById('z-mp-countdown-track');
+        const mpCountdownBar = document.getElementById('z-mp-countdown-bar');
         const emoteBar = document.getElementById('z-emote-bar');
 
         let mp = null;
@@ -1675,6 +1721,10 @@
                 const isMe = idx === lobby.mySlot;
                 const pingColor = (p.ping || 0) < 60 ? '#10b981' : (p.ping || 0) < 120 ? '#f59e0b' : '#ef4444';
                 const kInfo = KART_INFO[p.kartId] || { icon: '🏎️', label: p.kartId || 'Kart' };
+                const isReady = p.isReady !== false;
+                const readyBadge = isReady
+                  ? `<span style="font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 6px; background: rgba(16, 185, 129, 0.25); color: #34d399; border: 1px solid #10b981;">✅ PRONTO</span>`
+                  : `<span style="font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 6px; background: rgba(245, 158, 11, 0.25); color: #fbbf24; border: 1px solid #f59e0b;">⏳ IN ATTESA</span>`;
                 return `
                   <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${isMe ? 'rgba(118, 255, 240, 0.12)' : 'rgba(255,255,255,0.03)'}; border-radius: 8px; border: 1px solid ${isMe ? '#76fff0' : 'rgba(255,255,255,0.06)'};">
                     <div style="display: flex; align-items: center; gap: 8px;">
@@ -1682,9 +1732,12 @@
                       <span style="font-size: 13px; font-weight: 800; color: ${isMe ? '#ffc857' : '#ffffff'};">${p.name} ${isMe ? '(Tu)' : ''}</span>
                       <span style="font-size: 11px; padding: 2px 6px; border-radius: 6px; background: rgba(255,255,255,0.08); color: #76fff0;">${kInfo.icon} ${kInfo.label}</span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                      <span style="display:inline-block; width: 6px; height: 6px; border-radius: 50%; background: ${pingColor};"></span>
-                      <span style="font-size: 11px; font-family: monospace; color: #94a3b8;">${p.ping || 30}ms</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      ${readyBadge}
+                      <div style="display: flex; align-items: center; gap: 4px;">
+                        <span style="display:inline-block; width: 6px; height: 6px; border-radius: 50%; background: ${pingColor};"></span>
+                        <span style="font-size: 11px; font-family: monospace; color: #94a3b8;">${p.ping || 30}ms</span>
+                      </div>
                     </div>
                   </div>
                 `;
@@ -1696,9 +1749,93 @@
               if (guestInfoEl) {
                 guestInfoEl.innerHTML = `Connesso all'Host! Circuito: <b>${(window.__ZEPHYR_TRACKS && window.__ZEPHYR_TRACKS[lobby.trackIndex]?.name) || 'Circuito'}</b> (${lobby.laps} giri)<br>In attesa della partenza...`;
               }
+
+              // Update guest ready button and lobby kart selector
+              const myPlayer = lobby.players.find(p => p.slot === lobby.mySlot);
+              if (guestReadyBtn) {
+                if (myPlayer && myPlayer.isReady) {
+                  guestReadyBtn.style.background = 'linear-gradient(135deg, #059669, #10b981)';
+                  guestReadyBtn.style.borderColor = '#34d399';
+                  guestReadyBtn.style.boxShadow = '0 0 15px rgba(16, 185, 129, 0.4)';
+                  guestReadyBtn.textContent = '✅ SEI PRONTO! (CLICCA PER ANNULLARE)';
+                } else {
+                  guestReadyBtn.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
+                  guestReadyBtn.style.borderColor = '#fbbf24';
+                  guestReadyBtn.style.boxShadow = '0 0 15px rgba(245, 158, 11, 0.4)';
+                  guestReadyBtn.textContent = '✋ CONFERMA: SONO PRONTO!';
+                }
+              }
+              if (guestLobbyKartSelect && myPlayer && myPlayer.kartId) {
+                guestLobbyKartSelect.value = myPlayer.kartId;
+              }
+
+              // Update host start button ready state
+              if (startRaceBtn && mp.isHost) {
+                const humanPlayers = lobby.players.filter(p => !p.isAI);
+                const readyCount = humanPlayers.filter(p => p.isReady !== false).length;
+                const totalCount = humanPlayers.length;
+                const allReady = readyCount === totalCount && totalCount > 0;
+
+                if (allReady) {
+                  startRaceBtn.disabled = false;
+                  startRaceBtn.style.opacity = '1';
+                  startRaceBtn.style.cursor = 'pointer';
+                  startRaceBtn.style.background = 'linear-gradient(135deg, #059669, #10b981)';
+                  startRaceBtn.style.borderColor = '#34d399';
+                  startRaceBtn.style.boxShadow = '0 0 25px rgba(16, 185, 129, 0.5)';
+                  startRaceBtn.textContent = '🚀 AVVIA GARA (TUTTI PRONTI!)';
+                } else {
+                  startRaceBtn.disabled = true;
+                  startRaceBtn.style.opacity = '0.55';
+                  startRaceBtn.style.cursor = 'not-allowed';
+                  startRaceBtn.style.background = '#334155';
+                  startRaceBtn.style.borderColor = '#64748b';
+                  startRaceBtn.style.boxShadow = 'none';
+                  startRaceBtn.textContent = `⏳ IN ATTESA DEI GIOCATORI (${readyCount}/${totalCount} PRONTI)`;
+                }
+              }
+            };
+
+            mp.onCountdownTick = (remaining, data) => {
+              if (mpCountdownOverlay) {
+                mpCountdownOverlay.style.display = 'flex';
+                mpCountdownOverlay.classList.remove('hidden');
+              }
+              mpModal?.classList.add('hidden');
+              if (mpCountdownNum) {
+                mpCountdownNum.textContent = remaining > 0 ? String(remaining) : 'VIA!';
+                mpCountdownNum.style.transform = 'scale(1.35)';
+                setTimeout(() => { if (mpCountdownNum) mpCountdownNum.style.transform = 'scale(1)'; }, 150);
+              }
+              if (mpCountdownTrack) {
+                const tName = (window.__ZEPHYR_TRACKS && window.__ZEPHYR_TRACKS[data.trackIndex]?.name) || 'Circuito';
+                mpCountdownTrack.textContent = `${tName} (${data.laps} Giri)`;
+              }
+              if (mpCountdownBar) {
+                const pct = Math.round(((5 - Math.max(0, remaining)) / 5) * 100);
+                mpCountdownBar.style.width = `${pct}%`;
+              }
+            };
+
+            mp.onCountdownCancel = (reason) => {
+              if (mpCountdownOverlay) {
+                mpCountdownOverlay.style.display = 'none';
+                mpCountdownOverlay.classList.add('hidden');
+              }
+              mpModal?.classList.remove('hidden');
+              if (startRaceBtn) {
+                startRaceBtn.disabled = true;
+              }
+              if (window.__zephyr?.ui?.toast) {
+                window.__zephyr.ui.toast(reason || 'Partenza annullata', 3.0);
+              }
             };
 
             mp.onRaceStart = (data) => {
+              if (mpCountdownOverlay) {
+                mpCountdownOverlay.style.display = 'none';
+                mpCountdownOverlay.classList.add('hidden');
+              }
               const curTrack = parseInt(localStorage.getItem('zephyr_track') || '0', 10);
               if (curTrack !== data.trackIndex) {
                 // Must reload with correct track spline & theme
@@ -1913,12 +2050,27 @@
           if (hostKartSelect) mp.setSelectedKart(hostKartSelect.value);
           haptic(35);
           startRaceBtn.disabled = true;
-          startRaceBtn.textContent = '⏳ AVVIO IN CORSO...';
-          mp.startRace();
-          setTimeout(() => {
-            startRaceBtn.disabled = false;
-            startRaceBtn.textContent = '🚀 AVVIA GARA MULTIPLAYER';
-          }, 4000);
+          startRaceBtn.textContent = '⏳ AVVIO CONTO ALLA ROVESCIA...';
+          const started = mp.startCountdown(5);
+          if (!started) {
+            setTimeout(() => {
+              if (mp) mp.notifyLobbyUpdate();
+            }, 600);
+          }
+        });
+
+        // Guest Ready Button & In-Room Kart Change
+        guestReadyBtn?.addEventListener('click', () => {
+          if (!mp) return;
+          haptic(25);
+          mp.toggleReady();
+        });
+
+        guestLobbyKartSelect?.addEventListener('change', (e) => {
+          if (!mp) return;
+          mp.setSelectedKart(e.target.value);
+          if (guestKartSelect) guestKartSelect.value = e.target.value;
+          if (window.__zephyr?.selectKart) window.__zephyr.selectKart(e.target.value);
         });
 
         // Join Room (Guest)

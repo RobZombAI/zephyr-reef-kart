@@ -25,6 +25,10 @@ export class MultiplayerManager {
     this.laps = 3;
     this.fillAI = true;
     
+    // Countdown state (5-second synchronized pre-race transition)
+    this.countdownSec = 5;
+    this.countdownTimer = null;
+
     // High-frequency sync buffer
     this.remoteStates = new Map(); // slot -> { x, y, z, yaw, pitch, roll, speed, steer, driftTier, isDrifting, boost, lap, dist, lastUpdate }
     this.lastBroadcastTime = 0;
@@ -38,6 +42,8 @@ export class MultiplayerManager {
     // Callbacks for UI & Game Engine
     this.onLobbyUpdate = null;
     this.onRaceStart = null;
+    this.onCountdownTick = null;
+    this.onCountdownCancel = null;
     this.onItemUse = null;
     this.onRacerHit = null;
     this.onEmote = null;
@@ -82,6 +88,34 @@ export class MultiplayerManager {
     return `${base}#room=${encodeURIComponent(this.roomCode)}`;
   }
 
+  allPlayersReady() {
+    const humanPlayers = this.players.filter(p => !p.isAI);
+    if (humanPlayers.length === 0) return false;
+    return humanPlayers.every(p => p.isReady !== false);
+  }
+
+  setReady(isReady = true) {
+    const me = this.players.find(p => p.slot === this.mySlot);
+    if (me) me.isReady = !!isReady;
+    if (this.isHost) {
+      this.broadcastLobbyUpdate();
+    } else {
+      this.broadcastToAll({
+        type: 'PLAYER_READY',
+        slot: this.mySlot,
+        isReady: !!isReady
+      });
+      this.notifyLobbyUpdate();
+    }
+  }
+
+  toggleReady() {
+    const me = this.players.find(p => p.slot === this.mySlot);
+    const nextState = me ? !me.isReady : true;
+    this.setReady(nextState);
+    return nextState;
+  }
+
   setPlayerName(name) {
     if (!name || !name.trim()) return;
     this.playerName = name.trim().slice(0, 16);
@@ -96,7 +130,8 @@ export class MultiplayerManager {
           type: 'PLAYER_UPDATE',
           slot: this.mySlot,
           name: this.playerName,
-          kartId: this.selectedKart
+          kartId: this.selectedKart,
+          isReady: me ? me.isReady : false
         });
         this.notifyLobbyUpdate();
       }
@@ -108,7 +143,13 @@ export class MultiplayerManager {
     localStorage.setItem('zephyr_kart', kartId);
     if (this.state === 'HOST_LOBBY' || this.state === 'GUEST_LOBBY') {
       const me = this.players.find(p => p.slot === this.mySlot);
-      if (me) me.kartId = kartId;
+      if (me) {
+        me.kartId = kartId;
+        // If guest changes kart, reset ready status so they confirm choice
+        if (!this.isHost) {
+          me.isReady = false;
+        }
+      }
       if (this.isHost) {
         this.broadcastLobbyUpdate();
       } else {
@@ -116,7 +157,8 @@ export class MultiplayerManager {
           type: 'PLAYER_UPDATE',
           slot: this.mySlot,
           name: this.playerName,
-          kartId: this.selectedKart
+          kartId: this.selectedKart,
+          isReady: me ? me.isReady : false
         });
         this.notifyLobbyUpdate();
       }
@@ -163,7 +205,8 @@ export class MultiplayerManager {
       kartId: this.selectedKart,
       isHost: true,
       ping: 0,
-      isAI: false
+      isAI: false,
+      isReady: true
     }];
 
     this.notifyLobbyUpdate();
@@ -278,7 +321,10 @@ export class MultiplayerManager {
     const idx = this.players.findIndex(p => p.peerId === peerId);
     if (idx !== -1) {
       const leaving = this.players[idx];
-      if (this.state === 'RACING') {
+      if (this.state === 'COUNTDOWN') {
+        this.players.splice(idx, 1);
+        this.cancelCountdown(`${leaving.name} si è disconnesso durante il conto alla rovescia.`);
+      } else if (this.state === 'RACING') {
         // Prevent array shifting during race: mark as AI and inform everyone
         leaving.isAI = true;
         this.toast(`${leaving.name} si è disconnesso (subentra l'IA).`);
@@ -335,7 +381,8 @@ export class MultiplayerManager {
           kartId: data.kartId || 'bruno',
           isHost: false,
           ping: 30,
-          isAI: false
+          isAI: false,
+          isReady: false
         };
 
         this.connections.set(conn.peer, conn);
@@ -355,12 +402,26 @@ export class MultiplayerManager {
         break;
       }
 
+      case 'PLAYER_READY': {
+        const p = this.players.find(pl => pl.slot === data.slot);
+        if (p) {
+          p.isReady = !!data.isReady;
+        }
+        if (this.isHost) {
+          this.broadcastLobbyUpdate();
+        } else {
+          this.notifyLobbyUpdate();
+        }
+        break;
+      }
+
       case 'PLAYER_UPDATE': {
         if (!this.isHost) return;
         const p = this.players.find(pl => pl.slot === data.slot);
         if (p) {
           if (data.name) p.name = data.name;
           if (data.kartId) p.kartId = data.kartId;
+          if (typeof data.isReady === 'boolean') p.isReady = data.isReady;
           this.broadcastLobbyUpdate();
         }
         break;
@@ -414,7 +475,31 @@ export class MultiplayerManager {
         break;
       }
 
+      case 'START_COUNTDOWN': {
+        this.handleCountdownStart(data);
+        break;
+      }
+
+      case 'COUNTDOWN_CANCEL': {
+        if (this.countdownTimer) {
+          clearInterval(this.countdownTimer);
+          this.countdownTimer = null;
+        }
+        this.state = 'GUEST_LOBBY';
+        this.players = data.players || this.players;
+        this.toast(data.reason || 'Partenza annullata');
+        if (this.onCountdownCancel) {
+          this.onCountdownCancel(data.reason);
+        }
+        this.notifyLobbyUpdate();
+        break;
+      }
+
       case 'RACE_START_SYNC': {
+        if (this.countdownTimer) {
+          clearInterval(this.countdownTimer);
+          this.countdownTimer = null;
+        }
         this.state = 'RACING';
         this.trackIndex = data.trackIndex;
         this.laps = data.laps;
@@ -575,15 +660,26 @@ export class MultiplayerManager {
         trackIndex: this.trackIndex,
         laps: this.laps,
         players: this.players,
+        allReady: this.allPlayersReady(),
         inviteLink: this.getInviteLink()
       });
     }
   }
 
-  // --- START RACE (HOST TRIGGER) ---
-  startRace() {
-    if (!this.isHost) return;
-    this.state = 'RACING';
+  startCountdown(countdownSec = 5) {
+    return this.startRace(countdownSec);
+  }
+
+  // --- START RACE (HOST TRIGGER WITH OPTIONAL COUNTDOWN & READY CHECK) ---
+  startRace(countdownSec = 0) {
+    if (!this.isHost) return false;
+
+    if (!this.allPlayersReady()) {
+      this.toast('Tutti i giocatori della stanza devono confermare prima di avviare la gara!');
+      return false;
+    }
+
+    if (this.state === 'COUNTDOWN' || this.state === 'RACING') return false;
 
     const availableAIs = ['nix', 'bruno', 'sable', 'zuzu', 'rustam', 'marlow'];
     const usedKarts = new Set(this.players.map(p => p.kartId));
@@ -600,7 +696,8 @@ export class MultiplayerManager {
           kartId: unusedKart,
           isHost: false,
           ping: 0,
-          isAI: true
+          isAI: true,
+          isReady: true
         });
       }
     }
@@ -608,6 +705,23 @@ export class MultiplayerManager {
     fullGrid.sort((a, b) => a.slot - b.slot);
     this.players = fullGrid;
 
+    if (countdownSec > 0) {
+      this.state = 'COUNTDOWN';
+      const payload = {
+        type: 'START_COUNTDOWN',
+        countdownSec: countdownSec,
+        trackIndex: this.trackIndex,
+        laps: this.laps,
+        players: this.players,
+        startTime: Date.now() + (countdownSec * 1000)
+      };
+
+      this.broadcastToAll(payload);
+      this.handleCountdownStart(payload);
+      return true;
+    }
+
+    this.state = 'RACING';
     const payload = {
       type: 'RACE_START_SYNC',
       trackIndex: this.trackIndex,
@@ -618,6 +732,70 @@ export class MultiplayerManager {
 
     this.broadcastToAll(payload);
     if (this.onRaceStart) this.onRaceStart(payload);
+    return true;
+  }
+
+  handleCountdownStart(data) {
+    this.state = 'COUNTDOWN';
+    this.trackIndex = data.trackIndex;
+    this.laps = data.laps;
+    this.players = data.players;
+    try { localStorage.setItem('zephyr_track', String(data.trackIndex)); } catch {}
+
+    if (this.countdownTimer) clearInterval(this.countdownTimer);
+    let remaining = data.countdownSec || 5;
+
+    if (this.onCountdownTick) {
+      this.onCountdownTick(remaining, data);
+    }
+
+    this.countdownTimer = setInterval(() => {
+      remaining--;
+      if (this.onCountdownTick) {
+        this.onCountdownTick(remaining, data);
+      }
+
+      if (remaining <= 0) {
+        clearInterval(this.countdownTimer);
+        this.countdownTimer = null;
+
+        if (this.isHost) {
+          this.state = 'RACING';
+          const raceStartPayload = {
+            type: 'RACE_START_SYNC',
+            trackIndex: this.trackIndex,
+            laps: this.laps,
+            players: this.players,
+            startTime: Date.now()
+          };
+          this.broadcastToAll(raceStartPayload);
+          if (this.onRaceStart) this.onRaceStart(raceStartPayload);
+        }
+      }
+    }, 1000);
+  }
+
+  cancelCountdown(reason = 'Conto alla rovescia annullato') {
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer);
+      this.countdownTimer = null;
+    }
+    this.state = this.isHost ? 'HOST_LOBBY' : 'GUEST_LOBBY';
+    for (const p of this.players) {
+      if (!p.isHost && !p.isAI) p.isReady = false;
+    }
+    this.toast(reason);
+    if (this.isHost) {
+      this.broadcastToAll({
+        type: 'COUNTDOWN_CANCEL',
+        reason: reason,
+        players: this.players
+      });
+      this.broadcastLobbyUpdate();
+    }
+    if (this.onCountdownCancel) {
+      this.onCountdownCancel(reason);
+    }
   }
 
   // --- REAL-TIME TRANSMISSION (30 Hz) ---
@@ -942,6 +1120,10 @@ export class MultiplayerManager {
   }
 
   leaveRoom() {
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer);
+      this.countdownTimer = null;
+    }
     if (this.pingInterval) clearInterval(this.pingInterval);
     this.pingInterval = null;
 
