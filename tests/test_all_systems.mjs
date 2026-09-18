@@ -2156,10 +2156,11 @@ describe('=== UNIT & PROCESS TESTS: MINE IMPACT & COLLISION MECHANICS ===', () =
     assert.ok(bundle.includes('this.spline=e,this.vfx=n'), 'mv stores track spline reference');
     assert.ok(bundle.includes('e.baseY=py'), 'mine remembers surface baseY');
     assert.ok(bundle.includes('n.armTimer>0&&(n.armTimer-=t);'), 'armTimer decrements without continue blocking rivals');
+    assert.ok(bundle.includes('i===n.owner&&n.armTimer>0'), 'owner immunity is restricted strictly to armTimer window');
     assert.ok(bundle.includes('r*r+o*o<8.2&&Math.abs(a)<3.4'), 'expanded mine collision radius (2.86m)');
     assert.ok(bundle.includes('i.kart.physics.knockback(kx*7,kz*7,11,7.5)'), 'knockback pop applied to kart on mine hit');
     assert.ok(bundle.includes('this.onHit?.(i,"mine")'), 'explosion event triggered unconditionally');
-    assert.ok(bundle.includes('for(const m of this.mines)if(m.active)'), 'bolts collide with and detonate mines');
+    assert.ok(bundle.includes('break}}}}killBolt(t)'), 'closing braces balanced in updateBolts and class mv');
   });
 
   it('2. Mine deployment geometry & surface height clamping', () => {
@@ -2182,7 +2183,7 @@ describe('=== UNIT & PROCESS TESTS: MINE IMPACT & COLLISION MECHANICS ===', () =
       const px = n.pos.x - i * 3.2, pz = n.pos.z - r * 3.2;
       const roadY = spline ? spline.surfaceHeight(px, pz, n.trackIndex || 0) : n.pos.y;
       const py = Math.max(n.pos.y - 0.8, Math.min(n.pos.y + 1.5, roadY + 0.55));
-      return { active: true, life: 26, armTimer: 0.75, owner: t, spin: 0, baseY: py, pos: { x: px, y: py, z: pz } };
+      return { active: true, life: 26, armTimer: 0.55, owner: t, spin: 0, baseY: py, pos: { x: px, y: py, z: pz } };
     };
 
     const mine = dropMineSim(mockKart, mockSpline);
@@ -2190,15 +2191,15 @@ describe('=== UNIT & PROCESS TESTS: MINE IMPACT & COLLISION MECHANICS ===', () =
     assert.strictEqual(mine.pos.x, 10);
     assert.strictEqual(mine.pos.z, 23.2, 'mine is deployed 3.2m behind kart');
     assert.strictEqual(mine.pos.y, 4.5 + 0.55, 'mine is clamped to track surface height + 0.55m');
-    assert.strictEqual(mine.armTimer, 0.75);
+    assert.strictEqual(mine.armTimer, 0.55);
   });
 
-  it('3. Rival instant detonation vs owner immunity during armTimer', () => {
+  it('3. Rival instant detonation vs owner immunity during armTimer, and owner detonation after armTimer', () => {
     const ownerKart = { id: 0, pos: { x: 10, y: 5.05, z: 23.2 }, progress: { finished: false } };
     const rivalKart = { id: 1, pos: { x: 10, y: 5.05, z: 23.2 }, progress: { finished: false } };
 
     const checkCollision = (mine, racer) => {
-      if (racer.progress.finished || (racer === mine.owner && (mine.armTimer > 0 || mine.life > 26 - 1))) {
+      if (racer.progress.finished || (racer === mine.owner && mine.armTimer > 0)) {
         return false;
       }
       const r = racer.pos.x - mine.pos.x;
@@ -2207,13 +2208,17 @@ describe('=== UNIT & PROCESS TESTS: MINE IMPACT & COLLISION MECHANICS ===', () =
       return (r * r + o * o < 8.2 && Math.abs(a) < 3.4);
     };
 
-    const mine = { pos: { x: 10, y: 5.05, z: 23.2 }, armTimer: 0.75, life: 26, owner: ownerKart };
+    const mine = { pos: { x: 10, y: 5.05, z: 23.2 }, armTimer: 0.55, life: 26, owner: ownerKart };
 
     // Owner should NOT detonate mine during armTimer
     assert.strictEqual(checkCollision(mine, ownerKart), false, 'owner is immune during armTimer');
 
     // Rival SHOULD detonate mine immediately even when armTimer > 0
     assert.strictEqual(checkCollision(mine, rivalKart), true, 'rival detonates mine immediately upon impact');
+
+    // Owner impacts mine AFTER armTimer expires -> OWNER DETONATES TOO!
+    mine.armTimer = 0;
+    assert.strictEqual(checkCollision(mine, ownerKart), true, 'owner detonates mine when impacting it after armTimer expires');
   });
 
   it('4. Expanded contact radius detects kart front bumper & side grazing', () => {
