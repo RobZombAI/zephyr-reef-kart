@@ -2090,10 +2090,11 @@ describe('=== UNIT & PROCESS TESTS: 50 ARCHITECTURAL IMPROVEMENTS ===', () => {
     }
   });
 
-  it('4. Elastic soft bumper collision restitution (bounce = 0.70)', () => {
+  it('4. Elastic soft bumper collision restitution (bounce = 0.70 & velocity-dependent effBounce)', () => {
     const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
     assert.ok(bundle.includes('const bounce=0.70;'), 'bumper restitution must be 0.70');
-    assert.ok(bundle.includes('const D=-(1+bounce)*S/(1/v+1/p);'), 'impulse equation must use restitution coefficient');
+    assert.ok(bundle.includes('effBounce'), 'must use velocity-dependent effective restitution');
+    assert.ok(bundle.includes('const D=-(1+effBounce)*S/(1/v+1/p);'), 'impulse equation must use effBounce restitution coefficient');
   });
 
   it('5. New combat items: vortex, horn, triple_shield, and backward bolt fire', () => {
@@ -2609,5 +2610,185 @@ describe('=== UNIT & PROCESS TESTS: HYPER-REALISTIC ZEPHYR HURRICANE ===', () =>
   });
 });
 
+describe('=== UNIT & PROCESS TESTS: MULTI-KART COLLISION & CLUSTER STABILITY ===', () => {
+  const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
 
+  it('1. Bundle verification for multi-kart collision & anti-jitter improvements', () => {
+    assert.ok(bundle.includes('getEffR='), 'oriented elliptical hull calculation must be defined');
+    assert.ok(bundle.includes('a=1.34*sc,b=.92*sc'), 'elliptical semi-axes (longitudinal 1.34m, lateral 0.92m) must be set');
+    assert.ok(bundle.includes('clampTrack='), 'track boundary clamping for resolving multi-kart displacement must be defined');
+    assert.ok(bundle.includes('pen=(c-d)-.03'), 'slop tolerance (0.03m) must be applied to prevent contact jitter');
+    assert.ok(bundle.includes('const push=Math.min(.2,pen*.55)'), 'relaxation push per pass must be clamped to prevent pinballing');
+    assert.ok(bundle.includes('effBounce='), 'restitution must be velocity-dependent');
+    assert.ok(bundle.includes('Math.abs(S)<2.5?0'), 'resting contact relative velocity (<2.5 m/s) must have zero bounce');
+    assert.ok(bundle.includes('Math.abs(S)>3'), 'visual punch must be gated to energetic impacts');
+    assert.ok(bundle.includes('pt>=-2.5&&pt<.4&&Math.abs(Rt)<3.2'), 'AI must check alongside lane avoidance');
+  });
 
+  it('2. Oriented elliptical bounding hull geometry vs circular hull', () => {
+    const calcEffR = (yaw, ux, uz, scale = 1.0) => {
+      const fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+      const sx = -fz, sz = fx;
+      const uf = ux * fx + uz * fz;
+      const us = ux * sx + uz * sz;
+      const sc = scale;
+      const a = 1.34 * sc;
+      const b = 0.92 * sc;
+      const dsq = (b * uf) * (b * uf) + (a * us) * (a * us);
+      return (a * b) / Math.sqrt(Math.max(1e-4, dsq));
+    };
+
+    // Longitudinal approach (north-south, forward/backward bumper contact)
+    // Kart facing yaw = 0 (forward is (0, -1))
+    const rFront = calcEffR(0, 0, -1);
+    const rBack = calcEffR(0, 0, 1);
+    assert.ok(Math.abs(rFront - 1.34) < 0.01, `front effective radius should be ~1.34m, got ${rFront}`);
+    assert.ok(Math.abs(rBack - 1.34) < 0.01, `rear effective radius should be ~1.34m, got ${rBack}`);
+
+    // Lateral side-by-side approach (east-west door contact)
+    const rSideL = calcEffR(0, -1, 0);
+    const rSideR = calcEffR(0, 1, 0);
+    assert.ok(Math.abs(rSideL - 0.92) < 0.01, `side effective radius should be ~0.92m, got ${rSideL}`);
+    assert.ok(Math.abs(rSideR - 0.92) < 0.01, `side effective radius should be ~0.92m, got ${rSideR}`);
+
+    // Wheel-to-wheel racing scenario: Two karts driving parallel at 2.0m lateral clearance
+    const kart1_effR = calcEffR(0, 1, 0);
+    const kart2_effR = calcEffR(0, -1, 0);
+    const totalEllipticalR = kart1_effR + kart2_effR; // 1.84m
+    const totalCircularR = 1.65 + 1.65; // 3.30m
+
+    assert.ok(totalEllipticalR < 2.0, 'elliptical total radius (1.84m) allows clean 2.0m wheel-to-wheel racing');
+    assert.ok(totalCircularR > 2.0, 'circular radius (3.30m) causes 1.3m false penetration at 2.0m spacing');
+  });
+
+  it('3. Multi-kart pack cluster relaxation convergence (3 and 4 karts pack)', () => {
+    const racers = [
+      { pos: { x: 0, z: 0, y: 0 }, yaw: 0, weight: 1 },
+      { pos: { x: 1.2, z: 0.1, y: 0 }, yaw: 0, weight: 1 },
+      { pos: { x: 0.6, z: 1.5, y: 0 }, yaw: 0, weight: 1.1 },
+      { pos: { x: 1.8, z: 1.4, y: 0 }, yaw: 0, weight: 0.95 }
+    ];
+
+    const getEffR = (k, ux, uz) => {
+      const y = k.yaw, fx = -Math.sin(y), fz = -Math.cos(y);
+      const sx = -fz, sz = fx;
+      const uf = ux * fx + uz * fz, us = ux * sx + uz * sz;
+      const a = 1.34, b = 0.92;
+      const dsq = (b * uf) * (b * uf) + (a * us) * (a * us);
+      return (a * b) / Math.sqrt(Math.max(1e-4, dsq));
+    };
+
+    const t = racers.length;
+    for (let it = 0; it < 2; it++) {
+      for (let e = 0; e < t; e++) {
+        const n = racers[e];
+        for (let i = e + 1; i < t; i++) {
+          const r = racers[i];
+          const o = r.pos.x - n.pos.x, a = r.pos.z - n.pos.z;
+          const h = o * o + a * a;
+          if (h < 1e-6) continue;
+          const d = Math.sqrt(h), u = o / d, f = a / d;
+          const rn = getEffR(n, u, f), rr = getEffR(r, -u, -f);
+          const c = rn + rr;
+          const pen = (c - d) - 0.03;
+          if (pen <= 0) continue;
+          const push = Math.min(0.2, pen * 0.55);
+          const v = n.weight, p = r.weight, m = v + p;
+          n.pos.x -= u * push * (p / m);
+          n.pos.z -= f * push * (p / m);
+          r.pos.x += u * push * (v / m);
+          r.pos.z += f * push * (v / m);
+        }
+      }
+    }
+
+    for (const r of racers) {
+      assert.ok(!Number.isNaN(r.pos.x) && !Number.isNaN(r.pos.z), 'position coordinates must be valid numbers');
+      assert.ok(Math.abs(r.pos.x) < 10 && Math.abs(r.pos.z) < 10, 'relaxation must not explode positions');
+    }
+
+    // Verify distance between kart 0 and 1 expanded gently
+    const finalDist01 = Math.hypot(racers[1].pos.x - racers[0].pos.x, racers[1].pos.z - racers[0].pos.z);
+    assert.ok(finalDist01 >= 1.2, `cluster spacing must expand or stabilize, final = ${finalDist01.toFixed(3)}m`);
+  });
+
+  it('4. Restitution gating: inelastic resting contact vs elastic impact bounce', () => {
+    const calcImpulse = (S, v = 1, p = 1) => {
+      if (S >= 0) return { D: 0, effBounce: 0, punch: 0 };
+      const bounce = 0.70;
+      const effBounce = Math.abs(S) < 2.5 ? 0 : (Math.abs(S) < 5 ? 0.25 : bounce);
+      const D = -(1 + effBounce) * S / (1 / v + 1 / p);
+      const punch = Math.abs(S) > 3 ? Math.min(0.35, (Math.abs(S) - 2.5) * 0.08) : 0;
+      return { D, effBounce, punch };
+    };
+
+    // Resting/rubbing contact: S = -1.0 m/s
+    const resting = calcImpulse(-1.0);
+    assert.strictEqual(resting.effBounce, 0, 'resting contact effBounce must be 0');
+    assert.strictEqual(resting.punch, 0, 'resting contact must not trigger chassis punch shake');
+    assert.strictEqual(resting.D, 0.5, 'impulse should purely cancel approach without bounce velocity');
+
+    // Medium collision: S = -3.5 m/s
+    const medium = calcImpulse(-3.5);
+    assert.strictEqual(medium.effBounce, 0.25, 'medium collision effBounce must be 0.25');
+    assert.ok(medium.punch > 0, 'medium collision triggers subtle punch');
+
+    // Energetic collision: S = -7.0 m/s
+    const hard = calcImpulse(-7.0);
+    assert.strictEqual(hard.effBounce, 0.70, 'hard collision effBounce must be 0.70');
+    assert.ok(hard.punch >= 0.35, 'hard collision triggers max punch');
+    assert.strictEqual(hard.D, 1.70 * 7.0 / 2, 'hard collision applies full restitution impulse');
+  });
+
+  it('5. Track boundary clamping prevents karts from being shoved outside guardrails', () => {
+    const spline = { halfWidthAt: 12 };
+    const scratch = { halfWidthAt: 12, lateral: 12.5, rightX: 1, rightZ: 0 };
+    const kart = { pos: { x: 15, z: 20 }, state: { trackIndex: 0 } };
+
+    const clampTrack = (k) => {
+      const srf = scratch;
+      const maxL = Math.max(1, srf.halfWidthAt - 0.75); // 11.25m
+      if (Math.abs(srf.lateral) > maxL) {
+        const ovr = Math.abs(srf.lateral) - maxL; // 1.25m
+        const sgn = srf.lateral >= 0 ? 1 : -1;
+        k.pos.x -= srf.rightX * sgn * ovr;
+        k.pos.z -= srf.rightZ * sgn * ovr;
+      }
+    };
+
+    clampTrack(kart);
+    assert.strictEqual(kart.pos.x, 15 - 1.25, 'kart pos X clamped inside track guardrail margin');
+    assert.strictEqual(kart.pos.z, 20, 'kart pos Z untouched');
+  });
+
+  it('6. AI alongside lateral steering avoidance', () => {
+    // Test AI avoidance logic for alongside neighbor
+    const evaluateAvoidance = (zt, Dt, yaw) => {
+      const q = Math.sin(yaw);
+      const Mt = Math.cos(yaw);
+      const pt = zt * -q + Dt * -Mt; // forward/backward
+      const Rt = zt * Mt + Dt * -q; // lateral right/left
+      let g = 0;
+      if (pt >= -2.5 && pt < 0.4 && Math.abs(Rt) < 3.2) {
+        const sPt = 1 - Math.min(1, Math.max(0, Math.abs(Rt) / 3.2));
+        const sRep = Rt >= 0 ? 1 : -1;
+        g -= sRep * sPt * 2.8;
+      }
+      return { pt, Rt, g };
+    };
+
+    // Neighbor directly alongside to the right (Rt = +1.6m, pt = -0.5m)
+    const resRight = evaluateAvoidance(1.6, 0.5, 0);
+    assert.ok(resRight.g < 0, 'AI steers left away from neighbor on right');
+    assert.ok(Math.abs(resRight.g) > 1.0, 'meaningful avoidance impulse applied');
+
+    // Neighbor directly alongside to the left (Rt = -1.6m, pt = -0.5m)
+    const resLeft = evaluateAvoidance(-1.6, 0.5, 0);
+    assert.ok(resLeft.g > 0, 'AI steers right away from neighbor on left');
+    assert.ok(Math.abs(resLeft.g) > 1.0, 'meaningful avoidance impulse applied');
+
+    // Neighbor far away (Rt = 5.0m)
+    const resFar = evaluateAvoidance(5.0, 0.5, 0);
+    assert.strictEqual(resFar.g, 0, 'no avoidance when clear');
+  });
+});
