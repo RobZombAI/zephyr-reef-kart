@@ -2416,6 +2416,12 @@ describe('=== UNIT & PROCESS TESTS: HYPER-REALISTIC ZEPHYR HURRICANE ===', () =>
   it('1. Bundle verification for procedural hurricane geometry and assets', () => {
     const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
     assert.ok(bundle.includes('buildHurricane='), 'buildHurricane helper must be present');
+    assert.ok(bundle.includes('makeSpiralRibbons='), 'makeSpiralRibbons procedural helper present');
+    assert.ok(bundle.includes('spiralMesh='), 'outer helical spiral ribbon mesh present');
+    assert.ok(bundle.includes('innerSpiralMesh='), 'inner counter-rotating spiral ribbon mesh present');
+    assert.ok(bundle.includes('wireMesh='), 'spinning wireframe lattice mesh present');
+    assert.ok(bundle.includes('u.spiralMesh&&(u.spiralMesh.rotation.y=v.spin*3.2)'), 'spiral ribbon fast cyclonic spin present');
+    assert.ok(bundle.includes('u.innerSpiralMesh&&(u.innerSpiralMesh.rotation.y=-v.spin*3.8)'), 'inner spiral counter-rotation present');
     assert.ok(bundle.includes('xe(4.2,.45,6.8'), 'outer turbulent funnel cylinder geometry present');
     assert.ok(bundle.includes('xe(2.6,.25,6.2'), 'inner counter-rotating storm wall cylinder geometry present');
     assert.ok(bundle.includes('Xn(1.3,.12,6'), 'lower spiral accretion ring present');
@@ -2434,7 +2440,10 @@ describe('=== UNIT & PROCESS TESTS: HYPER-REALISTIC ZEPHYR HURRICANE ===', () =>
   it('2. Hurricane procedural structure and component rotation simulation', () => {
     const mockHurricane = {
       funnel: { rotation: { y: 0 } },
+      wire: { rotation: { y: 0 } },
       inner: { rotation: { y: 0 } },
+      spiral: { rotation: { y: 0 } },
+      innerSpiral: { rotation: { y: 0 } },
       rings: [
         { rotation: { y: 0, z: 0.28 } },
         { rotation: { y: 0, z: -0.22 } },
@@ -2442,32 +2451,45 @@ describe('=== UNIT & PROCESS TESTS: HYPER-REALISTIC ZEPHYR HURRICANE ===', () =>
       ],
       core: { material: { opacity: 0.75, color: { setHex: () => {} } } },
       clouds: [
-        { mesh: { position: { x: 0, z: 0 } }, r: 2.6, s: 4.8, a: 0 },
-        { mesh: { position: { x: 0, z: 0 } }, r: 3.4, s: -3.6, a: 1 }
+        { mesh: { position: { x: 0, y: 0, z: 0 }, scale: { setScalar: () => {} } }, spd: 1.8, off: 0 },
+        { mesh: { position: { x: 0, y: 0, z: 0 }, scale: { setScalar: () => {} } }, spd: -1.5, off: 1.05 }
       ],
       plume: { rotation: { z: 0 } }
     };
 
+    let spin = 0;
     const dt = 0.016;
-    mockHurricane.funnel.rotation.y += dt * 14;
-    mockHurricane.inner.rotation.y -= dt * 18;
-    mockHurricane.rings[0].rotation.y += dt * 16;
-    mockHurricane.rings[1].rotation.y -= dt * 19;
-    mockHurricane.rings[2].rotation.y += dt * 23;
-    mockHurricane.plume.rotation.z += dt * 9;
+    spin += dt * 16;
+    mockHurricane.funnel.rotation.y = spin * 1.2;
+    mockHurricane.wire.rotation.y = spin * 2.2;
+    mockHurricane.inner.rotation.y = -spin * 1.8;
+    mockHurricane.spiral.rotation.y = spin * 3.2;
+    mockHurricane.innerSpiral.rotation.y = -spin * 3.8;
+    mockHurricane.rings[0].rotation.y = spin * 4.2;
+    mockHurricane.rings[1].rotation.y = -spin * 3.6;
+    mockHurricane.rings[2].rotation.y = spin * 2.8;
+    mockHurricane.plume.rotation.z = -spin * 3.2;
 
     assert.ok(mockHurricane.funnel.rotation.y > 0, 'outer funnel rotates counter-clockwise');
+    assert.ok(mockHurricane.wire.rotation.y > mockHurricane.funnel.rotation.y, 'wireframe cage spins faster');
     assert.ok(mockHurricane.inner.rotation.y < 0, 'inner funnel counter-rotates clockwise');
+    assert.ok(mockHurricane.spiral.rotation.y > 0, 'spiral streamers rotate violently forward');
+    assert.ok(mockHurricane.innerSpiral.rotation.y < 0, 'inner spiral streamers counter-rotate');
     assert.ok(mockHurricane.rings[0].rotation.y > 0, 'ring 0 rotates with outer stream');
     assert.ok(mockHurricane.rings[1].rotation.y < 0, 'ring 1 counter-rotates');
-    assert.ok(mockHurricane.plume.rotation.z > 0, 'ground plume spins');
+    assert.ok(mockHurricane.plume.rotation.z < 0, 'ground plume spins');
 
     for (const c of mockHurricane.clouds) {
-      c.a += dt * c.s;
-      c.mesh.position.x = Math.cos(c.a) * c.r;
-      c.mesh.position.z = Math.sin(c.a) * c.r;
+      const normY = ((spin * 0.28 + c.off / 6.28) % 1 + 1) % 1;
+      const curY = 0.35 + normY * 6;
+      const curRad = 0.55 + normY * 3.8;
+      const pAng = spin * c.spd + c.off;
+      c.mesh.position.x = Math.cos(pAng) * curRad;
+      c.mesh.position.y = curY;
+      c.mesh.position.z = Math.sin(pAng) * curRad;
     }
-    assert.notStrictEqual(mockHurricane.clouds[0].mesh.position.x, 0, 'cloud orbital position updated');
+    assert.notStrictEqual(mockHurricane.clouds[0].mesh.position.x, 0, 'cloud orbital position X updated');
+    assert.ok(mockHurricane.clouds[0].mesh.position.y > 0.35, 'cloud puff climbs upward along Y axis');
   });
 
   it('3. Multi-racer suction, aerial lift and violent ground slam simulation', () => {
