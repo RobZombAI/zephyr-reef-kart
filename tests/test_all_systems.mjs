@@ -3043,3 +3043,48 @@ describe('=== UNIT & PROCESS TESTS: 10 GRAPHICAL ENHANCEMENTS & FIDELITY OVERHAU
     assert.ok(bundleCode.includes('e.arc(ox,oy,14,0,Math.PI*2),e.strokeStyle="rgba(255, 200, 87, 0.3)"'), 'Player minimap blip features glowing outer pulse ring');
   });
 });
+
+describe('=== UNIT & PROCESS TESTS: REAR & CLOSE-KART VISUAL STABILITY ===', () => {
+  const bundleCode = fs.readFileSync('assets/index-C9rd31_W.js', 'utf8');
+
+  it('1. Calibrated Ground Projection Quad Footprint & Anti-Popping', () => {
+    assert.ok(bundleCode.includes('new mi(2.1,3.2)'), 'Ground decal footprint scaled down to 2.1x3.2m to fit cleanly under chassis');
+    assert.ok(bundleCode.includes('_gqd.frustumCulled=!1'), 'Ground quad explicitly sets frustumCulled to false to prevent popping/flicker');
+    assert.ok(bundleCode.includes('side:0'), 'Ground projection material uses FrontSide (0) to eliminate backface bleeding into other chassis');
+    assert.ok(bundleCode.includes('position.set(0,.02,-.15)'), 'Ground decal placed immediately under vehicle belly');
+  });
+
+  it('2. Airborne Ground Decal Opacity Fading', () => {
+    assert.ok(
+      bundleCode.includes('o.gqd&&(o.gqd.material.opacity=t.grounded?Math.max(0,.72-(t.airHeight||0)*2.5):0)'),
+      'Ground decal smoothly fades to 0 when kart is airborne or jumping'
+    );
+  });
+
+  it('3. Proximity Camera Fading & Lens Near-Clip Protection', () => {
+    assert.ok(bundleCode.includes('updateProximityFade('), 'ac class defines updateProximityFade method');
+    assert.ok(bundleCode.includes('resetProximityFade()'), 'ac class defines resetProximityFade method');
+    assert.ok(bundleCode.includes('if(o<.85){this.kart.object.visible=!1'), 'Karts closer than 0.85m to camera lens are culled to prevent interior slicing');
+    assert.ok(bundleCode.includes('if(o<2.4){const a=Math.max(.12,(o-.85)/1.55)'), 'Karts within 2.4m smoothly interpolate alpha opacity to ghost through near camera');
+    assert.ok(bundleCode.includes('this.camera.camera.position;for(const _rk of this.racers){_rk.updateProximityFade?.(_cPos)}'), 'Ev.syncVisual updates proximity fade for all racers every frame');
+  });
+
+  it('4. Opponent Exhaust Smoke Suppression in Proximity Zone', () => {
+    assert.ok(
+      bundleCode.includes('if((!this.isPlayer&&this._proxActive)?!1:Math.random()<exRate)'),
+      'Suppresses dense exhaust puffs when opponent kart is close or faded near camera lens'
+    );
+    assert.ok(
+      bundleCode.includes('if(!n||this._proxHidden){this.hasPrev=!1;return}'),
+      'Suppresses skids and particle sparks when kart is hidden inside near-clip zone'
+    );
+  });
+
+  it('5. Dynamic Chase Camera Height Elevation Buffer', () => {
+    assert.ok(
+      bundleCode.includes('(8.5-extra.trailingCloseDist)*.24'),
+      'Camera dynamically elevates height when pursuers draft closely behind player'
+    );
+  });
+});
+
