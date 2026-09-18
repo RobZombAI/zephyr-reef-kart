@@ -4,6 +4,8 @@
  */
 
 export class MultiplayerManager {
+  static TOURNAMENT_POINTS = [15, 12, 10, 8, 6, 4];
+
   constructor() {
     this.peer = null;
     this.isHost = false;
@@ -20,10 +22,17 @@ export class MultiplayerManager {
     this.hostConnection = null;   // For guests: DataConnection to Host
     this.players = [];            // [{ peerId, slot, name, kartId, isHost, ping, isAI, finishTime, rank }]
     
-    // Room settings
+    // Room settings & Grand Prix Playlist
     this.trackIndex = parseInt(localStorage.getItem('zephyr_track') || '0', 10);
     this.laps = 3;
     this.fillAI = true;
+
+    // Tournament Playlist & Cumulative Standings
+    this.playlistTracks = [this.trackIndex, (this.trackIndex + 1) % 24, (this.trackIndex + 2) % 24];
+    this.playlistIndex = 0;
+    this.tournamentScores = new Map(); // slot -> totalPoints
+    this.lastRaceResults = [];         // [{ slot, name, kartId, rank, finishTime, pointsEarned, totalPoints }]
+    this.isTournamentComplete = false;
     
     // Countdown state (5-second synchronized pre-race transition)
     this.countdownSec = 5;
@@ -49,6 +58,8 @@ export class MultiplayerManager {
     this.onEmote = null;
     this.onPlayerFinish = null;
     this.onRematch = null;
+    this.onTournamentStandings = null;
+    this.onTournamentComplete = null;
     this.onError = null;
     this.onToast = null;
     
@@ -166,24 +177,199 @@ export class MultiplayerManager {
   }
 
   setTrack(index) {
-    this.trackIndex = index;
+    this.trackIndex = parseInt(index, 10);
+    if (!this.playlistTracks || this.playlistTracks.length === 0) {
+      this.playlistTracks = [this.trackIndex];
+    } else {
+      this.playlistTracks[this.playlistIndex || 0] = this.trackIndex;
+    }
+    try { localStorage.setItem('zephyr_track', String(this.trackIndex)); } catch {}
     if (this.isHost) {
       this.broadcastToAll({
         type: 'TRACK_SYNC',
         trackIndex: this.trackIndex,
-        laps: this.laps
+        laps: this.laps,
+        playlistTracks: this.playlistTracks,
+        playlistIndex: this.playlistIndex || 0
       });
       this.notifyLobbyUpdate();
     }
   }
 
+  setPlaylist(tracks, laps = null) {
+    if (Array.isArray(tracks) && tracks.length > 0) {
+      this.playlistTracks = tracks.map(t => parseInt(t, 10));
+    }
+    if (laps !== null) {
+      this.laps = Math.max(1, Math.min(5, parseInt(laps, 10)));
+    }
+    this.playlistIndex = 0;
+    this.trackIndex = this.playlistTracks[0] ?? 0;
+    try { localStorage.setItem('zephyr_track', String(this.trackIndex)); } catch {}
+    if (this.isHost) {
+      this.broadcastToAll({
+        type: 'PLAYLIST_SYNC',
+        trackIndex: this.trackIndex,
+        laps: this.laps,
+        playlistTracks: this.playlistTracks,
+        playlistIndex: this.playlistIndex
+      });
+      this.notifyLobbyUpdate();
+    }
+  }
+
+  setPlaylistCount(count) {
+    const n = Math.max(1, Math.min(5, parseInt(count, 10)));
+    const current = [...(this.playlistTracks || [0])];
+    while (current.length < n) {
+      const last = current[current.length - 1] ?? 0;
+      current.push((last + 1) % 24);
+    }
+    const newTracks = current.slice(0, n);
+    this.setPlaylist(newTracks, this.laps);
+  }
+
+  setPlaylistTrackAt(idx, trackId) {
+    if (!this.playlistTracks) this.playlistTracks = [0];
+    if (idx >= 0 && idx < this.playlistTracks.length) {
+      this.playlistTracks[idx] = parseInt(trackId, 10);
+      if (idx === 0) {
+        this.trackIndex = this.playlistTracks[0];
+        try { localStorage.setItem('zephyr_track', String(this.trackIndex)); } catch {}
+      }
+      if (this.isHost) {
+        this.broadcastToAll({
+          type: 'PLAYLIST_SYNC',
+          trackIndex: this.trackIndex,
+          laps: this.laps,
+          playlistTracks: this.playlistTracks,
+          playlistIndex: this.playlistIndex
+        });
+        this.notifyLobbyUpdate();
+      }
+    }
+  }
+
   setLaps(laps) {
-    this.laps = Math.max(1, Math.min(5, laps));
+    this.laps = Math.max(1, Math.min(5, parseInt(laps, 10)));
     if (this.isHost) {
       this.broadcastToAll({
         type: 'TRACK_SYNC',
         trackIndex: this.trackIndex,
-        laps: this.laps
+        laps: this.laps,
+        playlistTracks: this.playlistTracks,
+        playlistIndex: this.playlistIndex
+      });
+      this.notifyLobbyUpdate();
+    }
+  }
+
+  handleRaceResults(results) {
+    if (!Array.isArray(results) || results.length === 0) return;
+    this.state = 'RESULTS';
+
+    // Calculate points earned for each racer according to official rules [15, 12, 10, 8, 6, 4]
+    const raceTable = results.map((r, idx) => {
+      const slot = r.slot !== undefined ? r.slot : (r.id !== undefined ? r.id : idx);
+      const rank = r.rank || (idx + 1);
+      const pts = (MultiplayerManager.TOURNAMENT_POINTS || [15, 12, 10, 8, 6, 4])[rank - 1] || 4;
+      const prevTotal = this.tournamentScores.get(slot) || 0;
+      const newTotal = prevTotal + pts;
+      this.tournamentScores.set(slot, newTotal);
+      const playerObj = this.players.find(p => p.slot === slot);
+      return {
+        slot: slot,
+        id: slot,
+        name: r.name || playerObj?.name || `Pilota ${slot + 1}`,
+        kartId: r.kartId || playerObj?.kartId || 'nix',
+        rank: rank,
+        finishTime: r.finishTime || r.time || 0,
+        lastRacePoints: pts,
+        pointsEarned: pts,
+        totalPoints: newTotal,
+        isPlayer: r.isPlayer,
+        isHost: playerObj?.isHost || false
+      };
+    });
+
+    // Sort cumulative standings by total points descending, then best rank
+    const cumulativeStandings = [...raceTable].sort((a, b) => {
+      if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+      return a.rank - b.rank;
+    });
+
+    const isFinalRace = this.playlistIndex >= this.playlistTracks.length - 1;
+    this.isTournamentComplete = isFinalRace;
+    this.lastRaceResults = raceTable;
+
+    const payload = {
+      type: 'TOURNAMENT_STANDINGS_SYNC',
+      playlistIndex: this.playlistIndex,
+      totalTracks: this.playlistTracks.length,
+      currentTrackIndex: this.trackIndex,
+      nextTrackIndex: !isFinalRace ? this.playlistTracks[this.playlistIndex + 1] : null,
+      isFinalRace: isFinalRace,
+      standings: cumulativeStandings,
+      raceResults: raceTable
+    };
+
+    if (this.isHost) {
+      this.broadcastToAll(payload);
+    }
+
+    if (this.onTournamentStandings) {
+      this.onTournamentStandings(payload);
+    }
+
+    if (isFinalRace && this.onTournamentComplete) {
+      this.onTournamentComplete(payload);
+    }
+  }
+
+  advanceToNextRace(countdownSec = 5) {
+    if (!this.isHost) return false;
+    if (this.playlistIndex + 1 >= this.playlistTracks.length) return false;
+
+    this.playlistIndex++;
+    this.trackIndex = this.playlistTracks[this.playlistIndex];
+    try { localStorage.setItem('zephyr_track', String(this.trackIndex)); } catch {}
+
+    const payload = {
+      type: 'NEXT_TOURNAMENT_RACE',
+      playlistIndex: this.playlistIndex,
+      trackIndex: this.trackIndex,
+      laps: this.laps,
+      countdownSec: countdownSec,
+      players: this.players,
+      startTime: Date.now() + (countdownSec * 1000)
+    };
+
+    this.broadcastToAll(payload);
+    this.handleCountdownStart(payload);
+    return true;
+  }
+
+  resetTournament() {
+    this.playlistIndex = 0;
+    this.trackIndex = this.playlistTracks[0] ?? 0;
+    try { localStorage.setItem('zephyr_track', String(this.trackIndex)); } catch {}
+    this.tournamentScores.clear();
+    this.lastRaceResults = [];
+    this.isTournamentComplete = false;
+    this.state = this.isHost ? 'HOST_LOBBY' : 'GUEST_LOBBY';
+
+    for (const p of this.players) {
+      if (!p.isHost && !p.isAI) p.isReady = false;
+    }
+
+    if (this.isHost) {
+      this.broadcastToAll({
+        type: 'TOURNAMENT_RESET',
+        trackIndex: this.trackIndex,
+        laps: this.laps,
+        playlistTracks: this.playlistTracks,
+        playlistIndex: this.playlistIndex,
+        players: this.players
       });
       this.notifyLobbyUpdate();
     }
@@ -198,6 +384,10 @@ export class MultiplayerManager {
 
     this.state = 'HOST_LOBBY';
     this.mySlot = 0;
+    this.playlistIndex = 0;
+    this.tournamentScores.clear();
+    this.lastRaceResults = [];
+    this.isTournamentComplete = false;
     this.players = [{
       peerId: hostPeerId,
       slot: 0,
@@ -402,6 +592,8 @@ export class MultiplayerManager {
           mySlot: slot,
           trackIndex: this.trackIndex,
           laps: this.laps,
+          playlistTracks: this.playlistTracks,
+          playlistIndex: this.playlistIndex,
           players: this.players
         });
 
@@ -458,6 +650,10 @@ export class MultiplayerManager {
         this.trackIndex = data.trackIndex;
         this.laps = data.laps;
         this.players = data.players;
+        if (Array.isArray(data.playlistTracks) && data.playlistTracks.length > 0) {
+          this.playlistTracks = data.playlistTracks;
+          this.playlistIndex = data.playlistIndex || 0;
+        }
         try { localStorage.setItem('zephyr_track', String(data.trackIndex)); } catch {}
         this.toast(`Sei nella stanza privata! (Slot ${this.mySlot + 1})`);
         this.notifyLobbyUpdate();
@@ -469,15 +665,66 @@ export class MultiplayerManager {
         this.players = data.players;
         this.trackIndex = data.trackIndex;
         this.laps = data.laps;
+        if (Array.isArray(data.playlistTracks) && data.playlistTracks.length > 0) {
+          this.playlistTracks = data.playlistTracks;
+          this.playlistIndex = data.playlistIndex || 0;
+        }
         try { localStorage.setItem('zephyr_track', String(data.trackIndex)); } catch {}
         this.notifyLobbyUpdate();
         break;
       }
 
-      case 'TRACK_SYNC': {
+      case 'TRACK_SYNC':
+      case 'PLAYLIST_SYNC': {
         this.trackIndex = data.trackIndex;
         this.laps = data.laps;
+        if (Array.isArray(data.playlistTracks) && data.playlistTracks.length > 0) {
+          this.playlistTracks = data.playlistTracks;
+          this.playlistIndex = data.playlistIndex || 0;
+        }
         try { localStorage.setItem('zephyr_track', String(data.trackIndex)); } catch {}
+        this.notifyLobbyUpdate();
+        break;
+      }
+
+      case 'TOURNAMENT_STANDINGS_SYNC': {
+        this.state = 'RESULTS';
+        this.playlistIndex = data.playlistIndex;
+        this.isTournamentComplete = !!data.isFinalRace;
+        if (Array.isArray(data.standings)) {
+          for (const st of data.standings) {
+            this.tournamentScores.set(st.slot, st.totalPoints);
+          }
+        }
+        if (this.onTournamentStandings) {
+          this.onTournamentStandings(data);
+        }
+        if (data.isFinalRace && this.onTournamentComplete) {
+          this.onTournamentComplete(data);
+        }
+        break;
+      }
+
+      case 'NEXT_TOURNAMENT_RACE': {
+        this.playlistIndex = data.playlistIndex;
+        this.trackIndex = data.trackIndex;
+        this.laps = data.laps;
+        this.players = data.players || this.players;
+        try { localStorage.setItem('zephyr_track', String(data.trackIndex)); } catch {}
+        this.handleCountdownStart(data);
+        break;
+      }
+
+      case 'TOURNAMENT_RESET': {
+        this.playlistIndex = 0;
+        this.trackIndex = data.trackIndex;
+        this.laps = data.laps;
+        this.playlistTracks = data.playlistTracks || this.playlistTracks;
+        this.players = data.players || this.players;
+        this.tournamentScores.clear();
+        this.lastRaceResults = [];
+        this.isTournamentComplete = false;
+        this.state = 'GUEST_LOBBY';
         this.notifyLobbyUpdate();
         break;
       }
@@ -629,7 +876,15 @@ export class MultiplayerManager {
   }
 
   // --- BROADCAST HELPERS ---
+  broadcast(data) {
+    this.broadcastToAll(data);
+  }
+
   broadcastToAll(data) {
+    if (typeof this.broadcast === 'function' && this.broadcast !== MultiplayerManager.prototype.broadcast && this.broadcast !== this.broadcastToAll) {
+      this.broadcast(data);
+      return;
+    }
     if (this.isHost) {
       for (const conn of this.connections.values()) {
         if (conn.open) conn.send(data);
@@ -653,6 +908,8 @@ export class MultiplayerManager {
       type: 'LOBBY_UPDATE',
       trackIndex: this.trackIndex,
       laps: this.laps,
+      playlistTracks: this.playlistTracks,
+      playlistIndex: this.playlistIndex,
       players: this.players
     });
     this.notifyLobbyUpdate();
@@ -666,6 +923,9 @@ export class MultiplayerManager {
         mySlot: this.mySlot,
         trackIndex: this.trackIndex,
         laps: this.laps,
+        playlistTracks: this.playlistTracks,
+        playlistIndex: this.playlistIndex,
+        tournamentScores: Object.fromEntries(this.tournamentScores),
         players: this.players,
         allReady: this.allPlayersReady(),
         inviteLink: this.getInviteLink()
@@ -687,6 +947,12 @@ export class MultiplayerManager {
     }
 
     if (this.state === 'COUNTDOWN' || this.state === 'RACING') return false;
+
+    if (this.playlistIndex === 0) {
+      this.tournamentScores.clear();
+      this.lastRaceResults = [];
+      this.isTournamentComplete = false;
+    }
 
     const availableAIs = ['nix', 'bruno', 'sable', 'zuzu', 'rustam', 'marlow'];
     const usedKarts = new Set(this.players.map(p => p.kartId));
@@ -719,6 +985,8 @@ export class MultiplayerManager {
         countdownSec: countdownSec,
         trackIndex: this.trackIndex,
         laps: this.laps,
+        playlistTracks: this.playlistTracks,
+        playlistIndex: this.playlistIndex,
         players: this.players,
         startTime: Date.now() + (countdownSec * 1000)
       };
@@ -747,6 +1015,10 @@ export class MultiplayerManager {
     this.trackIndex = data.trackIndex;
     this.laps = data.laps;
     this.players = data.players;
+    if (Array.isArray(data.playlistTracks) && data.playlistTracks.length > 0) {
+      this.playlistTracks = data.playlistTracks;
+      this.playlistIndex = data.playlistIndex || 0;
+    }
     try { localStorage.setItem('zephyr_track', String(data.trackIndex)); } catch {}
 
     if (this.countdownTimer) clearInterval(this.countdownTimer);
@@ -772,6 +1044,8 @@ export class MultiplayerManager {
             type: 'RACE_START_SYNC',
             trackIndex: this.trackIndex,
             laps: this.laps,
+            playlistTracks: this.playlistTracks,
+            playlistIndex: this.playlistIndex,
             players: this.players,
             startTime: Date.now()
           };
@@ -1155,6 +1429,10 @@ export class MultiplayerManager {
     this.roomCode = '';
     this.isHost = false;
     this.players = [];
+    this.playlistIndex = 0;
+    this.tournamentScores.clear();
+    this.lastRaceResults = [];
+    this.isTournamentComplete = false;
     this.remoteStates.clear();
     this.notifyLobbyUpdate();
   }

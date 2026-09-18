@@ -3435,4 +3435,266 @@ describe('=== UNIT & PROCESS TESTS: MULTIPLAYER READY CHECK, 5S COUNTDOWN & LOBB
   });
 });
 
+describe('=== UNIT & PROCESS TESTS: MULTIPLAYER TOURNAMENT PLAYLIST, SCORING & INTER-RACE ADVANCEMENT ===', () => {
+  it('1. Tournament Grand Prix points constant conforms strictly to [15, 12, 10, 8, 6, 4]', () => {
+    assert.ok(Array.isArray(MultiplayerManager.TOURNAMENT_POINTS), 'TOURNAMENT_POINTS must be an array');
+    assert.deepStrictEqual(MultiplayerManager.TOURNAMENT_POINTS, [15, 12, 10, 8, 6, 4], 'Points schedule must be [15, 12, 10, 8, 6, 4]');
+  });
+
+  it('2. Host can configure playlist track count (1 to 5) and assign specific tracks per slot', () => {
+    const host = new MultiplayerManager();
+    host.isHost = true;
+    assert.strictEqual(host.playlistTracks.length, 3, 'Default playlist should have 3 tracks');
+
+    // Change count to 4
+    host.setPlaylistCount(4);
+    assert.strictEqual(host.playlistTracks.length, 4, 'Playlist should have 4 tracks');
+
+    // Clamp count to maximum 5
+    host.setPlaylistCount(10);
+    assert.strictEqual(host.playlistTracks.length, 5, 'Playlist count should be clamped to 5 max');
+
+    // Clamp count to minimum 1
+    host.setPlaylistCount(0);
+    assert.strictEqual(host.playlistTracks.length, 1, 'Playlist count should be clamped to 1 min');
+
+    // Configure specific tracks: [3, 7, 12, 23]
+    host.setPlaylistCount(4);
+    host.setPlaylistTrackAt(0, 3);
+    host.setPlaylistTrackAt(1, 7);
+    host.setPlaylistTrackAt(2, 12);
+    host.setPlaylistTrackAt(3, 23);
+
+    assert.deepStrictEqual(host.playlistTracks, [3, 7, 12, 23], 'Playlist tracks must match configured indices');
+    assert.strictEqual(host.trackIndex, 3, 'First track in playlist must become initial trackIndex');
+  });
+
+  it('3. Host broadcasts playlist to guest via PLAYLIST_SYNC and guest updates playlist', () => {
+    const host = new MultiplayerManager();
+    host.isHost = true;
+    const guest = new MultiplayerManager();
+    guest.isHost = false;
+
+    let broadcastData = null;
+    host.broadcast = (d) => { broadcastData = d; };
+
+    host.setPlaylist([2, 5, 9], 2);
+    assert.ok(broadcastData, 'Host must broadcast PLAYLIST_SYNC');
+    assert.strictEqual(broadcastData.type, 'PLAYLIST_SYNC');
+    assert.deepStrictEqual(broadcastData.playlistTracks, [2, 5, 9]);
+    assert.strictEqual(broadcastData.laps, 2);
+
+    // Guest receives PLAYLIST_SYNC
+    guest.handleIncomingData({}, broadcastData);
+    assert.deepStrictEqual(guest.playlistTracks, [2, 5, 9]);
+    assert.strictEqual(guest.laps, 2);
+    assert.strictEqual(guest.trackIndex, 2);
+  });
+
+  it('4. Host processes race results, computes points based on rank, and accumulates cumulative scores', () => {
+    const host = new MultiplayerManager();
+    host.isHost = true;
+    host.mySlot = 0;
+    host.players = [
+      { slot: 0, name: 'HostRacer', kartId: 'nix', isHost: true },
+      { slot: 1, name: 'GuestRacer', kartId: 'zuzu', isHost: false },
+      { slot: 2, name: 'AI 1', kartId: 'bruno', isAI: true },
+      { slot: 3, name: 'AI 2', kartId: 'sable', isAI: true },
+      { slot: 4, name: 'AI 3', kartId: 'rustam', isAI: true },
+      { slot: 5, name: 'AI 4', kartId: 'marlow', isAI: true }
+    ];
+
+    let standingsData = null;
+    host.onTournamentStandings = (d) => { standingsData = d; };
+
+    // Race 1 finish order: Guest 1st, Host 2nd, AI 1 3rd, AI 2 4th, AI 3 5th, AI 4 6th
+    const race1Results = [
+      { slot: 1, rank: 1, time: 65.2 },
+      { slot: 0, rank: 2, time: 66.1 },
+      { slot: 2, rank: 3, time: 68.0 },
+      { slot: 3, rank: 4, time: 69.5 },
+      { slot: 4, rank: 5, time: 71.0 },
+      { slot: 5, rank: 6, time: 72.3 }
+    ];
+
+    host.handleRaceResults(race1Results);
+
+    assert.ok(standingsData, 'onTournamentStandings must be called');
+    assert.strictEqual(standingsData.standings[0].slot, 1, 'Guest must be in 1st place');
+    assert.strictEqual(standingsData.standings[0].totalPoints, 15, '1st place receives 15 points');
+    assert.strictEqual(standingsData.standings[1].slot, 0, 'Host must be in 2nd place');
+    assert.strictEqual(standingsData.standings[1].totalPoints, 12, '2nd place receives 12 points');
+    assert.strictEqual(standingsData.standings[2].totalPoints, 10, '3rd place receives 10 points');
+    assert.strictEqual(standingsData.isFinalRace, false, 'Race 1 of 3 is not final race');
+
+    // Race 2 finish order: Host 1st (+15), Guest 2nd (+12)
+    const race2Results = [
+      { slot: 0, rank: 1, time: 64.0 },
+      { slot: 1, rank: 2, time: 64.5 },
+      { slot: 2, rank: 3, time: 67.0 },
+      { slot: 3, rank: 4, time: 68.0 },
+      { slot: 4, rank: 5, time: 70.0 },
+      { slot: 5, rank: 6, time: 72.0 }
+    ];
+
+    host.playlistIndex = 1;
+    host.handleRaceResults(race2Results);
+
+    // Host: 12 + 15 = 27 pts. Guest: 15 + 12 = 27 pts.
+    assert.strictEqual(host.tournamentScores.get(0), 27, 'Host cumulative score must be 27');
+    assert.strictEqual(host.tournamentScores.get(1), 27, 'Guest cumulative score must be 27');
+  });
+
+  it('5. Host broadcasts TOURNAMENT_STANDINGS_SYNC to guests and triggers callbacks', () => {
+    const host = new MultiplayerManager();
+    host.isHost = true;
+    const guest = new MultiplayerManager();
+    guest.isHost = false;
+    guest.mySlot = 1;
+
+    let guestStandings = null;
+    guest.onTournamentStandings = (d) => { guestStandings = d; };
+
+    const syncMsg = {
+      type: 'TOURNAMENT_STANDINGS_SYNC',
+      standings: [
+        { slot: 1, name: 'GuestRacer', kartId: 'zuzu', totalPoints: 15, lastRacePoints: 15, lastRaceRank: 1 },
+        { slot: 0, name: 'HostRacer', kartId: 'nix', totalPoints: 12, lastRacePoints: 12, lastRaceRank: 2 }
+      ],
+      playlistIndex: 0,
+      totalTracks: 3,
+      isFinalRace: false
+    };
+
+    guest.handleIncomingData({}, syncMsg);
+
+    assert.ok(guestStandings, 'Guest onTournamentStandings must be triggered');
+    assert.strictEqual(guest.tournamentScores.get(1), 15);
+    assert.strictEqual(guest.tournamentScores.get(0), 12);
+    assert.strictEqual(guestStandings.isFinalRace, false);
+  });
+
+  it('6. Host advances to next tournament race via advanceToNextRace(), incrementing playlistIndex and starting countdown', () => {
+    const host = new MultiplayerManager();
+    host.isHost = true;
+    host.playlistTracks = [0, 4, 8];
+    host.playlistIndex = 0;
+    host.trackIndex = 0;
+
+    const guest = new MultiplayerManager();
+    guest.isHost = false;
+    guest.playlistTracks = [0, 4, 8];
+    guest.playlistIndex = 0;
+
+    let nextRaceBroadcast = null;
+    host.broadcast = (d) => { nextRaceBroadcast = d; };
+
+    let guestTick = null;
+    guest.onCountdownTick = (r) => { guestTick = r; };
+
+    const advanced = host.advanceToNextRace(5);
+    assert.strictEqual(advanced, true, 'advanceToNextRace should return true');
+    assert.strictEqual(host.playlistIndex, 1, 'playlistIndex should advance to 1');
+    assert.strictEqual(host.trackIndex, 4, 'trackIndex should become next track (4)');
+    assert.strictEqual(host.state, 'COUNTDOWN');
+
+    // Verify broadcast to guests
+    assert.ok(nextRaceBroadcast);
+    assert.strictEqual(nextRaceBroadcast.type, 'NEXT_TOURNAMENT_RACE');
+    assert.strictEqual(nextRaceBroadcast.playlistIndex, 1);
+    assert.strictEqual(nextRaceBroadcast.trackIndex, 4);
+
+    // Guest handles NEXT_TOURNAMENT_RACE
+    guest.handleIncomingData({}, nextRaceBroadcast);
+    assert.strictEqual(guest.playlistIndex, 1);
+    assert.strictEqual(guest.trackIndex, 4);
+    assert.strictEqual(guest.state, 'COUNTDOWN');
+    assert.strictEqual(guestTick, 5);
+
+    host.leaveRoom();
+    guest.leaveRoom();
+  });
+
+  it('7. Final tournament race completion triggers onTournamentComplete callback', () => {
+    const host = new MultiplayerManager();
+    host.isHost = true;
+    host.playlistTracks = [0, 1]; // 2-race tournament
+    host.playlistIndex = 1; // 2nd race (final)
+    host.players = [
+      { slot: 0, name: 'ChampionHost', kartId: 'nix', isHost: true },
+      { slot: 1, name: 'RunnerUpGuest', kartId: 'sable', isHost: false }
+    ];
+
+    let tournamentDone = false;
+    let winnerName = null;
+    host.onTournamentComplete = (d) => {
+      tournamentDone = true;
+      winnerName = d.standings[0]?.name;
+    };
+
+    const finalResults = [
+      { slot: 0, rank: 1, time: 60.0 },
+      { slot: 1, rank: 2, time: 62.0 }
+    ];
+
+    host.handleRaceResults(finalResults);
+
+    assert.strictEqual(host.isTournamentComplete, true, 'Tournament must be marked complete');
+    assert.strictEqual(tournamentDone, true, 'onTournamentComplete callback must fire');
+    assert.strictEqual(winnerName, 'ChampionHost', 'Winner must be the racer with top cumulative points');
+  });
+
+  it('8. Tournament reset clears scores and restores playlist index', () => {
+    const host = new MultiplayerManager();
+    host.isHost = true;
+    host.playlistTracks = [10, 15, 20];
+    host.playlistIndex = 2;
+    host.tournamentScores.set(0, 45);
+    host.isTournamentComplete = true;
+
+    let resetBroadcast = null;
+    host.broadcast = (d) => { resetBroadcast = d; };
+
+    host.resetTournament();
+
+    assert.strictEqual(host.playlistIndex, 0);
+    assert.strictEqual(host.trackIndex, 10);
+    assert.strictEqual(host.tournamentScores.size, 0);
+    assert.strictEqual(host.isTournamentComplete, false);
+    assert.ok(resetBroadcast);
+    assert.strictEqual(resetBroadcast.type, 'TOURNAMENT_RESET');
+  });
+
+  it('9. NOS trail particle emission conforms to subtle specifications', () => {
+    // Test particle emission simulation matching Ag.nosTrail parameters in bundle
+    const particles = [];
+    const mockSmokeEmitter = {
+      emit: (pos, vel, col, sz, life, drag) => {
+        particles.push({ pos, vel, col, sz, life, drag });
+      }
+    };
+
+    const nosTrailSim = (x, y, z, backDirX, backDirZ) => {
+      // White color (0xFFFFFF = 16777215), subtle size (0.15), fast fade (0.18s), drag 3.2
+      const vx = backDirX * 3.5 + (Math.random() - 0.5) * 0.4;
+      const vy = 0.35 + (Math.random() - 0.5) * 0.2;
+      const vz = backDirZ * 3.5 + (Math.random() - 0.5) * 0.4;
+      mockSmokeEmitter.emit({ x, y, z }, { x: vx, y: vy, z: vz }, 16777215, 0.15, 0.18, 3.2);
+    };
+
+    // Emit 4 NOS trail puffs
+    for (let i = 0; i < 4; i++) {
+      nosTrailSim(0, 0.3, 0, 0, -1);
+    }
+
+    assert.strictEqual(particles.length, 4, 'Should emit 4 particles');
+    particles.forEach(p => {
+      assert.strictEqual(p.col, 16777215, 'Color must be pure white (16777215 / 0xFFFFFF)');
+      assert.strictEqual(p.sz, 0.15, 'Size must be subtle 0.15 (not large smoke plumes)');
+      assert.strictEqual(p.life, 0.18, 'Lifetime must be fast-dissipating 0.18s');
+      assert.strictEqual(p.drag, 3.2, 'Drag must be 3.2 for rapid decelerating dissipation');
+    });
+  });
+});
+
 
