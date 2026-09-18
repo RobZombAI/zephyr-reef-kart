@@ -2022,23 +2022,72 @@ describe('=== UNIT & PROCESS TESTS: 50 ARCHITECTURAL IMPROVEMENTS ===', () => {
 
   it('3. Rocket start golden timing window vs early engine stall', () => {
     const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
-    assert.ok(bundle.includes('this.countdown>1.35)this.engineStalled=1.1;'), 'holding gas too early stalls engine');
-    assert.ok(bundle.includes('this.countdown<=0.75&&this.countdown>=0.05)this.rocketStartPrimed=!0;'), 'holding gas in golden window primes launch boost');
+    assert.ok(bundle.includes('this.countdown>1.25)this.engineStalled=1.1'), 'holding gas too early stalls engine');
+    assert.ok(bundle.includes('this.countdown<=1.15&&this.countdown>=0.06'), 'holding gas in golden window primes launch boost');
+    assert.ok(bundle.includes('this.countdown>0.06&&(this.rocketStartPrimed=!1)'), 'releasing gas unprimes rocket start');
+    assert.ok(bundle.includes('rocketChance=.15*aiSkill'), 'AI racers have skill-based rocket start chance');
+    assert.ok(bundle.includes('stallChance=Math.max(.02,.08-(aiSkill-.95)*.15)'), 'AI racers have skill-based stall chance');
+    assert.ok(bundle.includes('if(this.engineStalled>0||t.engineStalled>0){n.throttle=0'), 'stalled engine clamps throttle and speed');
 
-    // Evaluate launch logic
-    const evalRocketStart = (countdownTime, isAccel) => {
-      let stalled = false;
+    // Evaluate launch logic simulation
+    const simulateCountdown = (events) => {
+      let countdown = 3.6;
+      let stalled = 0;
       let rocketPrimed = false;
-      if (isAccel) {
-        if (countdownTime > 1.35) stalled = true;
-        else if (countdownTime <= 0.75 && countdownTime >= 0.05) rocketPrimed = true;
+      const dt = 0.05;
+      while (countdown > 0) {
+        const isAccel = events(countdown);
+        if (isAccel) {
+          if (countdown > 1.25) {
+            stalled = 1.1;
+            rocketPrimed = false;
+          } else if (countdown <= 1.15 && countdown >= 0.06) {
+            if (!(stalled > 0)) rocketPrimed = true;
+          }
+        } else {
+          if (countdown > 0.06) rocketPrimed = false;
+        }
+        countdown -= dt;
       }
-      return { stalled, rocketPrimed };
+      // Race start evaluation at countdown <= 0
+      let boostGiven = false;
+      let stallTriggered = false;
+      const finalAccel = events(0);
+      if (stalled > 0) {
+        stallTriggered = true;
+      } else if (rocketPrimed && finalAccel) {
+        boostGiven = true;
+      }
+      return { stalled: stallTriggered, rocketBoost: boostGiven };
     };
 
-    assert.strictEqual(evalRocketStart(2.0, true).stalled, true, 'early gas should stall');
-    assert.strictEqual(evalRocketStart(0.5, true).rocketPrimed, true, 'perfect timing should prime rocket start');
-    assert.strictEqual(evalRocketStart(0.5, false).rocketPrimed, false, 'no gas should not prime');
+    // Case 1: Early press during "3" or "2" (e.g. at 2.0s) -> Stalls!
+    const resEarly = simulateCountdown((t) => t >= 1.5);
+    assert.strictEqual(resEarly.stalled, true, 'early gas must stall engine');
+    assert.strictEqual(resEarly.rocketBoost, false, 'early gas must not receive boost');
+
+    // Case 2: Golden window press (starts at 1.0s and holds through 0) -> Rocket Start!
+    const resGolden = simulateCountdown((t) => t <= 1.0);
+    assert.strictEqual(resGolden.stalled, false, 'golden window gas should not stall');
+    assert.strictEqual(resGolden.rocketBoost, true, 'golden window gas must trigger rocket start boost');
+
+    // Case 3: Releasing gas early before GO -> No boost!
+    const resReleased = simulateCountdown((t) => t <= 1.0 && t >= 0.3);
+    assert.strictEqual(resReleased.rocketBoost, false, 'releasing gas before GO must lose rocket boost');
+
+    // Case 4: No press during countdown, only pressing after GO -> Normal start (0 boost)
+    const resNormal = simulateCountdown((t) => t <= 0);
+    assert.strictEqual(resNormal.stalled, false, 'normal start should not stall');
+    assert.strictEqual(resNormal.rocketBoost, false, 'normal start receives NO launch boost');
+
+    // Case 5: AI balance test
+    const aiSkills = [1.10, 1.03, 0.95];
+    for (const skill of aiSkills) {
+      const rocketChance = 0.15 * skill;
+      const stallChance = Math.max(0.02, 0.08 - (skill - 0.95) * 0.15);
+      assert.ok(rocketChance >= 0.14 && rocketChance <= 0.17);
+      assert.ok(stallChance >= 0.02 && stallChance <= 0.08);
+    }
   });
 
   it('4. Elastic soft bumper collision restitution (bounce = 0.70)', () => {
