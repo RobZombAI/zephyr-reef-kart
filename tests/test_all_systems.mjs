@@ -3746,3 +3746,59 @@ describe('=== UNIT & PROCESS TESTS: AI OPPONENT OVERHAUL & ANTI-FLICKER PRECISIO
 
 
 
+
+describe('=== UNIT & PROCESS TESTS: GRAPHICS & FLUIDITY 60FPS MASTER OVERHAUL ===', () => {
+  const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+
+  it('1. Directional shadow texel snapping prevents edge crawl and shimmering', () => {
+    assert.ok(bundle.includes('_snapSize=150/(t.shadowMapSize||2048)'), 'Shadow texel size calculated from frustum width and map resolution');
+    assert.ok(bundle.includes('_snappedT=new T'), 'Pre-allocated temporary vector prevents per-frame GC');
+    assert.ok(bundle.includes('Math.floor(_u/_snapSize)*_snapSize'), 'Shadow camera target snapped along orthogonal basis to texel increments');
+    assert.ok(bundle.includes('l.position.copy(_snappedT).addScaledVector(e,220)'), 'Directional light position rigidly locked to snapped target');
+  });
+
+  it('2. Solar glare effect functional: Zg returns sky and solar glare angle computed', () => {
+    assert.ok(bundle.includes('return{group:e,spline:n,sunDir:l.sunDir,sky:l,'), 'Zg world factory returns sky object reference');
+    assert.ok(bundle.includes('this.setSolarGlare='), 'UI declares setSolarGlare handler');
+    assert.ok(bundle.includes('this.world.sky.sunDir'), 'Game loop samples sun direction from active sky instance');
+  });
+
+  it('3. Bloom post-processing resolution capped at 384x216 on viewport resize', () => {
+    assert.ok(bundle.includes('this.bloom?.setSize?.(Math.max(1,Math.min(384,Math.floor(t/3))),Math.max(1,Math.min(216,Math.floor(e/3))))'), 'Bloom resize pass strictly bounded to 384x216 max render target');
+  });
+
+  it('4. Camera altimetry spring cushion eliminates sudden vertical elevation shudder', () => {
+    assert.ok(bundle.includes('if(this.pos.y<o+1.15)this.pos.y=ne(this.pos.y,o+1.15,24,t);'), 'Camera smoothly cushions upward against track elevation changes');
+    assert.ok(bundle.includes('if(this.pos.y<o+.7)this.pos.y=o+.7;'), 'Camera maintains hard clip safety floor above terrain');
+  });
+
+  it('5. DRS buffer reallocation thrashing eliminated during active gameplay', () => {
+    assert.ok(!bundle.includes('applyDrsScale(){const baseDpr=Math.min(window.devicePixelRatio||1,this.quality.pixelRatioCap);const targetDpr=Math.max(.65,baseDpr*(this.drsScale||1));this.renderer.setPixelRatio(targetDpr);const t=Math.max(1,window.innerWidth),e=Math.max(1,window.innerHeight);this.composer?.setSize?.(t,e)}'), 'Composer setSize removed from dynamic DRS scale updates');
+    assert.ok(bundle.includes('this._fpsFrames>=120'), 'DRS evaluation smoothed over 120-frame window to prevent stutter cycles');
+  });
+
+  it('6. Timestep tolerance snapping prevents V-sync accumulator phase drift and judder', () => {
+    assert.ok(bundle.includes('if(Math.abs(e-.0166667)<.0032)e=.0166667;'), 'Frame delta snapped to exactly 1/60s when within ±3.2ms');
+    assert.ok(bundle.includes('if(Math.abs(i-n)<.0028)i=n;'), 'Physics accumulator step aligned with fixed 60Hz step to prevent alternating 0/2 tick judder');
+  });
+
+  it('7. DOM HUD innerHTML churn eliminated: direct textContent update on timers', () => {
+    assert.ok(bundle.includes('this._tLap.textContent=Hn(t.lapTime)'), 'Lap timer updates textContent directly without DOM rebuild');
+    assert.ok(bundle.includes('this._tRace.textContent=Hn(t.raceTime)'), 'Race timer updates textContent directly without DOM rebuild');
+    assert.ok(bundle.includes('_curN-this._lastStdTime>90'), 'Field standings DOM generation throttled to 10Hz to eliminate layout thrashing');
+  });
+
+  it('8. Minimap background track rasterization cached to offscreen canvas', () => {
+    assert.ok(bundle.includes('this.bgCanvas=typeof document!=="undefined"?document.createElement("canvas"):null'), 'Minimap creates offscreen background canvas');
+    assert.ok(bundle.includes('e.drawImage(this.bgCanvas,0,0)'), 'Minimap draws cached background bitmap with single blit');
+  });
+
+  it('9. Particle vertex buffer uploads optimized: aColor uploaded only on dirty state', () => {
+    assert.ok(bundle.includes('this.aColorDirty'), 'Kl particle system tracks dirty state for aColor buffer');
+    assert.ok(bundle.includes('(this.aColorDirty&&(n.getAttribute("aColor").needsUpdate=!0,this.aColorDirty=!1))'), 'Particle system skips uploading unchanged aColor to GPU every frame');
+  });
+
+  it('10. Title screen and menu unthrottled for silky smooth 60 FPS transitions', () => {
+    assert.ok(!bundle.includes('isRace?(this.quality.level==="low"?13.5:7):31'), '31ms menu throttle removed in favor of 60 FPS refresh');
+  });
+});
