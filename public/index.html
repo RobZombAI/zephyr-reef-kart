@@ -1004,35 +1004,40 @@
 
           <!-- GUEST TAB CONTENT -->
           <div id="z-mp-guest-view" class="hidden">
-            <div style="text-align: left; margin-bottom: 14px;">
-              <label style="font-size: 11px; color: #76fff0; font-weight: 700;">CODICE STANZA PRIVATA</label>
-              <input id="z-mp-join-code" type="text" maxlength="12" placeholder="Es. ZEPH-7429" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #ffc857; font-family: monospace; font-size: 20px; text-transform: uppercase; padding: 10px 14px; border-radius: 10px; font-weight: 800; margin-top: 4px;">
-            </div>
-
-            <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
-              <div style="flex: 1; min-width: 140px; text-align: left;">
-                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">IL TUO NICKNAME</label>
-                <input id="z-mp-guest-name" type="text" maxlength="16" placeholder="Il tuo nome" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 10px 14px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
+            <div id="z-mp-guest-form">
+              <div style="text-align: left; margin-bottom: 14px;">
+                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">CODICE STANZA PRIVATA</label>
+                <input id="z-mp-join-code" type="text" maxlength="12" placeholder="Es. ZEPH-7429" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #ffc857; font-family: monospace; font-size: 20px; text-transform: uppercase; padding: 10px 14px; border-radius: 10px; font-weight: 800; margin-top: 4px;">
               </div>
-              <div style="flex: 1; min-width: 140px; text-align: left;">
-                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">IL TUO KART</label>
-                <select id="z-mp-guest-kart" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 10px 14px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
-                  <option value="nix">🦦 Nix (Wave-Runner)</option>
-                  <option value="bruno">🪨 Bruno (Landslide)</option>
-                  <option value="sable">🦋 Sable (Nightflyer)</option>
-                  <option value="zuzu">⚡ Zuzu (Drifter)</option>
-                  <option value="rustam">⚙️ Rustam (Tinkerer)</option>
-                  <option value="marlow">🐸 Marlow (Corsair)</option>
-                </select>
-              </div>
-            </div>
 
-            <button id="z-mp-join-btn" class="z-mini" style="width: 100%; padding: 14px; font-size: 16px; font-weight: 900; background: linear-gradient(135deg, #0284c7, #0ea5e9); border: 2px solid #38bdf8; color: #ffffff; border-radius: 14px; box-shadow: 0 0 25px rgba(14, 165, 233, 0.5); cursor: pointer; margin-bottom: 12px;">
-              🔗 ENTRA NELLA STANZA
-            </button>
+              <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 140px; text-align: left;">
+                  <label style="font-size: 11px; color: #76fff0; font-weight: 700;">IL TUO NICKNAME</label>
+                  <input id="z-mp-guest-name" type="text" maxlength="16" placeholder="Il tuo nome" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 10px 14px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
+                </div>
+                <div style="flex: 1; min-width: 140px; text-align: left;">
+                  <label style="font-size: 11px; color: #76fff0; font-weight: 700;">IL TUO KART</label>
+                  <select id="z-mp-guest-kart" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 10px 14px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
+                    <option value="nix">🦦 Nix (Wave-Runner)</option>
+                    <option value="bruno">🪨 Bruno (Landslide)</option>
+                    <option value="sable">🦋 Sable (Nightflyer)</option>
+                    <option value="zuzu">⚡ Zuzu (Drifter)</option>
+                    <option value="rustam">⚙️ Rustam (Tinkerer)</option>
+                    <option value="marlow">🐸 Marlow (Corsair)</option>
+                  </select>
+                </div>
+              </div>
+
+              <button id="z-mp-join-btn" class="z-mini" style="width: 100%; padding: 14px; font-size: 16px; font-weight: 900; background: linear-gradient(135deg, #0284c7, #0ea5e9); border: 2px solid #38bdf8; color: #ffffff; border-radius: 14px; box-shadow: 0 0 25px rgba(14, 165, 233, 0.5); cursor: pointer; margin-bottom: 12px;">
+                🔗 ENTRA NELLA STANZA
+              </button>
+            </div>
 
             <div id="z-mp-guest-waiting" class="hidden" style="background: rgba(8, 26, 36, 0.8); border: 1px solid #76fff0; border-radius: 12px; padding: 14px; margin-top: 10px; text-align: left;">
-              <div style="font-size: 14px; font-weight: 800; color: #34d399; margin-bottom: 4px;">✓ Connesso alla Stanza!</div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <div style="font-size: 14px; font-weight: 800; color: #34d399;">✓ Connesso alla Stanza!</div>
+                <button id="z-mp-guest-leave-btn" style="padding: 4px 10px; font-size: 11px; font-weight: 700; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.5); color: #fca5a5; border-radius: 6px; cursor: pointer;">🚪 Esci</button>
+              </div>
               <div id="z-mp-guest-info" style="font-size: 12px; color: #94a3b8; margin-bottom: 10px;">In attesa che l'Host avvii la gara...</div>
 
               <!-- In-Room Character Selector for Guests -->
@@ -1687,11 +1692,13 @@
         const lapsSelect = document.getElementById('z-mp-laps-select');
         const playerCountEl = document.getElementById('z-mp-player-count');
         const lobbyPlayersEl = document.getElementById('z-mp-lobby-players');
+        const guestForm = document.getElementById('z-mp-guest-form');
         const guestWaitingBox = document.getElementById('z-mp-guest-waiting');
         const guestInfoEl = document.getElementById('z-mp-guest-info');
         const guestPlayersEl = document.getElementById('z-mp-guest-players');
         const guestReadyBtn = document.getElementById('z-mp-guest-ready-btn');
         const guestLobbyKartSelect = document.getElementById('z-mp-guest-lobby-kart');
+        const guestLeaveBtn = document.getElementById('z-mp-guest-leave-btn');
         const mpCountdownOverlay = document.getElementById('z-mp-countdown-overlay');
         const mpCountdownNum = document.getElementById('z-mp-countdown-num');
         const mpCountdownTrack = document.getElementById('z-mp-countdown-track');
@@ -1753,7 +1760,41 @@
               if (guestPlayersEl) guestPlayersEl.innerHTML = lobby.players.map(renderPlayerRow).join('');
 
               if (guestInfoEl) {
-                guestInfoEl.innerHTML = `Connesso all'Host! Circuito: <b>${(window.__ZEPHYR_TRACKS && window.__ZEPHYR_TRACKS[lobby.trackIndex]?.name) || 'Circuito'}</b> (${lobby.laps} giri)<br>In attesa della partenza...`;
+                const curRoom = lobby.roomCode || mp.roomCode || '';
+                const tName = (window.__ZEPHYR_TRACKS && window.__ZEPHYR_TRACKS[lobby.trackIndex]?.name) || 'Circuito';
+                guestInfoEl.innerHTML = `Stanza: <b style="color: #ffc857; font-family: monospace;">${curRoom}</b> • Circuito: <b>${tName}</b> (${lobby.laps} giri)<br>In attesa che l'Host avvii la gara...`;
+              }
+
+              // Manage Guest UI: hide join button and join form when connected to room
+              const isGuestConnected = !mp.isHost && (mp.state === 'GUEST_LOBBY' || mp.state === 'COUNTDOWN' || mp.state === 'RACING');
+              if (joinBtn) {
+                if (isGuestConnected) {
+                  joinBtn.style.display = 'none';
+                  joinBtn.classList.add('hidden');
+                } else if (mp.state === 'IDLE') {
+                  joinBtn.style.display = 'block';
+                  joinBtn.classList.remove('hidden');
+                  joinBtn.disabled = false;
+                  joinBtn.textContent = '🔗 ENTRA NELLA STANZA';
+                }
+              }
+              if (guestForm) {
+                if (isGuestConnected) {
+                  guestForm.style.display = 'none';
+                  guestForm.classList.add('hidden');
+                } else if (mp.state === 'IDLE') {
+                  guestForm.style.display = 'block';
+                  guestForm.classList.remove('hidden');
+                }
+              }
+              if (guestWaitingBox) {
+                if (isGuestConnected) {
+                  guestWaitingBox.style.display = 'block';
+                  guestWaitingBox.classList.remove('hidden');
+                } else if (mp.state === 'IDLE') {
+                  guestWaitingBox.style.display = 'none';
+                  guestWaitingBox.classList.add('hidden');
+                }
               }
 
               // Update guest ready button and lobby kart selector
@@ -1964,6 +2005,17 @@
           if (mp && mp.state === 'IDLE' && isHostTab) {
             mp.createRoom();
           }
+
+          // Sync guest UI if guest tab is active
+          const isGuestTab = tabGuest && tabGuest.classList.contains('active');
+          if (isGuestTab && mp) {
+            const isGuestConnected = !mp.isHost && (mp.state === 'GUEST_LOBBY' || mp.state === 'COUNTDOWN' || mp.state === 'RACING');
+            if (isGuestConnected) {
+              if (joinBtn) { joinBtn.style.display = 'none'; joinBtn.classList.add('hidden'); }
+              if (guestForm) { guestForm.style.display = 'none'; guestForm.classList.add('hidden'); }
+              if (guestWaitingBox) { guestWaitingBox.style.display = 'block'; guestWaitingBox.classList.remove('hidden'); }
+            }
+          }
         };
 
         if (mpBtn) {
@@ -2003,6 +2055,16 @@
             guestView?.classList.remove('hidden');
             hostView?.classList.add('hidden');
             haptic(15);
+            const isGuestConnected = mp && !mp.isHost && (mp.state === 'GUEST_LOBBY' || mp.state === 'COUNTDOWN' || mp.state === 'RACING');
+            if (isGuestConnected) {
+              if (joinBtn) { joinBtn.style.display = 'none'; joinBtn.classList.add('hidden'); }
+              if (guestForm) { guestForm.style.display = 'none'; guestForm.classList.add('hidden'); }
+              if (guestWaitingBox) { guestWaitingBox.style.display = 'block'; guestWaitingBox.classList.remove('hidden'); }
+            } else if (mp && mp.state === 'IDLE') {
+              if (joinBtn) { joinBtn.style.display = 'block'; joinBtn.classList.remove('hidden'); }
+              if (guestForm) { guestForm.style.display = 'block'; guestForm.classList.remove('hidden'); }
+              if (guestWaitingBox) { guestWaitingBox.style.display = 'none'; guestWaitingBox.classList.add('hidden'); }
+            }
           });
         }
 
@@ -2092,12 +2154,44 @@
           haptic(25);
           joinBtn.disabled = true;
           joinBtn.textContent = '⏳ CONNESSIONE...';
-          guestWaitingBox?.classList.remove('hidden');
           mp.joinRoom(code, guestNameInput?.value);
           setTimeout(() => {
+            // Re-enable join button ONLY if connection was NOT established (i.e. still not in GUEST_LOBBY)
+            if (mp && mp.state !== 'GUEST_LOBBY' && mp.state !== 'COUNTDOWN' && mp.state !== 'RACING') {
+              joinBtn.disabled = false;
+              joinBtn.textContent = '🔗 ENTRA NELLA STANZA';
+              joinBtn.style.display = 'block';
+              joinBtn.classList.remove('hidden');
+              if (guestForm) {
+                guestForm.style.display = 'block';
+                guestForm.classList.remove('hidden');
+              }
+              if (guestWaitingBox) {
+                guestWaitingBox.style.display = 'none';
+                guestWaitingBox.classList.add('hidden');
+              }
+            }
+          }, 5000);
+        });
+
+        // Leave Room (Guest)
+        guestLeaveBtn?.addEventListener('click', () => {
+          if (mp) mp.leaveRoom();
+          haptic(15);
+          if (joinBtn) {
             joinBtn.disabled = false;
             joinBtn.textContent = '🔗 ENTRA NELLA STANZA';
-          }, 3500);
+            joinBtn.style.display = 'block';
+            joinBtn.classList.remove('hidden');
+          }
+          if (guestForm) {
+            guestForm.style.display = 'block';
+            guestForm.classList.remove('hidden');
+          }
+          if (guestWaitingBox) {
+            guestWaitingBox.style.display = 'none';
+            guestWaitingBox.classList.add('hidden');
+          }
         });
 
         // Emote quick buttons

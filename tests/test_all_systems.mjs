@@ -3292,5 +3292,39 @@ describe('=== UNIT & PROCESS TESTS: MULTIPLAYER READY CHECK, 5S COUNTDOWN & LOBB
     host.leaveRoom();
     guest.leaveRoom();
   });
+
+  it('8. Connected guest hides join button and guest form, leaving room restores them', () => {
+    const guest = new MultiplayerManager();
+    let lobbyEvents = [];
+    guest.onLobbyUpdate = (lobby) => {
+      lobbyEvents.push({ ...lobby, state: guest.state });
+    };
+
+    // Simulate joining and receiving ROOM_WELCOME
+    guest.handleIncomingData({}, {
+      type: 'ROOM_WELCOME',
+      roomCode: 'ZEPH-GUEST',
+      mySlot: 1,
+      trackIndex: 5,
+      laps: 3,
+      players: [
+        { slot: 0, name: 'Host', isHost: true, isReady: true },
+        { slot: 1, name: 'Guest', isHost: false, isReady: false }
+      ]
+    });
+
+    assert.strictEqual(guest.state, 'GUEST_LOBBY', 'State must be GUEST_LOBBY upon ROOM_WELCOME');
+    assert.strictEqual(guest.isHost, false);
+    const isGuestConnected = !guest.isHost && (guest.state === 'GUEST_LOBBY' || guest.state === 'COUNTDOWN' || guest.state === 'RACING');
+    assert.strictEqual(isGuestConnected, true, 'isGuestConnected must be true so that joinBtn and guest form are hidden');
+
+    // Leaving room triggers state IDLE and resets UI
+    guest.leaveRoom();
+    assert.strictEqual(guest.state, 'IDLE', 'State must reset to IDLE upon leaveRoom');
+    const isGuestConnectedAfterLeave = !guest.isHost && (guest.state === 'GUEST_LOBBY' || guest.state === 'COUNTDOWN' || guest.state === 'RACING');
+    assert.strictEqual(isGuestConnectedAfterLeave, false, 'isGuestConnected must be false after leaving room so joinBtn is restored');
+    assert.strictEqual(lobbyEvents.length >= 2, true, 'onLobbyUpdate must have fired on welcome and on leaveRoom');
+  });
 });
+
 

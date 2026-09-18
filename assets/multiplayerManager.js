@@ -1149,6 +1149,7 @@ export class MultiplayerManager {
     this.isHost = false;
     this.players = [];
     this.remoteStates.clear();
+    this.notifyLobbyUpdate();
   }
 
   toast(msg) {
