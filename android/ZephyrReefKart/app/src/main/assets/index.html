@@ -33,22 +33,34 @@
     <link rel="apple-touch-icon" sizes="192x192" href="./assets/icon-192.png" />
     <link rel="shortcut icon" href="./assets/favicon.png" />
     <script>
-      // Clean legacy caches and service workers
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(regs) {
-          for (var r of regs) r.unregister();
-        });
-      }
-      if ('caches' in window) {
-        caches.keys().then(function(names) {
-          for (var n of names) caches.delete(n);
-        });
-      }
+      // Clean legacy caches and service workers & force fresh load on version change
+      (function() {
+        var APP_VERSION = 'zephyr-6.3.0';
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(regs) {
+            for (var r of regs) r.unregister();
+          });
+        }
+        if ('caches' in window) {
+          caches.keys().then(function(names) {
+            for (var n of names) caches.delete(n);
+          });
+        }
+        try {
+          var storedVersion = localStorage.getItem('zephyr_client_version');
+          if (storedVersion !== APP_VERSION) {
+            localStorage.setItem('zephyr_client_version', APP_VERSION);
+            if (storedVersion && window.location.search.indexOf('v=') === -1) {
+              window.location.replace(window.location.pathname + '?v=' + APP_VERSION);
+            }
+          }
+        } catch (e) {}
+      })();
     </script>
     <script src="./assets/peerjs.min.js"></script>
-    <script type="module" src="./assets/multiplayerManager.js?v=zephyr-6.2.0"></script>
-    <script type="module" crossorigin src="./assets/index-C9rd31_W.js?v=zephyr-6.2.0"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DMliwuo_.css?v=zephyr-6.2.0">
+    <script type="module" src="./assets/multiplayerManager.js?v=zephyr-6.3.0"></script>
+    <script type="module" crossorigin src="./assets/index-C9rd31_W.js?v=zephyr-6.3.0"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DMliwuo_.css?v=zephyr-6.3.0">
     <style>
       /* Mobile Touch Controls Layer */
       .zephyr-touch-layer {
