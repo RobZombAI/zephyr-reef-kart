@@ -2792,3 +2792,130 @@ describe('=== UNIT & PROCESS TESTS: MULTI-KART COLLISION & CLUSTER STABILITY ===
     assert.strictEqual(resFar.g, 0, 'no avoidance when clear');
   });
 });
+
+describe('=== UNIT & PROCESS TESTS: 10 GEOLOGICAL BIOMES & TRACK OVERHAUL ===', () => {
+  const finalTracks = JSON.parse(fs.readFileSync('scratch/final_tracks.json', 'utf8'));
+  const bundleCode = fs.readFileSync('assets/index-C9rd31_W.js', 'utf8');
+  const indexHtml = fs.readFileSync('index.html', 'utf8');
+
+  it('1. Catalog & Bundle Track Metadata (10 Geological Biomes)', () => {
+    const expected = [
+      { name: 'Sunken Atlantis Citadel', icon: '🏛️', sub: 'Cittadella Sommersa di Atlantide' },
+      { name: 'Zephyr Terminal Runway', icon: '✈️', sub: 'Aeroporto Transatlantico' },
+      { name: 'Ancient Redwood Forest', icon: '🌲', sub: 'Foresta dei Giganti' },
+      { name: 'Apex Big-Air Stadium', icon: '🦘', sub: 'Circuito dei Megasalti' },
+      { name: 'Redrock Canyon & Mines', icon: '🏜️', sub: 'Gola dei Minatori & Canyon' },
+      { name: 'Glacier Frostbite Peaks', icon: '❄️', sub: 'Vette di Ghiaccio & Ghiacciai' },
+      { name: 'Neo Zephyr Cybercity', icon: '🏙️', sub: 'Metropoli Neon Cyberpunk' },
+      { name: 'Magma Caldera', icon: '🌋', sub: 'Caldera del Vulcano Magmatico' },
+      { name: 'Nether Inferno Abyss', icon: '🔥', sub: "Fauci dell'Inferno" },
+      { name: 'Cosmic Rainbow Orbit', icon: '🌌', sub: 'Nastro Spaziale Iperuranio' }
+    ];
+
+    assert.strictEqual(finalTracks.length, 24, '24 tracks in catalog');
+    for (let i = 0; i < 10; i++) {
+      const trk = finalTracks[i];
+      const exp = expected[i];
+      assert.strictEqual(trk.name, exp.name, `Track ${i} name`);
+      assert.strictEqual(trk.ico, exp.icon, `Track ${i} icon`);
+      assert.strictEqual(trk.sub, exp.sub, `Track ${i} subtitle`);
+      assert.ok(bundleCode.includes(exp.name), `Bundle includes track name: ${exp.name}`);
+      assert.ok(bundleCode.includes(exp.sub), `Bundle includes track sub: ${exp.sub}`);
+    }
+  });
+
+  it('2. Mathematical Closed-Loop & Gap <= 0.5m across all 10 tracks', () => {
+    function simulateTrackPoints(segs) {
+      const bo = d => d * Math.PI / 180;
+      let t = Math.PI / 2, e = 0, n = 0, i = 0;
+      const pts = [{ x: 0, z: 0, u: 0 }];
+      const total = segs.reduce((l, c) => l + (c.k === 'S' ? c.len : Math.abs(c.radius * bo(c.sweep))), 0);
+      for (const l of segs) {
+        if (l.k === 'S') {
+          const step = Math.max(1, Math.round(l.len / 6));
+          for (let h = 1; h <= step; h++) {
+            e = pts[pts.length - 1].x + Math.cos(t) * (l.len / step);
+            n = pts[pts.length - 1].z + Math.sin(t) * (l.len / step);
+            i += l.len / step;
+            pts.push({ x: e, z: n, u: i / total });
+          }
+        } else {
+          const c = bo(l.sweep), h = c > 0 ? 1 : -1, d = Math.abs(l.radius * c);
+          const step = Math.max(2, Math.round(d / (l.radius * bo(20))));
+          const f = e + l.radius * h * -Math.sin(t), g = n + l.radius * h * Math.cos(t);
+          for (let v = 1; v <= step; v++) {
+            const p = Math.abs(c) * v / step;
+            h > 0 ? (e = f + l.radius * Math.sin(t + p), n = g - l.radius * Math.cos(t + p)) : (e = f - l.radius * Math.sin(t - p), n = g + l.radius * Math.cos(t - p));
+            i += d / step;
+            pts.push({ x: e, z: n, u: i / total });
+          }
+          t += c;
+        }
+      }
+      const gap = Math.hypot(pts[0].x - pts[pts.length - 1].x, pts[0].z - pts[pts.length - 1].z);
+      return { total, gap };
+    }
+
+    for (let i = 0; i < 10; i++) {
+      const trk = finalTracks[i];
+      const { total, gap } = simulateTrackPoints(trk.segs);
+      assert.ok(total >= 1000, `Track ${i} total length (${total.toFixed(1)}m) >= 1000m`);
+      assert.ok(gap <= 0.5, `Track ${i} closure gap (${gap.toFixed(4)}m) <= 0.5m`);
+    }
+  });
+
+  it('3. Custom Altimetry Profiles, Bridges & Tunnels for all 10 tracks', () => {
+    for (let i = 0; i < 10; i++) {
+      const trk = finalTracks[i];
+      assert.ok(Array.isArray(trk.height) && trk.height.length >= 6, `Track ${i} has custom height profile`);
+      if (trk.bridge) {
+        assert.ok(trk.bridge[0] < trk.bridge[1], `Track ${i} bridge interval is valid`);
+      }
+      if (trk.tunnel) {
+        assert.ok(trk.tunnel[0] < trk.tunnel[1], `Track ${i} tunnel interval is valid`);
+      }
+    }
+  });
+
+  it('4. Track Terrain Palettes & Geological Surface Shading', () => {
+    assert.ok(bundleCode.includes('trackPalettes=['), 'Bundle contains trackPalettes definition');
+    assert.ok(bundleCode.includes('pal=trackPalettes[curTrackIdx]||cupPalettes[cupIdx]||cupPalettes[0]'), 'Terrain uses trackPalettes for current track');
+    // Check specific biome colors
+    assert.ok(bundleCode.includes('#2d7875'), 'Atlantis reef sand color defined');
+    assert.ok(bundleCode.includes('#2b303a'), 'Airport runway tarmac sand color defined');
+    assert.ok(bundleCode.includes('#3e271a'), 'Redwood forest loam color defined');
+    assert.ok(bundleCode.includes('#c67d38'), 'Stadium clay dirt color defined');
+    assert.ok(bundleCode.includes('#c86d3b'), 'Redrock canyon sandstone color defined');
+    assert.ok(bundleCode.includes('#9fd3e8'), 'Glacial ice turquoise color defined');
+    assert.ok(bundleCode.includes('#12131c'), 'Cybercity dark asphalt color defined');
+    assert.ok(bundleCode.includes('#181214'), 'Magma caldera volcanic ash color defined');
+    assert.ok(bundleCode.includes('#200a0d'), 'Nether inferno brimstone color defined');
+    assert.ok(bundleCode.includes('#16082e'), 'Cosmic orbit deep space dust color defined');
+  });
+
+  it('5. Molten Lava Shader & Space Bottomless Void', () => {
+    assert.ok(bundleCode.includes('uIsLava:'), 'Water shader declares uIsLava uniform');
+    assert.ok(bundleCode.includes('if (uIsLava > 0.5)'), 'Lava fragment branch exists');
+    assert.ok(bundleCode.includes('vec3 magmaBright = vec3(1.0, 0.28, 0.02);'), 'Molten lava bright color defined');
+    assert.ok(bundleCode.includes('vec3 magmaCore = vec3(1.0, 0.88, 0.25);'), 'Molten lava core incandescent yellow defined');
+    assert.ok(bundleCode.includes('if(curTrackIdx===9){u.visible=!1;}'), 'Ocean plane is hidden on Track 9 (Cosmic Orbit) for bottomless space void');
+  });
+
+  it('6. Procedural Landmarks & Materials for 10 Biomes', () => {
+    assert.ok(bundleCode.includes('trackMatPalettes=['), 'Bundle contains trackMatPalettes definition');
+    assert.ok(bundleCode.includes('specificTrackLandmarks=['), 'Bundle contains specificTrackLandmarks definition');
+    assert.ok(bundleCode.includes('specificTrackLandmarks[idx]||cupLandmarks[cup]||cupLandmarks[0]'), 'Landmarks list selects specificTrackLandmarks');
+  });
+
+  it('7. Track Selector Modal HTML synchronization', () => {
+    const modalNames = [
+      'Sunken Atlantis Citadel', 'Zephyr Terminal Runway', 'Ancient Redwood Forest',
+      'Apex Big-Air Stadium', 'Redrock Canyon & Mines', 'Glacier Frostbite Peaks',
+      'Neo Zephyr Cybercity', 'Magma Caldera', 'Nether Inferno Abyss', 'Cosmic Rainbow Orbit'
+    ];
+    for (let i = 0; i < 10; i++) {
+      assert.ok(indexHtml.includes(`data-index="${i}"`), `index.html contains data-index ${i}`);
+      assert.ok(indexHtml.includes(modalNames[i]), `index.html contains ${modalNames[i]}`);
+    }
+  });
+});
