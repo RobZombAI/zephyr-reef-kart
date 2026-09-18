@@ -2920,50 +2920,56 @@ describe('=== UNIT & PROCESS TESTS: 10 GEOLOGICAL BIOMES & TRACK OVERHAUL ===', 
   });
 
   it('8. Exhaust Smoke & Particle Reduction for Mobile Visibility', () => {
-    // 1. Point size cap in particle vertex shader yg (reduced from 192.0 to 40.0, multiplier 220.0)
+    // 1. Point size cap in particle vertex shader yg (reduced to 24.0, multiplier 160.0)
     assert.ok(
-      bundleCode.includes('gl_PointSize = clamp(aSize * (220.0 / max(1.0, -mv.z)), 0.0, 40.0);'),
-      'Particle vertex shader caps gl_PointSize to 40.0 to prevent screen-covering billboard blobs'
+      bundleCode.includes('gl_PointSize = clamp(aSize * (160.0 / max(1.0, -mv.z)), 0.0, 24.0);'),
+      'Particle vertex shader caps gl_PointSize to 24.0 to prevent screen-covering billboard blobs'
     );
 
-    // 2. Smoke fragment shader transparency (reduced from 1.0 opaque to soft 0.32)
+    // 2. Smoke fragment shader transparency (reduced to faint 0.15 mist)
     assert.ok(
-      bundleCode.includes('gl_FragColor = vec4(vColor, a * vAlpha * 0.32);'),
-      'Smoke fragment shader softens alpha to 0.32 for clear visibility through puffs'
+      bundleCode.includes('gl_FragColor = vec4(vColor, a * vAlpha * 0.15);'),
+      'Smoke fragment shader softens alpha to 0.15 for ultra-clear visibility through puffs'
     );
 
     // 3. Exhaust puff size, vertical velocity, gravity, and lifetime in Ag.exhaust
     assert.ok(
-      bundleCode.includes('0.06+Math.random()*0.14+o*0.08'),
+      bundleCode.includes('0.04+Math.random()*0.08+o*0.04'),
       'Exhaust upward lift reduced so particles stay low near tarmac behind bumper'
     );
     assert.ok(
-      bundleCode.includes('o>.55?.14:.09'),
-      'Exhaust particle size reduced from 0.3-0.42 to 0.09-0.14'
+      bundleCode.includes('o>.55?.08:.05'),
+      'Exhaust particle size reduced to 0.05-0.08'
     );
     assert.ok(
-      bundleCode.includes('.07+o*.05'),
+      bundleCode.includes('.04+o*.03'),
       'Exhaust particle lifetime shortened so puffs dissipate quickly behind the kart'
     );
 
-    // 4. Boost trail smoke reduction in Ag.boostTrail
+    // 4. Boost trail ZERO smoke in Ag.boostTrail
     assert.ok(
-      bundleCode.includes('Math.random()<.16&&this.smoke.emit'),
-      'Boost trail smoke frequency reduced from 35% to 16%'
-    );
-    assert.ok(
-      bundleCode.includes('10217471,.26,.18,1.4,-2.5,1.3'),
-      'Boost trail smoke particle radius and growth multiplier reduced'
+      !bundleCode.match(/boostTrail\([^)]*\)\{[^}]*this\.smoke\.emit/),
+      'Boost trail has ZERO smoke emission for sleek, clean flame jets'
     );
 
-    // 5. Intelligent emission throttling in syncVisual
+    // 5. Burst ZERO smoke in Ag.burst
+    assert.ok(
+      !bundleCode.match(/burst\(t,e,n,i,r,o\)\{[^}]*this\.smoke\.emit/),
+      'Burst has ZERO smoke emission so nitro/rocket start never drops smoke clouds'
+    );
+
+    // 6. Intelligent emission throttling in syncVisual
     assert.ok(
       bundleCode.includes('const isThrottle=this.controls.throttle>0||a;'),
       'Exhaust emissions only occur when kart is actively throttling or boosting'
     );
     assert.ok(
-      bundleCode.includes('const exRate=a?0.48:(this.isPlayer?0.32:0.24);'),
+      bundleCode.includes('const exRate=a?0.20:(this.isPlayer?0.16:0.10);'),
       'Exhaust emission rate is throttled cleanly for player and AI'
+    );
+    assert.ok(
+      bundleCode.includes('a?e.boostTrail(d.x,d.y+.02,d.z,-this.backDir.x*.4,-this.backDir.z*.4,c):e.exhaust(d.x,d.y,d.z,this.backDir.x,this.backDir.z,l)'),
+      'When boosting, regular exhaust is suppressed in favor of pure boostTrail'
     );
   });
 });
