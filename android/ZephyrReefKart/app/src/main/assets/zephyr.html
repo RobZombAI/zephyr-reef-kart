@@ -939,46 +939,28 @@
                 </select>
               </div>
               <div style="flex: 1; min-width: 150px; text-align: left;">
-                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">CIRCUITO GARA</label>
-                <select id="z-mp-track-select" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 8px 12px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
-  <optgroup label="🏆 Coppa Brezza">
-    <option value="0">🪸 Coral Sanctuary</option>
-    <option value="1">🏖️ Sunken Shallows</option>
-    <option value="2">🌴 Palm Grove Way</option>
-    <option value="3">⚪ Pearl Atoll</option>
-  </optgroup>
-  <optgroup label="🏆 Coppa Canyon">
-    <option value="4">🪨 Amber Reef Gulch</option>
-    <option value="5">🐚 Nautilus Spiral</option>
-    <option value="6">🌉 Seafoam Viaduct</option>
-    <option value="7">🌀 Tidal Drift Arena</option>
-  </optgroup>
-  <optgroup label="🏆 Coppa Abissi">
-    <option value="8">🌊 Abyssal Trench</option>
-    <option value="9">🌋 Obsidian Gorge</option>
-    <option value="10">🦑 Kraken Spine</option>
-    <option value="11">💎 Bioluminescent Caves</option>
-  </optgroup>
-  <optgroup label="🏆 Coppa Cielo">
-    <option value="12">☁️ Sky Reef</option>
-    <option value="13">🌩️ Nimbus Overpass</option>
-    <option value="14">🦅 Stratos Hairpins</option>
-    <option value="15">🌪️ Vortex Zenith</option>
-  </optgroup>
-  <optgroup label="🏆 Coppa Antica">
-    <option value="16">🏛️ Temple of Nix</option>
-    <option value="17">🏺 Sunken Acropolis</option>
-    <option value="18">🐉 Leviathan's Roar</option>
-    <option value="19">🔮 Prism Citadel</option>
-  </optgroup>
-  <optgroup label="🏆 Coppa Nova">
-    <option value="20">🔥 Solar Forge Caldera</option>
-    <option value="21">🌌 Cosmic Warpway</option>
-    <option value="22">⚛️ Quantum Singularity</option>
-    <option value="23">👑 Zephyr Omega Finale</option>
-  </optgroup>
-</select>
+                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">NUMERO DI PISTE (TORNEO)</label>
+                <select id="z-mp-playlist-count" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #ffc857; padding: 8px 12px; border-radius: 10px; font-weight: 800; margin-top: 4px;">
+                  <option value="1">1 Pista (Gara Singola)</option>
+                  <option value="2">2 Piste (Mini Torneo)</option>
+                  <option value="3" selected>3 Piste (Gran Premio)</option>
+                  <option value="4">4 Piste (Campionato)</option>
+                  <option value="5">5 Piste (Maratona GP)</option>
+                </select>
               </div>
+            </div>
+
+            <!-- Dynamic Track Selectors for Host Playlist -->
+            <div style="text-align: left; margin-bottom: 14px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">SELEZIONE PISTE SPECIFICHE:</label>
+                <span id="z-mp-playlist-badge" style="font-size: 10px; color: #ffc857; font-weight: 800; background: rgba(255,200,87,0.15); padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(255,200,87,0.4);">3 Piste Configurate</span>
+              </div>
+              <div id="z-mp-playlist-tracks-container" style="display: flex; flex-direction: column; gap: 8px; background: rgba(6, 20, 28, 0.6); padding: 10px; border-radius: 12px; border: 1px solid rgba(118,255,240,0.25); max-height: 180px; overflow-y: auto;">
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;">
               <div style="width: 75px; text-align: left;">
                 <label style="font-size: 11px; color: #76fff0; font-weight: 700;">GIRI</label>
                 <select id="z-mp-laps-select" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 8px 12px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
@@ -1004,19 +986,52 @@
 
           <!-- GUEST TAB CONTENT -->
           <div id="z-mp-guest-view" class="hidden">
-            <div style="text-align: left; margin-bottom: 14px;">
-              <label style="font-size: 11px; color: #76fff0; font-weight: 700;">CODICE STANZA PRIVATA</label>
-              <input id="z-mp-join-code" type="text" maxlength="12" placeholder="Es. ZEPH-7429" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #ffc857; font-family: monospace; font-size: 20px; text-transform: uppercase; padding: 10px 14px; border-radius: 10px; font-weight: 800; margin-top: 4px;">
+            <div id="z-mp-guest-form">
+              <div style="text-align: left; margin-bottom: 14px;">
+                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">CODICE STANZA PRIVATA</label>
+                <input id="z-mp-join-code" type="text" maxlength="12" placeholder="Es. ZEPH-7429" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #ffc857; font-family: monospace; font-size: 20px; text-transform: uppercase; padding: 10px 14px; border-radius: 10px; font-weight: 800; margin-top: 4px;">
+              </div>
+
+              <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 140px; text-align: left;">
+                  <label style="font-size: 11px; color: #76fff0; font-weight: 700;">IL TUO NICKNAME</label>
+                  <input id="z-mp-guest-name" type="text" maxlength="16" placeholder="Il tuo nome" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 10px 14px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
+                </div>
+                <div style="flex: 1; min-width: 140px; text-align: left;">
+                  <label style="font-size: 11px; color: #76fff0; font-weight: 700;">IL TUO KART</label>
+                  <select id="z-mp-guest-kart" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 10px 14px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
+                    <option value="nix">🦦 Nix (Wave-Runner)</option>
+                    <option value="bruno">🪨 Bruno (Landslide)</option>
+                    <option value="sable">🦋 Sable (Nightflyer)</option>
+                    <option value="zuzu">⚡ Zuzu (Drifter)</option>
+                    <option value="rustam">⚙️ Rustam (Tinkerer)</option>
+                    <option value="marlow">🐸 Marlow (Corsair)</option>
+                  </select>
+                </div>
+              </div>
+
+              <button id="z-mp-join-btn" class="z-mini" style="width: 100%; padding: 14px; font-size: 16px; font-weight: 900; background: linear-gradient(135deg, #0284c7, #0ea5e9); border: 2px solid #38bdf8; color: #ffffff; border-radius: 14px; box-shadow: 0 0 25px rgba(14, 165, 233, 0.5); cursor: pointer; margin-bottom: 12px;">
+                🔗 ENTRA NELLA STANZA
+              </button>
             </div>
 
-            <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
-              <div style="flex: 1; min-width: 140px; text-align: left;">
-                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">IL TUO NICKNAME</label>
-                <input id="z-mp-guest-name" type="text" maxlength="16" placeholder="Il tuo nome" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 10px 14px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
+            <div id="z-mp-guest-waiting" class="hidden" style="background: rgba(8, 26, 36, 0.8); border: 1px solid #76fff0; border-radius: 12px; padding: 14px; margin-top: 10px; text-align: left;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <div style="font-size: 14px; font-weight: 800; color: #34d399;">✓ Connesso alla Stanza!</div>
+                <button id="z-mp-guest-leave-btn" style="padding: 4px 10px; font-size: 11px; font-weight: 700; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.5); color: #fca5a5; border-radius: 6px; cursor: pointer;">🚪 Esci</button>
               </div>
-              <div style="flex: 1; min-width: 140px; text-align: left;">
-                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">IL TUO KART</label>
-                <select id="z-mp-guest-kart" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 10px 14px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
+              <div id="z-mp-guest-info" style="font-size: 12px; color: #94a3b8; margin-bottom: 10px;">In attesa che l'Host avvii la gara...</div>
+
+              <!-- Tournament Info for Guest -->
+              <div id="z-mp-guest-tournament-info" style="margin-bottom: 10px; background: rgba(118,255,240,0.08); border: 1px solid rgba(118,255,240,0.3); border-radius: 10px; padding: 10px; font-size: 12px; color: #e2e8f0;">
+                <div style="font-weight: 800; color: #76fff0; font-size: 11px; text-transform: uppercase; margin-bottom: 4px;">🏆 Programma Piste del Torneo:</div>
+                <div id="z-mp-guest-tracks-list" style="color: #ffc857; font-weight: 700; line-height: 1.4;">Caricamento piste...</div>
+              </div>
+
+              <!-- In-Room Character Selector for Guests -->
+              <div style="margin-bottom: 10px; background: rgba(0,0,0,0.3); padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(118,255,240,0.25);">
+                <label style="font-size: 11px; color: #76fff0; font-weight: 700; display: block; margin-bottom: 4px;">CAMBIA PERSONAGGIO / KART:</label>
+                <select id="z-mp-guest-lobby-kart" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.95); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 8px 10px; border-radius: 8px; font-weight: 700;">
                   <option value="nix">🦦 Nix (Wave-Runner)</option>
                   <option value="bruno">🪨 Bruno (Landslide)</option>
                   <option value="sable">🦋 Sable (Nightflyer)</option>
@@ -1025,18 +1040,83 @@
                   <option value="marlow">🐸 Marlow (Corsair)</option>
                 </select>
               </div>
-            </div>
 
-            <button id="z-mp-join-btn" class="z-mini" style="width: 100%; padding: 14px; font-size: 16px; font-weight: 900; background: linear-gradient(135deg, #0284c7, #0ea5e9); border: 2px solid #38bdf8; color: #ffffff; border-radius: 14px; box-shadow: 0 0 25px rgba(14, 165, 233, 0.5); cursor: pointer; margin-bottom: 12px;">
-              🔗 ENTRA NELLA STANZA
-            </button>
+              <!-- Ready Check Button for Guest -->
+              <button id="z-mp-guest-ready-btn" class="z-mini" style="width: 100%; padding: 12px; font-size: 15px; font-weight: 900; background: linear-gradient(135deg, #f59e0b, #d97706); border: 2px solid #fbbf24; color: #ffffff; border-radius: 12px; cursor: pointer; margin-bottom: 12px; box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); transition: all 0.2s ease;">
+                ✋ CONFERMA: SONO PRONTO!
+              </button>
 
-            <div id="z-mp-guest-waiting" class="hidden" style="background: rgba(8, 26, 36, 0.8); border: 1px solid #76fff0; border-radius: 12px; padding: 14px; margin-top: 10px; text-align: left;">
-              <div style="font-size: 14px; font-weight: 800; color: #34d399; margin-bottom: 4px;">✓ Connesso alla Stanza!</div>
-              <div id="z-mp-guest-info" style="font-size: 12px; color: #94a3b8; margin-bottom: 10px;">In attesa che l'Host avvii la gara...</div>
               <div style="font-size: 11px; color: #94a3b8; font-weight: 700; margin-bottom: 6px;">AMICI IN STANZA:</div>
               <div id="z-mp-guest-players" style="display: flex; flex-direction: column; gap: 6px; max-height: 140px; overflow-y: auto; background: rgba(6, 20, 28, 0.6); padding: 8px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);"></div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5-Second Synchronized Pre-Race Countdown / Loading Overlay -->
+      <div id="z-mp-countdown-overlay" class="hidden" style="position: fixed; inset: 0; background: radial-gradient(circle at center, rgba(8, 26, 36, 0.97) 0%, rgba(2, 8, 14, 0.99) 100%); z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); text-align: center; padding: 20px;">
+        <div style="font-size: 13px; font-weight: 900; letter-spacing: 0.2em; color: #76fff0; text-transform: uppercase; margin-bottom: 6px;">
+          TUTTI I PILOTI CONFERMATI!
+        </div>
+        <div id="z-mp-countdown-track" style="font-size: 24px; font-weight: 900; color: #ffc857; margin-bottom: 20px; text-shadow: 0 0 20px rgba(255,200,87,0.6);">
+          🪸 Coral Sanctuary (3 Giri)
+        </div>
+        
+        <div id="z-mp-countdown-num" style="font-size: 120px; font-weight: 950; font-family: monospace, sans-serif; color: #ffffff; text-shadow: 0 0 35px #76fff0, 0 0 70px #38bdf8; line-height: 1; transform: scale(1); transition: transform 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+          5
+        </div>
+        
+        <div id="z-mp-countdown-status" style="margin-top: 24px; font-size: 14px; font-weight: 700; color: #cbd5e1; letter-spacing: 0.05em;">
+          Sincronizzazione piloti e griglia di partenza...
+        </div>
+        <div style="width: 280px; height: 6px; background: rgba(255,255,255,0.12); border-radius: 3px; overflow: hidden; margin-top: 14px;">
+          <div id="z-mp-countdown-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #38bdf8, #76fff0); transition: width 1s linear;"></div>
+        </div>
+      </div>
+
+      <!-- Tournament GP Standings & Championship Modal -->
+      <div id="z-mp-tournament-modal" class="hidden" style="position: fixed; inset: 0; background: rgba(2, 6, 12, 0.94); z-index: 9998; display: none; align-items: center; justify-content: center; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); padding: 16px; box-sizing: border-box;">
+        <div style="background: linear-gradient(135deg, rgba(8, 26, 36, 0.96), rgba(4, 15, 22, 0.98)); border: 2px solid #76fff0; border-radius: 20px; max-width: 540px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 22px; box-shadow: 0 0 50px rgba(118, 255, 240, 0.35); text-align: center; color: #fff; box-sizing: border-box;">
+          
+          <div id="z-mp-tourney-badge" style="display: inline-block; padding: 4px 14px; background: rgba(118,255,240,0.15); border: 1px solid #76fff0; border-radius: 20px; font-size: 11px; font-weight: 800; color: #76fff0; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 8px;">
+            🏁 CLASSIFICA TORNEO GP
+          </div>
+          
+          <h2 id="z-mp-tourney-title" style="font-size: 22px; font-weight: 900; margin: 0 0 4px 0; color: #ffc857; text-shadow: 0 0 20px rgba(255,200,87,0.5);">
+            GARA 1 DI 3 COMPLETATA
+          </h2>
+          
+          <p id="z-mp-tourney-sub" style="font-size: 12px; color: #94a3b8; margin: 0 0 16px 0;">
+            Classifica generale a punti sincronizzata in tempo reale
+          </p>
+
+          <!-- Standings Table -->
+          <div style="background: rgba(6, 20, 28, 0.7); border: 1px solid rgba(118,255,240,0.25); border-radius: 14px; overflow: hidden; margin-bottom: 18px;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left;">
+              <thead>
+                <tr style="background: rgba(118, 255, 240, 0.12); color: #76fff0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;">
+                  <th style="padding: 10px 12px;">POS</th>
+                  <th style="padding: 10px 12px;">PILOTA</th>
+                  <th style="padding: 10px 12px; text-align: center;">GARA</th>
+                  <th style="padding: 10px 12px; text-align: right;">PUNTI TOTALI</th>
+                </tr>
+              </thead>
+              <tbody id="z-mp-tourney-tbody">
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Tournament Action Buttons -->
+          <div id="z-mp-tourney-actions" style="display: flex; flex-direction: column; gap: 10px;">
+            <button id="z-mp-tourney-next-btn" class="z-mini" style="width: 100%; padding: 14px; font-size: 15px; font-weight: 900; background: linear-gradient(135deg, #059669, #10b981); border: 2px solid #34d399; color: #ffffff; border-radius: 12px; box-shadow: 0 0 25px rgba(16, 185, 129, 0.5); cursor: pointer;">
+              🚀 AVVIA PROSSIMA PISTA
+            </button>
+            <div id="z-mp-tourney-guest-msg" class="hidden" style="font-size: 13px; font-weight: 700; color: #38bdf8; padding: 10px; background: rgba(56,189,248,0.12); border-radius: 10px; border: 1px dashed #38bdf8;">
+              ⏳ In attesa che l'Host avvii la prossima gara...
+            </div>
+            <button id="z-mp-tourney-exit-btn" class="z-mini" style="width: 100%; padding: 10px; font-size: 13px; font-weight: 700; background: rgba(239,68,68,0.2); border: 1px solid rgba(239,68,68,0.5); color: #fca5a5; border-radius: 10px; cursor: pointer;">
+              🚪 Ritorna alla Lobby Multiplayer
+            </button>
           </div>
         </div>
       </div>
@@ -1637,16 +1717,44 @@
         const joinCodeInput = document.getElementById('z-mp-join-code');
         const joinBtn = document.getElementById('z-mp-join-btn');
         const startRaceBtn = document.getElementById('z-mp-start-race');
-        const trackSelect = document.getElementById('z-mp-track-select');
+        const playlistCountSelect = document.getElementById('z-mp-playlist-count');
+        const playlistTracksContainer = document.getElementById('z-mp-playlist-tracks-container');
+        const playlistBadge = document.getElementById('z-mp-playlist-badge');
         const lapsSelect = document.getElementById('z-mp-laps-select');
+        const guestTourneyInfoEl = document.getElementById('z-mp-guest-tournament-info');
+        const guestTracksListEl = document.getElementById('z-mp-guest-tracks-list');
+        const tourneyModal = document.getElementById('z-mp-tournament-modal');
+        const tourneyTitle = document.getElementById('z-mp-tourney-title');
+        const tourneySub = document.getElementById('z-mp-tourney-sub');
+        const tourneyTbody = document.getElementById('z-mp-tourney-tbody');
+        const tourneyNextBtn = document.getElementById('z-mp-tourney-next-btn');
+        const tourneyGuestMsg = document.getElementById('z-mp-tourney-guest-msg');
+        const tourneyExitBtn = document.getElementById('z-mp-tourney-exit-btn');
         const playerCountEl = document.getElementById('z-mp-player-count');
         const lobbyPlayersEl = document.getElementById('z-mp-lobby-players');
+        const guestForm = document.getElementById('z-mp-guest-form');
         const guestWaitingBox = document.getElementById('z-mp-guest-waiting');
         const guestInfoEl = document.getElementById('z-mp-guest-info');
         const guestPlayersEl = document.getElementById('z-mp-guest-players');
+        const guestReadyBtn = document.getElementById('z-mp-guest-ready-btn');
+        const guestLobbyKartSelect = document.getElementById('z-mp-guest-lobby-kart');
+        const guestLeaveBtn = document.getElementById('z-mp-guest-leave-btn');
+        const mpCountdownOverlay = document.getElementById('z-mp-countdown-overlay');
+        const mpCountdownNum = document.getElementById('z-mp-countdown-num');
+        const mpCountdownTrack = document.getElementById('z-mp-countdown-track');
+        const mpCountdownStatus = document.getElementById('z-mp-countdown-status');
+        const mpCountdownBar = document.getElementById('z-mp-countdown-bar');
         const emoteBar = document.getElementById('z-emote-bar');
 
         let mp = null;
+
+        const isGuestInRoom = () => mp && !mp.isHost && (
+          mp.state === 'CONNECTING' || 
+          mp.state === 'GUEST_LOBBY' || 
+          mp.state === 'COUNTDOWN' || 
+          mp.state === 'RACING' || 
+          mp.state === 'RESULTS'
+        );
 
         const initMultiplayer = () => {
           if (window.MultiplayerManager && !mp) {
@@ -1667,6 +1775,94 @@
               marlow: { icon: '🐸', label: 'Marlow' }
             };
 
+            const ALL_TRACKS = [
+              { id: 0, cup: 'Coppa Brezza', name: 'Coral Sanctuary', sub: 'Laguna Corallina', ico: '🪸' },
+              { id: 1, cup: 'Coppa Brezza', name: 'Sunken Shallows', sub: 'Bassi Fondali Sabbiosi', ico: '🏖️' },
+              { id: 2, cup: 'Coppa Brezza', name: 'Palm Grove Way', sub: 'Viale delle Palme', ico: '🌴' },
+              { id: 3, cup: 'Coppa Brezza', name: 'Pearl Atoll', sub: 'Atollo delle Perle', ico: '⚪' },
+              { id: 4, cup: 'Coppa Canyon', name: 'Amber Reef Gulch', sub: 'Gola dell\'Ambra', ico: '🪨' },
+              { id: 5, cup: 'Coppa Canyon', name: 'Nautilus Spiral', sub: 'Spirale del Nautilus', ico: '🐚' },
+              { id: 6, cup: 'Coppa Canyon', name: 'Seafoam Viaduct', sub: 'Viadotto della Spuma', ico: '🌉' },
+              { id: 7, cup: 'Coppa Canyon', name: 'Tidal Drift Arena', sub: 'Arena del Flusso', ico: '🌀' },
+              { id: 8, cup: 'Coppa Abissi', name: 'Abyssal Trench', sub: 'Fossa degli Abissi', ico: '🌊' },
+              { id: 9, cup: 'Coppa Abissi', name: 'Obsidian Gorge', sub: 'Gola di Ossidiana', ico: '🌋' },
+              { id: 10, cup: 'Coppa Abissi', name: 'Kraken Spine', sub: 'Dorso del Kraken', ico: '🦑' },
+              { id: 11, cup: 'Coppa Abissi', name: 'Bioluminescent Caves', sub: 'Grotte Luminescenti', ico: '💎' },
+              { id: 12, cup: 'Coppa Cielo', name: 'Sky Reef', sub: 'Arcipelago Celeste', ico: '☁️' },
+              { id: 13, cup: 'Coppa Cielo', name: 'Nimbus Overpass', sub: 'Cavalcavia dei Nembi', ico: '🌩️' },
+              { id: 14, cup: 'Coppa Cielo', name: 'Stratos Hairpins', sub: 'Tornanti della Stratosfera', ico: '🦅' },
+              { id: 15, cup: 'Coppa Cielo', name: 'Vortex Zenith', sub: 'Zenith del Vortice', ico: '🌪️' },
+              { id: 16, cup: 'Coppa Antica', name: 'Temple of Nix', sub: 'Il Tempio Sommerso', ico: '🏛️' },
+              { id: 17, cup: 'Coppa Antica', name: 'Sunken Acropolis', sub: 'Acropoli Sommersa', ico: '🏺' },
+              { id: 18, cup: 'Coppa Antica', name: 'Leviathan\'s Roar', sub: 'Ruggito del Leviatano', ico: '🐉' },
+              { id: 19, cup: 'Coppa Antica', name: 'Prism Citadel', sub: 'Cittadella dei Prismi', ico: '🔮' },
+              { id: 20, cup: 'Coppa Nova', name: 'Solar Forge Caldera', sub: 'Caldera della Forgia Solare', ico: '🔥' },
+              { id: 21, cup: 'Coppa Nova', name: 'Cosmic Warpway', sub: 'Autostrada Iperspaziale', ico: '🌌' },
+              { id: 22, cup: 'Coppa Nova', name: 'Quantum Singularity', sub: 'Singolarità Quantistica', ico: '⚛️' },
+              { id: 23, cup: 'Coppa Nova', name: 'Zephyr Omega Finale', sub: 'Gran Finale Zephyr Omega', ico: '👑' }
+            ];
+
+            const getTrackName = (idx) => {
+              const t = ALL_TRACKS[idx] || (window.__ZEPHYR_TRACKS && window.__ZEPHYR_TRACKS[idx]);
+              return t ? `${t.ico || '🏁'} ${t.name}` : `Pista ${idx + 1}`;
+            };
+
+            const buildTrackOptionsHtml = (selectedId) => {
+              let html = '';
+              const cups = ['Coppa Brezza', 'Coppa Canyon', 'Coppa Abissi', 'Coppa Cielo', 'Coppa Antica', 'Coppa Nova'];
+              for (const cup of cups) {
+                html += `<optgroup label="🏆 ${cup}">`;
+                for (const trk of ALL_TRACKS.filter(t => t.cup === cup)) {
+                  const isSel = trk.id === selectedId ? 'selected' : '';
+                  html += `<option value="${trk.id}" ${isSel}>${trk.ico} ${trk.name}</option>`;
+                }
+                html += `</optgroup>`;
+              }
+              return html;
+            };
+
+            const renderPlaylistSelects = () => {
+              if (!playlistTracksContainer || !playlistCountSelect) return;
+              const count = Math.max(1, Math.min(5, parseInt(playlistCountSelect.value || '3', 10)));
+              if (playlistBadge) playlistBadge.textContent = `${count} ${count === 1 ? 'Pista' : 'Piste'} Configurate`;
+
+              if (mp) {
+                while (mp.playlistTracks.length < count) {
+                  const nextIdx = (mp.playlistTracks[mp.playlistTracks.length - 1] + 1) % 24;
+                  mp.playlistTracks.push(nextIdx);
+                }
+                mp.playlistTracks = mp.playlistTracks.slice(0, count);
+              }
+
+              playlistTracksContainer.innerHTML = '';
+              for (let i = 0; i < count; i++) {
+                const curTrk = mp ? (mp.playlistTracks[i] ?? i) : i;
+                const row = document.createElement('div');
+                row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px;';
+                row.innerHTML = `
+                  <span style="font-weight: 800; color: #76fff0; min-width: 65px;">Pista ${i + 1}:</span>
+                  <select class="z-mp-playlist-slot-select" data-slot-index="${i}" style="flex: 1; background: rgba(8, 26, 36, 0.95); border: 1px solid rgba(118,255,240,0.4); color: #fff; padding: 6px 10px; border-radius: 8px; font-weight: 700; font-size: 12px;">
+                    ${buildTrackOptionsHtml(curTrk)}
+                  </select>
+                `;
+                playlistTracksContainer.appendChild(row);
+              }
+
+              playlistTracksContainer.querySelectorAll('.z-mp-playlist-slot-select').forEach(sel => {
+                sel.addEventListener('change', (e) => {
+                  const slotIdx = parseInt(e.target.dataset.slotIndex, 10);
+                  const val = parseInt(e.target.value, 10);
+                  if (mp) {
+                    mp.setPlaylistTrackAt(slotIdx, val);
+                  }
+                });
+              });
+
+              if (mp && mp.isHost) {
+                mp.setPlaylist(mp.playlistTracks, parseInt(lapsSelect?.value || '3', 10));
+              }
+            };
+
             mp.onLobbyUpdate = (lobby) => {
               if (roomCodeEl) roomCodeEl.textContent = lobby.roomCode || 'ZEPH-....';
               if (playerCountEl) playerCountEl.textContent = lobby.players.length;
@@ -1675,6 +1871,10 @@
                 const isMe = idx === lobby.mySlot;
                 const pingColor = (p.ping || 0) < 60 ? '#10b981' : (p.ping || 0) < 120 ? '#f59e0b' : '#ef4444';
                 const kInfo = KART_INFO[p.kartId] || { icon: '🏎️', label: p.kartId || 'Kart' };
+                const isReady = p.isReady !== false;
+                const readyBadge = isReady
+                  ? `<span style="font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 6px; background: rgba(16, 185, 129, 0.25); color: #34d399; border: 1px solid #10b981;">✅ PRONTO</span>`
+                  : `<span style="font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 6px; background: rgba(245, 158, 11, 0.25); color: #fbbf24; border: 1px solid #f59e0b;">⏳ IN ATTESA</span>`;
                 return `
                   <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${isMe ? 'rgba(118, 255, 240, 0.12)' : 'rgba(255,255,255,0.03)'}; border-radius: 8px; border: 1px solid ${isMe ? '#76fff0' : 'rgba(255,255,255,0.06)'};">
                     <div style="display: flex; align-items: center; gap: 8px;">
@@ -1682,9 +1882,12 @@
                       <span style="font-size: 13px; font-weight: 800; color: ${isMe ? '#ffc857' : '#ffffff'};">${p.name} ${isMe ? '(Tu)' : ''}</span>
                       <span style="font-size: 11px; padding: 2px 6px; border-radius: 6px; background: rgba(255,255,255,0.08); color: #76fff0;">${kInfo.icon} ${kInfo.label}</span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                      <span style="display:inline-block; width: 6px; height: 6px; border-radius: 50%; background: ${pingColor};"></span>
-                      <span style="font-size: 11px; font-family: monospace; color: #94a3b8;">${p.ping || 30}ms</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      ${readyBadge}
+                      <div style="display: flex; align-items: center; gap: 4px;">
+                        <span style="display:inline-block; width: 6px; height: 6px; border-radius: 50%; background: ${pingColor};"></span>
+                        <span style="font-size: 11px; font-family: monospace; color: #94a3b8;">${p.ping || 30}ms</span>
+                      </div>
                     </div>
                   </div>
                 `;
@@ -1694,30 +1897,186 @@
               if (guestPlayersEl) guestPlayersEl.innerHTML = lobby.players.map(renderPlayerRow).join('');
 
               if (guestInfoEl) {
-                guestInfoEl.innerHTML = `Connesso all'Host! Circuito: <b>${(window.__ZEPHYR_TRACKS && window.__ZEPHYR_TRACKS[lobby.trackIndex]?.name) || 'Circuito'}</b> (${lobby.laps} giri)<br>In attesa della partenza...`;
+                const curRoom = lobby.roomCode || mp.roomCode || '';
+                const tName = (window.__ZEPHYR_TRACKS && window.__ZEPHYR_TRACKS[lobby.trackIndex]?.name) || 'Circuito';
+                guestInfoEl.innerHTML = `Stanza: <b style="color: #ffc857; font-family: monospace;">${curRoom}</b> • Circuito: <b>${tName}</b> (${lobby.laps} giri)<br>In attesa che l'Host avvii la gara...`;
+              }
+              if (guestTracksListEl) {
+                const tracks = (lobby.playlistTracks && lobby.playlistTracks.length > 0) ? lobby.playlistTracks : (mp.playlistTracks || [lobby.trackIndex]);
+                guestTracksListEl.innerHTML = tracks.map((tId, idx) => {
+                  return `<div><span style="opacity: 0.8;">Gara ${idx + 1}:</span> <b>${getTrackName(tId)}</b></div>`;
+                }).join('');
+              }
+
+              // Manage Guest UI: hide join button and join form when connecting or connected to room
+              const isGuestConnected = isGuestInRoom();
+              if (joinBtn) {
+                if (isGuestConnected) {
+                  joinBtn.style.display = 'none';
+                  joinBtn.classList.add('hidden');
+                } else if (mp.state === 'IDLE') {
+                  joinBtn.style.display = 'block';
+                  joinBtn.classList.remove('hidden');
+                  joinBtn.disabled = false;
+                  joinBtn.textContent = '🔗 ENTRA NELLA STANZA';
+                }
+              }
+              if (guestForm) {
+                if (isGuestConnected) {
+                  guestForm.style.display = 'none';
+                  guestForm.classList.add('hidden');
+                } else if (mp.state === 'IDLE') {
+                  guestForm.style.display = 'block';
+                  guestForm.classList.remove('hidden');
+                }
+              }
+              if (guestWaitingBox) {
+                if (isGuestConnected) {
+                  guestWaitingBox.style.display = 'block';
+                  guestWaitingBox.classList.remove('hidden');
+                } else if (mp.state === 'IDLE') {
+                  guestWaitingBox.style.display = 'none';
+                  guestWaitingBox.classList.add('hidden');
+                }
+              }
+
+              // Update guest ready button and lobby kart selector
+              const myPlayer = lobby.players.find(p => p.slot === lobby.mySlot);
+              if (guestReadyBtn) {
+                if (myPlayer && myPlayer.isReady) {
+                  guestReadyBtn.style.background = 'linear-gradient(135deg, #059669, #10b981)';
+                  guestReadyBtn.style.borderColor = '#34d399';
+                  guestReadyBtn.style.boxShadow = '0 0 15px rgba(16, 185, 129, 0.4)';
+                  guestReadyBtn.textContent = '✅ SEI PRONTO! (CLICCA PER ANNULLARE)';
+                } else {
+                  guestReadyBtn.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
+                  guestReadyBtn.style.borderColor = '#fbbf24';
+                  guestReadyBtn.style.boxShadow = '0 0 15px rgba(245, 158, 11, 0.4)';
+                  guestReadyBtn.textContent = '✋ CONFERMA: SONO PRONTO!';
+                }
+              }
+              if (guestLobbyKartSelect && myPlayer && myPlayer.kartId) {
+                guestLobbyKartSelect.value = myPlayer.kartId;
+              }
+
+              // Update host start button ready state
+              if (startRaceBtn && mp.isHost) {
+                const humanPlayers = lobby.players.filter(p => !p.isAI);
+                const readyCount = humanPlayers.filter(p => p.isReady !== false).length;
+                const totalCount = humanPlayers.length;
+                const allReady = readyCount === totalCount && totalCount > 0;
+
+                if (allReady) {
+                  startRaceBtn.disabled = false;
+                  startRaceBtn.style.opacity = '1';
+                  startRaceBtn.style.cursor = 'pointer';
+                  startRaceBtn.style.background = 'linear-gradient(135deg, #059669, #10b981)';
+                  startRaceBtn.style.borderColor = '#34d399';
+                  startRaceBtn.style.boxShadow = '0 0 25px rgba(16, 185, 129, 0.5)';
+                  startRaceBtn.textContent = '🚀 AVVIA GARA (TUTTI PRONTI!)';
+                } else {
+                  startRaceBtn.disabled = true;
+                  startRaceBtn.style.opacity = '0.55';
+                  startRaceBtn.style.cursor = 'not-allowed';
+                  startRaceBtn.style.background = '#334155';
+                  startRaceBtn.style.borderColor = '#64748b';
+                  startRaceBtn.style.boxShadow = 'none';
+                  startRaceBtn.textContent = `⏳ IN ATTESA DEI GIOCATORI (${readyCount}/${totalCount} PRONTI)`;
+                }
+              }
+            };
+
+            mp.onCountdownTick = (remaining, data) => {
+              if (tourneyModal) {
+                tourneyModal.style.display = 'none';
+                tourneyModal.classList.add('hidden');
+              }
+              if (mpCountdownOverlay) {
+                mpCountdownOverlay.style.display = 'flex';
+                mpCountdownOverlay.classList.remove('hidden');
+              }
+              mpModal?.classList.add('hidden');
+              if (mpCountdownNum) {
+                if (remaining > 0) {
+                  mpCountdownNum.textContent = String(remaining);
+                  mpCountdownNum.style.color = '#ffffff';
+                } else {
+                  mpCountdownNum.textContent = 'PRONTI!';
+                  mpCountdownNum.style.color = '#34d399';
+                }
+                mpCountdownNum.style.transform = 'scale(1.35)';
+                setTimeout(() => { if (mpCountdownNum) mpCountdownNum.style.transform = 'scale(1)'; }, 150);
+              }
+              if (mpCountdownStatus) {
+                const STATUS_PREP = {
+                  5: "Sincronizzazione piloti e caricamento circuito... (5 sec)",
+                  4: "Controllo griglia e posizionamento kart... (4 sec)",
+                  3: "Riscaldamento motori e assetto gomme... (3 sec)",
+                  2: "Posizionamento sulla linea di partenza... (2 sec)",
+                  1: "Semaforo in arrivo: prepararsi al via! (1 sec)",
+                  0: "Tutti in griglia! Inizio partenza classica..."
+                };
+                mpCountdownStatus.textContent = STATUS_PREP[remaining] || "Preparazione partenza...";
+              }
+              if (mpCountdownTrack) {
+                const tName = (window.__ZEPHYR_TRACKS && window.__ZEPHYR_TRACKS[data.trackIndex]?.name) || 'Circuito';
+                mpCountdownTrack.textContent = `${tName} (${data.laps} Giri)`;
+              }
+              if (mpCountdownBar) {
+                const pct = Math.round(((5 - Math.max(0, remaining)) / 5) * 100);
+                mpCountdownBar.style.width = `${pct}%`;
+              }
+              if (window.__zephyr?.audio?.play) {
+                window.__zephyr.audio.play('ui_move', { volume: 0.4 });
+              }
+            };
+
+            mp.onCountdownCancel = (reason) => {
+              if (mpCountdownOverlay) {
+                mpCountdownOverlay.style.display = 'none';
+                mpCountdownOverlay.classList.add('hidden');
+              }
+              mpModal?.classList.remove('hidden');
+              if (startRaceBtn) {
+                startRaceBtn.disabled = true;
+              }
+              if (window.__zephyr?.ui?.toast) {
+                window.__zephyr.ui.toast(reason || 'Partenza annullata', 3.0);
               }
             };
 
             mp.onRaceStart = (data) => {
+              if (tourneyModal) {
+                tourneyModal.style.display = 'none';
+                tourneyModal.classList.add('hidden');
+              }
+              if (mpCountdownOverlay) {
+                mpCountdownOverlay.style.display = 'none';
+                mpCountdownOverlay.classList.add('hidden');
+              }
               const curTrack = parseInt(localStorage.getItem('zephyr_track') || '0', 10);
               if (curTrack !== data.trackIndex) {
-                // Must reload with correct track spline & theme
-                localStorage.setItem('zephyr_track', String(data.trackIndex));
-                sessionStorage.setItem('zephyr_mp_autojoin', JSON.stringify({
-                  roomCode: mp.roomCode,
-                  isHost: mp.isHost,
-                  playerName: mp.playerName,
-                  laps: data.laps,
-                  trackIndex: data.trackIndex,
-                  action: 'start_race',
-                  players: data.players,
-                  mySlot: mp.mySlot
-                }));
-                window.location.reload();
-                return;
+                if (window.__zephyr?.loadTrack) {
+                  window.__zephyr.loadTrack(data.trackIndex);
+                } else {
+                  // Fallback: reload with correct track spline & theme
+                  localStorage.setItem('zephyr_track', String(data.trackIndex));
+                  sessionStorage.setItem('zephyr_mp_autojoin', JSON.stringify({
+                    roomCode: mp.roomCode,
+                    isHost: mp.isHost,
+                    playerName: mp.playerName,
+                    laps: data.laps,
+                    trackIndex: data.trackIndex,
+                    action: 'start_race',
+                    players: data.players,
+                    mySlot: mp.mySlot
+                  }));
+                  window.location.reload();
+                  return;
+                }
               }
 
-              // Track already matches! Launch immediately
+              // Track loaded! Launch immediately into starting grid (classic 3-second countdown 3... 2... 1... VIA!)
               mpModal?.classList.add('hidden');
               if (window.__zephyr) {
                 window.__zephyr.startMultiplayerRace(data.trackIndex, data.laps, data.players, mp.mySlot);
@@ -1795,12 +2154,105 @@
               if (emoteBar) emoteBar.classList.remove('hidden');
             };
 
+            mp.onTournamentStandings = (data) => {
+              if (tourneyModal) {
+                tourneyModal.style.display = 'flex';
+                tourneyModal.classList.remove('hidden');
+              }
+              const currentRaceNum = (data.playlistIndex ?? 0) + 1;
+              const totalRaces = data.totalTracks || (mp.playlistTracks ? mp.playlistTracks.length : 1);
+
+              if (tourneyTitle) {
+                if (data.isFinalRace) {
+                  tourneyTitle.textContent = '🏆 CAMPIONATO GP CONCLUSO!';
+                  tourneyTitle.style.color = '#ffc857';
+                } else {
+                  tourneyTitle.textContent = `GARA ${currentRaceNum} DI ${totalRaces} COMPLETATA`;
+                  tourneyTitle.style.color = '#76fff0';
+                }
+              }
+
+              if (tourneySub) {
+                if (data.isFinalRace) {
+                  tourneySub.textContent = 'Podio finale del Torneo Grand Prix Live!';
+                } else {
+                  tourneySub.textContent = 'Classifica generale a punti sincronizzata in tempo reale';
+                }
+              }
+
+              if (tourneyTbody && Array.isArray(data.standings)) {
+                const MEDALS = ['🥇 1°', '🥈 2°', '🥉 3°', '4°', '5°', '6°'];
+                tourneyTbody.innerHTML = data.standings.map((st, i) => {
+                  const isMe = st.slot === mp.mySlot;
+                  const medal = MEDALS[i] || `${i + 1}°`;
+                  const kartIcon = KART_INFO[st.kartId]?.icon || '🏎️';
+                  const racePts = st.lastRacePoints !== undefined ? `+${st.lastRacePoints} pts` : '--';
+                  const rowBg = isMe ? 'rgba(118, 255, 240, 0.18)' : (i % 2 === 0 ? 'rgba(255, 255, 255, 0.03)' : 'transparent');
+                  const borderStyle = isMe ? 'border-left: 4px solid #76fff0;' : '';
+                  return `
+                    <tr style="background: ${rowBg}; ${borderStyle} border-bottom: 1px solid rgba(255,255,255,0.06);">
+                      <td style="padding: 10px 12px; font-weight: 800; font-size: 14px; color: ${i === 0 ? '#ffc857' : i === 1 ? '#e2e8f0' : i === 2 ? '#fb923c' : '#94a3b8'};">${medal}</td>
+                      <td style="padding: 10px 12px; font-weight: 700; color: #ffffff;">
+                        <span style="margin-right: 6px;">${kartIcon}</span>${st.name} ${isMe ? '<span style="font-size: 10px; color: #76fff0; font-weight: 800;">(TU)</span>' : ''}
+                      </td>
+                      <td style="padding: 10px 12px; text-align: center; color: #34d399; font-weight: 800;">${racePts}</td>
+                      <td style="padding: 10px 12px; text-align: right; font-weight: 900; font-size: 15px; color: #ffc857;">${st.totalPoints} PTS</td>
+                    </tr>
+                  `;
+                }).join('');
+              }
+
+              if (!data.isFinalRace) {
+                if (mp.isHost) {
+                  if (tourneyNextBtn) {
+                    tourneyNextBtn.style.display = 'block';
+                    tourneyNextBtn.classList.remove('hidden');
+                    tourneyNextBtn.textContent = `🚀 AVVIA PROSSIMA PISTA (GARA ${currentRaceNum + 1} DI ${totalRaces})`;
+                  }
+                  if (tourneyGuestMsg) {
+                    tourneyGuestMsg.style.display = 'none';
+                    tourneyGuestMsg.classList.add('hidden');
+                  }
+                } else {
+                  if (tourneyNextBtn) {
+                    tourneyNextBtn.style.display = 'none';
+                    tourneyNextBtn.classList.add('hidden');
+                  }
+                  if (tourneyGuestMsg) {
+                    tourneyGuestMsg.style.display = 'block';
+                    tourneyGuestMsg.classList.remove('hidden');
+                    tourneyGuestMsg.textContent = `⏳ In attesa che l'Host avvii la prossima gara (${currentRaceNum + 1}/${totalRaces})...`;
+                  }
+                }
+              } else {
+                if (tourneyNextBtn) {
+                  tourneyNextBtn.style.display = 'none';
+                  tourneyNextBtn.classList.add('hidden');
+                }
+                if (tourneyGuestMsg) {
+                  tourneyGuestMsg.style.display = 'none';
+                  tourneyGuestMsg.classList.add('hidden');
+                }
+                if (window.__zephyr?.vfx?.fireworks) {
+                  window.__zephyr.vfx.fireworks(0, 5, 0);
+                }
+              }
+            };
+
+            mp.onTournamentComplete = (data) => {
+              if (window.__zephyr?.ui?.toast) {
+                const winner = data.standings?.[0]?.name || 'Campione';
+                window.__zephyr.ui.toast(`🏆 Torneo completato! Vincitore: ${winner}!`, 4.5);
+              }
+            };
+
             // Sync initial inputs
             if (hostNameInput) hostNameInput.value = mp.playerName;
             if (guestNameInput) guestNameInput.value = mp.playerName;
             if (hostKartSelect) hostKartSelect.value = mp.selectedKart;
             if (guestKartSelect) guestKartSelect.value = mp.selectedKart;
-            if (trackSelect) trackSelect.value = String(mp.trackIndex);
+            if (playlistCountSelect) playlistCountSelect.value = String(mp.playlistTracks.length || 3);
+            renderPlaylistSelects();
             if (lapsSelect) lapsSelect.value = String(mp.laps);
           }
         };
@@ -1820,6 +2272,24 @@
           const isHostTab = tabHost && tabHost.classList.contains('active');
           if (mp && mp.state === 'IDLE' && isHostTab) {
             mp.createRoom();
+          }
+          if (isHostTab) {
+            renderPlaylistSelects();
+          }
+
+          // Sync guest UI if guest tab is active
+          const isGuestTab = tabGuest && tabGuest.classList.contains('active');
+          if (isGuestTab && mp) {
+            const isGuestConnected = isGuestInRoom();
+            if (isGuestConnected) {
+              if (joinBtn) { joinBtn.style.display = 'none'; joinBtn.classList.add('hidden'); }
+              if (guestForm) { guestForm.style.display = 'none'; guestForm.classList.add('hidden'); }
+              if (guestWaitingBox) { guestWaitingBox.style.display = 'block'; guestWaitingBox.classList.remove('hidden'); }
+            } else if (mp.state === 'IDLE') {
+              if (joinBtn) { joinBtn.style.display = 'block'; joinBtn.classList.remove('hidden'); joinBtn.disabled = false; joinBtn.textContent = '🔗 ENTRA NELLA STANZA'; }
+              if (guestForm) { guestForm.style.display = 'block'; guestForm.classList.remove('hidden'); }
+              if (guestWaitingBox) { guestWaitingBox.style.display = 'none'; guestWaitingBox.classList.add('hidden'); }
+            }
           }
         };
 
@@ -1860,6 +2330,16 @@
             guestView?.classList.remove('hidden');
             hostView?.classList.add('hidden');
             haptic(15);
+            const isGuestConnected = isGuestInRoom();
+            if (isGuestConnected) {
+              if (joinBtn) { joinBtn.style.display = 'none'; joinBtn.classList.add('hidden'); }
+              if (guestForm) { guestForm.style.display = 'none'; guestForm.classList.add('hidden'); }
+              if (guestWaitingBox) { guestWaitingBox.style.display = 'block'; guestWaitingBox.classList.remove('hidden'); }
+            } else if (mp && mp.state === 'IDLE') {
+              if (joinBtn) { joinBtn.style.display = 'block'; joinBtn.classList.remove('hidden'); joinBtn.disabled = false; joinBtn.textContent = '🔗 ENTRA NELLA STANZA'; }
+              if (guestForm) { guestForm.style.display = 'block'; guestForm.classList.remove('hidden'); }
+              if (guestWaitingBox) { guestWaitingBox.style.display = 'none'; guestWaitingBox.classList.add('hidden'); }
+            }
           });
         }
 
@@ -1878,8 +2358,26 @@
           if (mp) mp.setSelectedKart(e.target.value);
           if (window.__zephyr?.selectKart) window.__zephyr.selectKart(e.target.value);
         });
-        trackSelect?.addEventListener('change', (e) => {
-          if (mp) mp.setTrack(parseInt(e.target.value, 10));
+        playlistCountSelect?.addEventListener('change', () => {
+          renderPlaylistSelects();
+        });
+        tourneyNextBtn?.addEventListener('click', () => {
+          if (!mp || !mp.isHost) return;
+          if (tourneyModal) {
+            tourneyModal.style.display = 'none';
+            tourneyModal.classList.add('hidden');
+          }
+          mp.advanceToNextRace(5);
+          haptic(30);
+        });
+        tourneyExitBtn?.addEventListener('click', () => {
+          if (tourneyModal) {
+            tourneyModal.style.display = 'none';
+            tourneyModal.classList.add('hidden');
+          }
+          if (mp) mp.resetTournament();
+          openMpModal();
+          haptic(20);
         });
         lapsSelect?.addEventListener('change', (e) => {
           if (mp) mp.setLaps(parseInt(e.target.value, 10));
@@ -1913,12 +2411,27 @@
           if (hostKartSelect) mp.setSelectedKart(hostKartSelect.value);
           haptic(35);
           startRaceBtn.disabled = true;
-          startRaceBtn.textContent = '⏳ AVVIO IN CORSO...';
-          mp.startRace();
-          setTimeout(() => {
-            startRaceBtn.disabled = false;
-            startRaceBtn.textContent = '🚀 AVVIA GARA MULTIPLAYER';
-          }, 4000);
+          startRaceBtn.textContent = '⏳ AVVIO CONTO ALLA ROVESCIA...';
+          const started = mp.startCountdown(5);
+          if (!started) {
+            setTimeout(() => {
+              if (mp) mp.notifyLobbyUpdate();
+            }, 600);
+          }
+        });
+
+        // Guest Ready Button & In-Room Kart Change
+        guestReadyBtn?.addEventListener('click', () => {
+          if (!mp) return;
+          haptic(25);
+          mp.toggleReady();
+        });
+
+        guestLobbyKartSelect?.addEventListener('change', (e) => {
+          if (!mp) return;
+          mp.setSelectedKart(e.target.value);
+          if (guestKartSelect) guestKartSelect.value = e.target.value;
+          if (window.__zephyr?.selectKart) window.__zephyr.selectKart(e.target.value);
         });
 
         // Join Room (Guest)
@@ -1932,14 +2445,54 @@
           initMultiplayer();
           if (guestKartSelect) mp.setSelectedKart(guestKartSelect.value);
           haptic(25);
-          joinBtn.disabled = true;
-          joinBtn.textContent = '⏳ CONNESSIONE...';
-          guestWaitingBox?.classList.remove('hidden');
+
+          // IMMEDIATELY hide join button and guest form!
+          if (joinBtn) {
+            joinBtn.style.display = 'none';
+            joinBtn.classList.add('hidden');
+          }
+          if (guestForm) {
+            guestForm.style.display = 'none';
+            guestForm.classList.add('hidden');
+          }
+          // IMMEDIATELY show waiting box with connecting status!
+          if (guestWaitingBox) {
+            guestWaitingBox.style.display = 'block';
+            guestWaitingBox.classList.remove('hidden');
+          }
+          if (guestInfoEl) {
+            guestInfoEl.innerHTML = `⏳ Connessione alla stanza <b style="color: #ffc857; font-family: monospace;">${code}</b> in corso...`;
+          }
+
           mp.joinRoom(code, guestNameInput?.value);
+
           setTimeout(() => {
+            // Re-enable join button ONLY if still connecting and not connected
+            if (mp && mp.state === 'CONNECTING') {
+              if (window.__zephyr?.ui?.toast) window.__zephyr.ui.toast('Tempo di connessione scaduto. Riprova.', 2.5);
+              mp.leaveRoom();
+            }
+          }, 8000);
+        });
+
+        // Leave Room (Guest)
+        guestLeaveBtn?.addEventListener('click', () => {
+          if (mp) mp.leaveRoom();
+          haptic(15);
+          if (joinBtn) {
             joinBtn.disabled = false;
             joinBtn.textContent = '🔗 ENTRA NELLA STANZA';
-          }, 3500);
+            joinBtn.style.display = 'block';
+            joinBtn.classList.remove('hidden');
+          }
+          if (guestForm) {
+            guestForm.style.display = 'block';
+            guestForm.classList.remove('hidden');
+          }
+          if (guestWaitingBox) {
+            guestWaitingBox.style.display = 'none';
+            guestWaitingBox.classList.add('hidden');
+          }
         });
 
         // Emote quick buttons

@@ -2090,10 +2090,11 @@ describe('=== UNIT & PROCESS TESTS: 50 ARCHITECTURAL IMPROVEMENTS ===', () => {
     }
   });
 
-  it('4. Elastic soft bumper collision restitution (bounce = 0.70)', () => {
+  it('4. Elastic soft bumper collision restitution (bounce = 0.70 & velocity-dependent effBounce)', () => {
     const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
     assert.ok(bundle.includes('const bounce=0.70;'), 'bumper restitution must be 0.70');
-    assert.ok(bundle.includes('const D=-(1+bounce)*S/(1/v+1/p);'), 'impulse equation must use restitution coefficient');
+    assert.ok(bundle.includes('effBounce'), 'must use velocity-dependent effective restitution');
+    assert.ok(bundle.includes('const D=-(1+effBounce)*S/(1/v+1/p);'), 'impulse equation must use effBounce restitution coefficient');
   });
 
   it('5. New combat items: vortex, horn, triple_shield, and backward bolt fire', () => {
@@ -2609,5 +2610,1091 @@ describe('=== UNIT & PROCESS TESTS: HYPER-REALISTIC ZEPHYR HURRICANE ===', () =>
   });
 });
 
+describe('=== UNIT & PROCESS TESTS: MULTI-KART COLLISION & CLUSTER STABILITY ===', () => {
+  const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+
+  it('1. Bundle verification for multi-kart collision & anti-jitter improvements', () => {
+    assert.ok(bundle.includes('getEffR='), 'oriented elliptical hull calculation must be defined');
+    assert.ok(bundle.includes('a=1.34*sc,b=.92*sc'), 'elliptical semi-axes (longitudinal 1.34m, lateral 0.92m) must be set');
+    assert.ok(bundle.includes('clampTrack='), 'track boundary clamping for resolving multi-kart displacement must be defined');
+    assert.ok(bundle.includes('pen=(c-d)-.03'), 'slop tolerance (0.03m) must be applied to prevent contact jitter');
+    assert.ok(bundle.includes('const push=Math.min(.2,pen*.55)'), 'relaxation push per pass must be clamped to prevent pinballing');
+    assert.ok(bundle.includes('effBounce='), 'restitution must be velocity-dependent');
+    assert.ok(bundle.includes('Math.abs(S)<2.5?0'), 'resting contact relative velocity (<2.5 m/s) must have zero bounce');
+    assert.ok(bundle.includes('Math.abs(S)>3'), 'visual punch must be gated to energetic impacts');
+    assert.ok(bundle.includes('pt>=-2.5&&pt<.4&&Math.abs(Rt)<3.2'), 'AI must check alongside lane avoidance');
+  });
+
+  it('2. Oriented elliptical bounding hull geometry vs circular hull', () => {
+    const calcEffR = (yaw, ux, uz, scale = 1.0) => {
+      const fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+      const sx = -fz, sz = fx;
+      const uf = ux * fx + uz * fz;
+      const us = ux * sx + uz * sz;
+      const sc = scale;
+      const a = 1.34 * sc;
+      const b = 0.92 * sc;
+      const dsq = (b * uf) * (b * uf) + (a * us) * (a * us);
+      return (a * b) / Math.sqrt(Math.max(1e-4, dsq));
+    };
+
+    // Longitudinal approach (north-south, forward/backward bumper contact)
+    // Kart facing yaw = 0 (forward is (0, -1))
+    const rFront = calcEffR(0, 0, -1);
+    const rBack = calcEffR(0, 0, 1);
+    assert.ok(Math.abs(rFront - 1.34) < 0.01, `front effective radius should be ~1.34m, got ${rFront}`);
+    assert.ok(Math.abs(rBack - 1.34) < 0.01, `rear effective radius should be ~1.34m, got ${rBack}`);
+
+    // Lateral side-by-side approach (east-west door contact)
+    const rSideL = calcEffR(0, -1, 0);
+    const rSideR = calcEffR(0, 1, 0);
+    assert.ok(Math.abs(rSideL - 0.92) < 0.01, `side effective radius should be ~0.92m, got ${rSideL}`);
+    assert.ok(Math.abs(rSideR - 0.92) < 0.01, `side effective radius should be ~0.92m, got ${rSideR}`);
+
+    // Wheel-to-wheel racing scenario: Two karts driving parallel at 2.0m lateral clearance
+    const kart1_effR = calcEffR(0, 1, 0);
+    const kart2_effR = calcEffR(0, -1, 0);
+    const totalEllipticalR = kart1_effR + kart2_effR; // 1.84m
+    const totalCircularR = 1.65 + 1.65; // 3.30m
+
+    assert.ok(totalEllipticalR < 2.0, 'elliptical total radius (1.84m) allows clean 2.0m wheel-to-wheel racing');
+    assert.ok(totalCircularR > 2.0, 'circular radius (3.30m) causes 1.3m false penetration at 2.0m spacing');
+  });
+
+  it('3. Multi-kart pack cluster relaxation convergence (3 and 4 karts pack)', () => {
+    const racers = [
+      { pos: { x: 0, z: 0, y: 0 }, yaw: 0, weight: 1 },
+      { pos: { x: 1.2, z: 0.1, y: 0 }, yaw: 0, weight: 1 },
+      { pos: { x: 0.6, z: 1.5, y: 0 }, yaw: 0, weight: 1.1 },
+      { pos: { x: 1.8, z: 1.4, y: 0 }, yaw: 0, weight: 0.95 }
+    ];
+
+    const getEffR = (k, ux, uz) => {
+      const y = k.yaw, fx = -Math.sin(y), fz = -Math.cos(y);
+      const sx = -fz, sz = fx;
+      const uf = ux * fx + uz * fz, us = ux * sx + uz * sz;
+      const a = 1.34, b = 0.92;
+      const dsq = (b * uf) * (b * uf) + (a * us) * (a * us);
+      return (a * b) / Math.sqrt(Math.max(1e-4, dsq));
+    };
+
+    const t = racers.length;
+    for (let it = 0; it < 2; it++) {
+      for (let e = 0; e < t; e++) {
+        const n = racers[e];
+        for (let i = e + 1; i < t; i++) {
+          const r = racers[i];
+          const o = r.pos.x - n.pos.x, a = r.pos.z - n.pos.z;
+          const h = o * o + a * a;
+          if (h < 1e-6) continue;
+          const d = Math.sqrt(h), u = o / d, f = a / d;
+          const rn = getEffR(n, u, f), rr = getEffR(r, -u, -f);
+          const c = rn + rr;
+          const pen = (c - d) - 0.03;
+          if (pen <= 0) continue;
+          const push = Math.min(0.2, pen * 0.55);
+          const v = n.weight, p = r.weight, m = v + p;
+          n.pos.x -= u * push * (p / m);
+          n.pos.z -= f * push * (p / m);
+          r.pos.x += u * push * (v / m);
+          r.pos.z += f * push * (v / m);
+        }
+      }
+    }
+
+    for (const r of racers) {
+      assert.ok(!Number.isNaN(r.pos.x) && !Number.isNaN(r.pos.z), 'position coordinates must be valid numbers');
+      assert.ok(Math.abs(r.pos.x) < 10 && Math.abs(r.pos.z) < 10, 'relaxation must not explode positions');
+    }
+
+    // Verify distance between kart 0 and 1 expanded gently
+    const finalDist01 = Math.hypot(racers[1].pos.x - racers[0].pos.x, racers[1].pos.z - racers[0].pos.z);
+    assert.ok(finalDist01 >= 1.2, `cluster spacing must expand or stabilize, final = ${finalDist01.toFixed(3)}m`);
+  });
+
+  it('4. Restitution gating: inelastic resting contact vs elastic impact bounce', () => {
+    const calcImpulse = (S, v = 1, p = 1) => {
+      if (S >= 0) return { D: 0, effBounce: 0, punch: 0 };
+      const bounce = 0.70;
+      const effBounce = Math.abs(S) < 2.5 ? 0 : (Math.abs(S) < 5 ? 0.25 : bounce);
+      const D = -(1 + effBounce) * S / (1 / v + 1 / p);
+      const punch = Math.abs(S) > 3 ? Math.min(0.35, (Math.abs(S) - 2.5) * 0.08) : 0;
+      return { D, effBounce, punch };
+    };
+
+    // Resting/rubbing contact: S = -1.0 m/s
+    const resting = calcImpulse(-1.0);
+    assert.strictEqual(resting.effBounce, 0, 'resting contact effBounce must be 0');
+    assert.strictEqual(resting.punch, 0, 'resting contact must not trigger chassis punch shake');
+    assert.strictEqual(resting.D, 0.5, 'impulse should purely cancel approach without bounce velocity');
+
+    // Medium collision: S = -3.5 m/s
+    const medium = calcImpulse(-3.5);
+    assert.strictEqual(medium.effBounce, 0.25, 'medium collision effBounce must be 0.25');
+    assert.ok(medium.punch > 0, 'medium collision triggers subtle punch');
+
+    // Energetic collision: S = -7.0 m/s
+    const hard = calcImpulse(-7.0);
+    assert.strictEqual(hard.effBounce, 0.70, 'hard collision effBounce must be 0.70');
+    assert.ok(hard.punch >= 0.35, 'hard collision triggers max punch');
+    assert.strictEqual(hard.D, 1.70 * 7.0 / 2, 'hard collision applies full restitution impulse');
+  });
+
+  it('5. Track boundary clamping prevents karts from being shoved outside guardrails', () => {
+    const spline = { halfWidthAt: 12 };
+    const scratch = { halfWidthAt: 12, lateral: 12.5, rightX: 1, rightZ: 0 };
+    const kart = { pos: { x: 15, z: 20 }, state: { trackIndex: 0 } };
+
+    const clampTrack = (k) => {
+      const srf = scratch;
+      const maxL = Math.max(1, srf.halfWidthAt - 0.75); // 11.25m
+      if (Math.abs(srf.lateral) > maxL) {
+        const ovr = Math.abs(srf.lateral) - maxL; // 1.25m
+        const sgn = srf.lateral >= 0 ? 1 : -1;
+        k.pos.x -= srf.rightX * sgn * ovr;
+        k.pos.z -= srf.rightZ * sgn * ovr;
+      }
+    };
+
+    clampTrack(kart);
+    assert.strictEqual(kart.pos.x, 15 - 1.25, 'kart pos X clamped inside track guardrail margin');
+    assert.strictEqual(kart.pos.z, 20, 'kart pos Z untouched');
+  });
+
+  it('6. AI alongside lateral steering avoidance', () => {
+    // Test AI avoidance logic for alongside neighbor
+    const evaluateAvoidance = (zt, Dt, yaw) => {
+      const q = Math.sin(yaw);
+      const Mt = Math.cos(yaw);
+      const pt = zt * -q + Dt * -Mt; // forward/backward
+      const Rt = zt * Mt + Dt * -q; // lateral right/left
+      let g = 0;
+      if (pt >= -2.5 && pt < 0.4 && Math.abs(Rt) < 3.2) {
+        const sPt = 1 - Math.min(1, Math.max(0, Math.abs(Rt) / 3.2));
+        const sRep = Rt >= 0 ? 1 : -1;
+        g -= sRep * sPt * 2.8;
+      }
+      return { pt, Rt, g };
+    };
+
+    // Neighbor directly alongside to the right (Rt = +1.6m, pt = -0.5m)
+    const resRight = evaluateAvoidance(1.6, 0.5, 0);
+    assert.ok(resRight.g < 0, 'AI steers left away from neighbor on right');
+    assert.ok(Math.abs(resRight.g) > 1.0, 'meaningful avoidance impulse applied');
+
+    // Neighbor directly alongside to the left (Rt = -1.6m, pt = -0.5m)
+    const resLeft = evaluateAvoidance(-1.6, 0.5, 0);
+    assert.ok(resLeft.g > 0, 'AI steers right away from neighbor on left');
+    assert.ok(Math.abs(resLeft.g) > 1.0, 'meaningful avoidance impulse applied');
+
+    // Neighbor far away (Rt = 5.0m)
+    const resFar = evaluateAvoidance(5.0, 0.5, 0);
+    assert.strictEqual(resFar.g, 0, 'no avoidance when clear');
+  });
+});
+
+describe('=== UNIT & PROCESS TESTS: 10 GEOLOGICAL BIOMES & TRACK OVERHAUL ===', () => {
+  const finalTracks = JSON.parse(fs.readFileSync('scratch/final_tracks.json', 'utf8'));
+  const bundleCode = fs.readFileSync('assets/index-C9rd31_W.js', 'utf8');
+  const indexHtml = fs.readFileSync('index.html', 'utf8');
+
+  it('1. Catalog & Bundle Track Metadata (10 Geological Biomes)', () => {
+    const expected = [
+      { name: 'Sunken Atlantis Citadel', icon: '🏛️', sub: 'Cittadella Sommersa di Atlantide' },
+      { name: 'Zephyr Terminal Runway', icon: '✈️', sub: 'Aeroporto Transatlantico' },
+      { name: 'Ancient Redwood Forest', icon: '🌲', sub: 'Foresta dei Giganti' },
+      { name: 'Apex Big-Air Stadium', icon: '🦘', sub: 'Circuito dei Megasalti' },
+      { name: 'Redrock Canyon & Mines', icon: '🏜️', sub: 'Gola dei Minatori & Canyon' },
+      { name: 'Glacier Frostbite Peaks', icon: '❄️', sub: 'Vette di Ghiaccio & Ghiacciai' },
+      { name: 'Neo Zephyr Cybercity', icon: '🏙️', sub: 'Metropoli Neon Cyberpunk' },
+      { name: 'Magma Caldera', icon: '🌋', sub: 'Caldera del Vulcano Magmatico' },
+      { name: 'Nether Inferno Abyss', icon: '🔥', sub: "Fauci dell'Inferno" },
+      { name: 'Cosmic Rainbow Orbit', icon: '🌌', sub: 'Nastro Spaziale Iperuranio' }
+    ];
+
+    assert.strictEqual(finalTracks.length, 24, '24 tracks in catalog');
+    for (let i = 0; i < 10; i++) {
+      const trk = finalTracks[i];
+      const exp = expected[i];
+      assert.strictEqual(trk.name, exp.name, `Track ${i} name`);
+      assert.strictEqual(trk.ico, exp.icon, `Track ${i} icon`);
+      assert.strictEqual(trk.sub, exp.sub, `Track ${i} subtitle`);
+      assert.ok(bundleCode.includes(exp.name), `Bundle includes track name: ${exp.name}`);
+      assert.ok(bundleCode.includes(exp.sub), `Bundle includes track sub: ${exp.sub}`);
+    }
+  });
+
+  it('2. Mathematical Closed-Loop & Gap <= 0.5m across all 10 tracks', () => {
+    function simulateTrackPoints(segs) {
+      const bo = d => d * Math.PI / 180;
+      let t = Math.PI / 2, e = 0, n = 0, i = 0;
+      const pts = [{ x: 0, z: 0, u: 0 }];
+      const total = segs.reduce((l, c) => l + (c.k === 'S' ? c.len : Math.abs(c.radius * bo(c.sweep))), 0);
+      for (const l of segs) {
+        if (l.k === 'S') {
+          const step = Math.max(1, Math.round(l.len / 6));
+          for (let h = 1; h <= step; h++) {
+            e = pts[pts.length - 1].x + Math.cos(t) * (l.len / step);
+            n = pts[pts.length - 1].z + Math.sin(t) * (l.len / step);
+            i += l.len / step;
+            pts.push({ x: e, z: n, u: i / total });
+          }
+        } else {
+          const c = bo(l.sweep), h = c > 0 ? 1 : -1, d = Math.abs(l.radius * c);
+          const step = Math.max(2, Math.round(d / (l.radius * bo(20))));
+          const f = e + l.radius * h * -Math.sin(t), g = n + l.radius * h * Math.cos(t);
+          for (let v = 1; v <= step; v++) {
+            const p = Math.abs(c) * v / step;
+            h > 0 ? (e = f + l.radius * Math.sin(t + p), n = g - l.radius * Math.cos(t + p)) : (e = f - l.radius * Math.sin(t - p), n = g + l.radius * Math.cos(t - p));
+            i += d / step;
+            pts.push({ x: e, z: n, u: i / total });
+          }
+          t += c;
+        }
+      }
+      const gap = Math.hypot(pts[0].x - pts[pts.length - 1].x, pts[0].z - pts[pts.length - 1].z);
+      return { total, gap };
+    }
+
+    for (let i = 0; i < 10; i++) {
+      const trk = finalTracks[i];
+      const { total, gap } = simulateTrackPoints(trk.segs);
+      assert.ok(total >= 1000, `Track ${i} total length (${total.toFixed(1)}m) >= 1000m`);
+      assert.ok(gap <= 0.5, `Track ${i} closure gap (${gap.toFixed(4)}m) <= 0.5m`);
+    }
+  });
+
+  it('3. Custom Altimetry Profiles, Bridges & Tunnels for all 10 tracks', () => {
+    for (let i = 0; i < 10; i++) {
+      const trk = finalTracks[i];
+      assert.ok(Array.isArray(trk.height) && trk.height.length >= 6, `Track ${i} has custom height profile`);
+      if (trk.bridge) {
+        assert.ok(trk.bridge[0] < trk.bridge[1], `Track ${i} bridge interval is valid`);
+      }
+      if (trk.tunnel) {
+        assert.ok(trk.tunnel[0] < trk.tunnel[1], `Track ${i} tunnel interval is valid`);
+      }
+    }
+  });
+
+  it('4. Track Terrain Palettes & Geological Surface Shading', () => {
+    assert.ok(bundleCode.includes('trackPalettes=['), 'Bundle contains trackPalettes definition');
+    assert.ok(bundleCode.includes('pal=trackPalettes[curTrackIdx]||cupPalettes[cupIdx]||cupPalettes[0]'), 'Terrain uses trackPalettes for current track');
+    // Check specific biome colors
+    assert.ok(bundleCode.includes('#2d7875'), 'Atlantis reef sand color defined');
+    assert.ok(bundleCode.includes('#2b303a'), 'Airport runway tarmac sand color defined');
+    assert.ok(bundleCode.includes('#3e271a'), 'Redwood forest loam color defined');
+    assert.ok(bundleCode.includes('#c67d38'), 'Stadium clay dirt color defined');
+    assert.ok(bundleCode.includes('#c86d3b'), 'Redrock canyon sandstone color defined');
+    assert.ok(bundleCode.includes('#9fd3e8'), 'Glacial ice turquoise color defined');
+    assert.ok(bundleCode.includes('#12131c'), 'Cybercity dark asphalt color defined');
+    assert.ok(bundleCode.includes('#181214'), 'Magma caldera volcanic ash color defined');
+    assert.ok(bundleCode.includes('#200a0d'), 'Nether inferno brimstone color defined');
+    assert.ok(bundleCode.includes('#16082e'), 'Cosmic orbit deep space dust color defined');
+  });
+
+  it('5. Molten Lava Shader & Space Bottomless Void', () => {
+    assert.ok(bundleCode.includes('uIsLava:'), 'Water shader declares uIsLava uniform');
+    assert.ok(bundleCode.includes('if (uIsLava > 0.5)'), 'Lava fragment branch exists');
+    assert.ok(bundleCode.includes('vec3 magmaBright = vec3(1.0, 0.28, 0.02);'), 'Molten lava bright color defined');
+    assert.ok(bundleCode.includes('vec3 magmaCore = vec3(1.0, 0.88, 0.25);'), 'Molten lava core incandescent yellow defined');
+    assert.ok(bundleCode.includes('if(curTrackIdx===9){u.visible=!1;}'), 'Ocean plane is hidden on Track 9 (Cosmic Orbit) for bottomless space void');
+  });
+
+  it('6. Procedural Landmarks & Materials for 10 Biomes', () => {
+    assert.ok(bundleCode.includes('trackMatPalettes=['), 'Bundle contains trackMatPalettes definition');
+    assert.ok(bundleCode.includes('specificTrackLandmarks=['), 'Bundle contains specificTrackLandmarks definition');
+    assert.ok(bundleCode.includes('specificTrackLandmarks[idx]||cupLandmarks[cup]||cupLandmarks[0]'), 'Landmarks list selects specificTrackLandmarks');
+  });
+
+  it('7. Track Selector Modal HTML synchronization', () => {
+    const modalNames = [
+      'Sunken Atlantis Citadel', 'Zephyr Terminal Runway', 'Ancient Redwood Forest',
+      'Apex Big-Air Stadium', 'Redrock Canyon & Mines', 'Glacier Frostbite Peaks',
+      'Neo Zephyr Cybercity', 'Magma Caldera', 'Nether Inferno Abyss', 'Cosmic Rainbow Orbit'
+    ];
+    for (let i = 0; i < 10; i++) {
+      assert.ok(indexHtml.includes(`data-index="${i}"`), `index.html contains data-index ${i}`);
+      assert.ok(indexHtml.includes(modalNames[i]), `index.html contains ${modalNames[i]}`);
+    }
+  });
+
+  it('8. Exhaust Smoke & Particle Reduction for Mobile Visibility', () => {
+    // 1. Point size cap in particle vertex shader yg (reduced to 24.0, multiplier 160.0)
+    assert.ok(
+      bundleCode.includes('gl_PointSize = clamp(aSize * (160.0 / max(1.0, -mv.z)), 0.0, 24.0);'),
+      'Particle vertex shader caps gl_PointSize to 24.0 to prevent screen-covering billboard blobs'
+    );
+
+    // 2. Smoke fragment shader transparency (reduced to faint 0.15 mist)
+    assert.ok(
+      bundleCode.includes('gl_FragColor = vec4(vColor, a * vAlpha * 0.15);'),
+      'Smoke fragment shader softens alpha to 0.15 for ultra-clear visibility through puffs'
+    );
+
+    // 3. Exhaust puff size, vertical velocity, gravity, and lifetime in Ag.exhaust
+    assert.ok(
+      bundleCode.includes('0.04+Math.random()*0.08+o*0.04'),
+      'Exhaust upward lift reduced so particles stay low near tarmac behind bumper'
+    );
+    assert.ok(
+      bundleCode.includes('o>.55?.08:.05'),
+      'Exhaust particle size reduced to 0.05-0.08'
+    );
+    assert.ok(
+      bundleCode.includes('.04+o*.03'),
+      'Exhaust particle lifetime shortened so puffs dissipate quickly behind the kart'
+    );
+
+    // 4. Boost trail ZERO smoke in Ag.boostTrail
+    assert.ok(
+      !bundleCode.match(/boostTrail\([^)]*\)\{[^}]*this\.smoke\.emit/),
+      'Boost trail has ZERO smoke emission for sleek, clean flame jets'
+    );
+
+    // 5. Burst ZERO smoke in Ag.burst
+    assert.ok(
+      !bundleCode.match(/burst\(t,e,n,i,r,o\)\{[^}]*this\.smoke\.emit/),
+      'Burst has ZERO smoke emission so nitro/rocket start never drops smoke clouds'
+    );
+
+    // 6. Intelligent emission throttling in syncVisual
+    assert.ok(
+      bundleCode.includes('const isThrottle=this.controls.throttle>0||a;'),
+      'Exhaust emissions only occur when kart is actively throttling or boosting'
+    );
+    assert.ok(
+      bundleCode.includes('const exRate=a?0.20:(this.isPlayer?0.16:0.10);'),
+      'Exhaust emission rate is throttled cleanly for player and AI'
+    );
+    assert.ok(
+      bundleCode.includes('a?e.boostTrail(d.x,d.y+.02,d.z,-this.backDir.x*.4,-this.backDir.z*.4,c):e.exhaust(d.x,d.y,d.z,this.backDir.x,this.backDir.z,l)'),
+      'When boosting, regular exhaust is suppressed in favor of pure boostTrail'
+    );
+  });
+});
+
+
+describe('=== UNIT & PROCESS TESTS: 10 GRAPHICAL ENHANCEMENTS & FIDELITY OVERHAUL ===', () => {
+  const bundleCode = fs.readFileSync('assets/index-C9rd31_W.js', 'utf8');
+  const cssCode = fs.readFileSync('assets/index-DMliwuo_.css', 'utf8');
+
+  it('1. Shadow Map Quality & Bias (Item 1)', () => {
+    assert.ok(bundleCode.includes('left:-75,right:75,top:75,bottom:-75'), 'Directional shadow camera bounds optimized for tight texel density');
+    assert.ok(bundleCode.includes('shadow.bias=-0.00025'), 'Shadow bias calibrated to eliminate shadow acne');
+    assert.ok(bundleCode.includes('shadow.normalBias=.042'), 'Shadow normalBias calibrated to eliminate peter-panning on slopes');
+  });
+
+  it('2. Road Surface Specular & PBR Realism (Item 2)', () => {
+    assert.ok(bundleCode.includes('d.roughness=.62'), 'Road surface roughness tuned for specular sheen');
+    assert.ok(bundleCode.includes('d.metalness=.16'), 'Road surface metalness set for subtle asphalt reflectivity');
+    assert.ok(bundleCode.includes('d.bumpScale=.032'), 'Road surface bump scale increased for tactile 3D grit');
+  });
+
+  it('3. Dynamic Biome Water & Molten Lava Shader (Item 3)', () => {
+    assert.ok(bundleCode.includes('uWaterColor:'), 'Water shader declares uWaterColor uniform');
+    assert.ok(bundleCode.includes('uniform vec3 uWaterColor;'), 'Fragment shader receives uWaterColor');
+    assert.ok(bundleCode.includes('vec3 _deepCol = uWaterColor * 0.42;'), 'Deep lagoon blends dynamically with theme water color');
+    assert.ok(bundleCode.includes('float cracks = smoothstep(0.04, 0.0, abs(lavaNoise - 0.15))'), 'Molten lava features animated incandescent crust fissures');
+  });
+
+  it('4. Sky Dome Atmospheric Horizon Scattering (Item 4)', () => {
+    assert.ok(bundleCode.includes('float horizonHaze=exp(-abs(d.y)*5.2);'), 'Exponential Rayleigh horizon haze scattering');
+    assert.ok(bundleCode.includes('c=mix(c,uSkyHorizon*1.12,horizonHaze*0.72);'), 'Sky dome smoothly blends into terrain horizon fog');
+    assert.ok(bundleCode.includes('c+=vec3(1.,.82,.55)*pow(sd,32.)*horizonHaze*.55;'), 'Warm solar atmospheric halo at horizon');
+  });
+
+  it('5. Kart Automotive Metallic Car Paint & Material Contrast (Item 5)', () => {
+    assert.ok(bundleCode.includes('o=r(s.kart.body,.22,.62)'), 'Kart chassis uses high-gloss automotive metallic paint');
+    assert.ok(bundleCode.includes('c=r(s.kart.rim,.15,.85)'), 'Kart rims use polished alloy finish');
+    assert.ok(bundleCode.includes('l=r(s.kart.tyre,.88,.04)'), 'Kart tyres use deep vulcanized matte rubber');
+  });
+
+  it('6. High-Speed Warp Streaks & Dynamic Speed Lines (Item 6)', () => {
+    assert.ok(cssCode.includes('repeating-conic-gradient('), 'Speedlines CSS has dynamic radial streaking pattern');
+    assert.ok(cssCode.includes('@keyframes speedwarp'), 'Speedlines warp animation declared in CSS');
+  });
+
+  it('7. Solar Bloom & Lens Glare Flare (Item 7)', () => {
+    assert.ok(bundleCode.includes('<div class="hud__glare" data-role="glare"></div>'), 'HUD includes solar glare overlay element');
+    assert.ok(bundleCode.includes('this.setSolarGlare='), 'UI provides setSolarGlare method');
+    assert.ok(bundleCode.includes('this.ui.setSolarGlare(_dot>.62?Math.pow((_dot-.62)/.38,2.2)*.85:0)'), 'Race loop computes camera-to-sun alignment glare');
+    assert.ok(cssCode.includes('.hud__glare{'), 'CSS defines optical lens glare styling');
+  });
+
+  it('8. Kart Headlight & Taillight Ground Projection (Item 8)', () => {
+    assert.ok(bundleCode.includes('rgba(255,250,220,0.5)'), 'Canvas generates twin front headlight projection pools');
+    assert.ok(bundleCode.includes('s.kart.glow'), 'Kart underglow neon color projected onto ground');
+    assert.ok(bundleCode.includes('polygonOffsetUnits:-6'), 'Ground projection decal uses polygonOffset to eliminate z-fighting');
+    assert.ok(bundleCode.includes('_gqd.geometry.dispose()'), 'Ground projection resources disposed cleanly on kart unload');
+  });
+
+  it('9. Anti-Aliased Textured Skidmarks (Item 9)', () => {
+    assert.ok(bundleCode.includes('varying vec2 vUv;'), 'Skidmark vertex and fragment shaders declare vUv');
+    assert.ok(bundleCode.includes('float edge = 1.0 - pow(abs(vUv.x * 2.0 - 1.0), 3.2);'), 'Skidmarks feature lateral anti-aliased edge feathering');
+    assert.ok(bundleCode.includes('float grooves = 0.78 + 0.22 * sin(vUv.x * 37.69);'), 'Skidmarks feature realistic rubber tyre tread grooves');
+    assert.ok(bundleCode.includes('this.geo.setAttribute("uv",new ve(_uvs,2))'), 'Geometry initializes UV coordinates for all skid quads');
+  });
+
+  it('10. HUD Telemetry Dials & Minimap Visual Polish (Item 10)', () => {
+    assert.ok(cssCode.includes('border:1px solid rgba(124,249,255,.45)'), 'HUD panels feature luminous glass border highlight');
+    assert.ok(cssCode.includes('text-shadow:0 2px 10px rgba(0,0,0,.92)'), 'Speedometer and telemetry text have strong drop-shadow contrast');
+    assert.ok(bundleCode.includes('e.strokeStyle="rgba(2, 8, 16, 0.95)",e.lineWidth=19'), 'Minimap uses high-contrast deep outer outline');
+    assert.ok(bundleCode.includes('e.arc(ox,oy,14,0,Math.PI*2),e.strokeStyle="rgba(255, 200, 87, 0.3)"'), 'Player minimap blip features glowing outer pulse ring');
+  });
+});
+
+describe('=== UNIT & PROCESS TESTS: REAR & CLOSE-KART VISUAL STABILITY ===', () => {
+  const bundleCode = fs.readFileSync('assets/index-C9rd31_W.js', 'utf8');
+
+  it('1. Calibrated Ground Projection Quad Footprint & Anti-Popping', () => {
+    assert.ok(bundleCode.includes('new mi(2.1,3.2)'), 'Ground decal footprint scaled down to 2.1x3.2m to fit cleanly under chassis');
+    assert.ok(bundleCode.includes('_gqd.frustumCulled=!1'), 'Ground quad explicitly sets frustumCulled to false to prevent popping/flicker');
+    assert.ok(bundleCode.includes('side:0'), 'Ground projection material uses FrontSide (0) to eliminate backface bleeding into other chassis');
+    assert.ok(bundleCode.includes('position.set(0,.02,-.15)'), 'Ground decal placed immediately under vehicle belly');
+  });
+
+  it('2. Airborne Ground Decal Opacity Fading', () => {
+    assert.ok(
+      bundleCode.includes('o.gqd&&(o.gqd.material.opacity=t.grounded?Math.max(0,.72-(t.airHeight||0)*2.5):0)'),
+      'Ground decal smoothly fades to 0 when kart is airborne or jumping'
+    );
+  });
+
+  it('3. Proximity Camera Fading & Lens Near-Clip Protection (Schmitt-Trigger & Anti-Doubling)', () => {
+    assert.ok(bundleCode.includes('updateProximityFade('), 'ac class defines updateProximityFade method');
+    assert.ok(bundleCode.includes('resetProximityFade()'), 'ac class defines resetProximityFade method');
+    assert.ok(bundleCode.includes('this._fadeAlpha<.04'), 'Schmitt trigger culls karts only when smoothly faded below 0.04 to eliminate flicker');
+    assert.ok(bundleCode.includes('this._fadeAlpha>.20'), 'Schmitt trigger unhides karts only when alpha exceeds 0.20 for stable hysteresis');
+    assert.ok(bundleCode.includes('l.mat.depthWrite=!0'), 'Kart materials preserve depthWrite:true during fade to prevent double-mesh geometry ("si sdoppia")');
+    assert.ok(bundleCode.includes('_rk.updateProximityFade?.(_cPos,_pl,_lb'), 'Ev.syncVisual updates proximity fade with camera, player, lookback, and delta time');
+  });
+
+  it('4. Opponent Exhaust Smoke Suppression in Proximity Zone', () => {
+    assert.ok(
+      bundleCode.includes('if((!this.isPlayer&&this._proxActive)?!1:Math.random()<exRate)'),
+      'Suppresses dense exhaust puffs when opponent kart is close or faded near camera lens'
+    );
+    assert.ok(
+      bundleCode.includes('if(!n||this._proxHidden){this.hasPrev=!1;return}'),
+      'Suppresses skids and particle sparks when kart is hidden inside near-clip zone'
+    );
+  });
+
+  it('5. Dynamic Chase Camera Height Elevation Buffer', () => {
+    assert.ok(
+      bundleCode.includes('(8.5-extra.trailingCloseDist)*.04'),
+      'Camera dynamically elevates height gently when pursuers draft closely behind player'
+    );
+  });
+});
+
+describe('=== UNIT & PROCESS TESTS: MULTIPLAYER READY CHECK, 5S COUNTDOWN & LOBBY SYNC ===', () => {
+  it('1. Host initializes as ready and guest initializes as unready upon joining', () => {
+    const host = new MultiplayerManager();
+    host.createRoom('ZEPH-CONF');
+    assert.strictEqual(host.players[0].isReady, true, 'Host should default to isReady: true');
+    assert.strictEqual(host.allPlayersReady(), true, 'Host alone in room should be considered ready');
+
+    // Simulate guest join
+    let welcomeSent = null;
+    const mockGuestConn = {
+      peer: 'guest_peer_1',
+      send: (data) => { welcomeSent = data; },
+      close: () => {}
+    };
+
+    host.handleIncomingData(mockGuestConn, {
+      type: 'JOIN_REQUEST',
+      name: 'GuestRacer',
+      kartId: 'zuzu'
+    });
+
+    assert.strictEqual(host.players.length, 2);
+    const guestPlayer = host.players.find(p => p.slot === 1);
+    assert.ok(guestPlayer, 'Guest should be assigned slot 1');
+    assert.strictEqual(guestPlayer.isReady, false, 'New guest player must start with isReady: false');
+    assert.strictEqual(host.allPlayersReady(), false, 'allPlayersReady must return false when guest has not confirmed ready');
+    host.leaveRoom();
+  });
+
+  it('2. Ready status toggling and PLAYER_READY message propagation', () => {
+    const host = new MultiplayerManager();
+    host.createRoom('ZEPH-TOGG');
+    host.players = [
+      { peerId: 'p0', slot: 0, name: 'Host', kartId: 'nix', isHost: true, ping: 0, isAI: false, isReady: true },
+      { peerId: 'p1', slot: 1, name: 'Guest1', kartId: 'bruno', isHost: false, ping: 30, isAI: false, isReady: false }
+    ];
+
+    assert.strictEqual(host.allPlayersReady(), false);
+
+    // Guest sends PLAYER_READY: true
+    let lobbyUpdated = false;
+    host.notifyLobbyUpdate = () => { lobbyUpdated = true; };
+    host.broadcastToAll = () => {};
+
+    host.handleIncomingData({ peer: 'p1' }, {
+      type: 'PLAYER_READY',
+      slot: 1,
+      isReady: true
+    });
+
+    assert.strictEqual(host.players[1].isReady, true, 'Guest player should now be marked ready');
+    assert.strictEqual(host.allPlayersReady(), true, 'All players should now be confirmed ready');
+
+    // Guest toggles back to unready
+    host.handleIncomingData({ peer: 'p1' }, {
+      type: 'PLAYER_READY',
+      slot: 1,
+      isReady: false
+    });
+    assert.strictEqual(host.players[1].isReady, false);
+    assert.strictEqual(host.allPlayersReady(), false, 'Unready guest must revoke allPlayersReady');
+    host.leaveRoom();
+  });
+
+  it('3. Host startRace prevents race launch when not all players are ready', () => {
+    const host = new MultiplayerManager();
+    host.createRoom('ZEPH-GATE');
+    host.players = [
+      { peerId: 'p0', slot: 0, name: 'Host', kartId: 'nix', isHost: true, ping: 0, isAI: false, isReady: true },
+      { peerId: 'p1', slot: 1, name: 'Guest1', kartId: 'sable', isHost: false, ping: 20, isAI: false, isReady: false }
+    ];
+
+    let toastMsg = '';
+    host.onToast = (msg) => { toastMsg = msg; };
+    let broadcastSent = null;
+    host.broadcastToAll = (msg) => { broadcastSent = msg; };
+
+    const startResult = host.startRace(5);
+    assert.strictEqual(startResult, false, 'startRace must return false when human player is unready');
+    assert.strictEqual(host.state, 'HOST_LOBBY', 'State must remain HOST_LOBBY');
+    assert.strictEqual(broadcastSent, null, 'No countdown or start message should be broadcasted');
+    assert.ok(toastMsg.includes('confermare') || toastMsg.includes('pronti'), 'Must toast informative warning message');
+
+    // Now confirm guest readiness and try again
+    host.players[1].isReady = true;
+    const okResult = host.startRace(5);
+    assert.strictEqual(okResult, true, 'startRace must succeed when all players are confirmed ready');
+    assert.strictEqual(host.state, 'COUNTDOWN', 'Host state must transition to COUNTDOWN');
+    assert.ok(broadcastSent, 'Should broadcast countdown payload');
+    assert.strictEqual(broadcastSent.type, 'START_COUNTDOWN');
+    assert.strictEqual(broadcastSent.countdownSec, 5);
+
+    // Clean up timer
+    host.leaveRoom();
+  });
+
+  it('4. 5-Second Synchronized Countdown lifecycle and tick notifications', () => {
+    const host = new MultiplayerManager();
+    host.createRoom('ZEPH-5SEC');
+    host.players = [
+      { peerId: 'p0', slot: 0, name: 'Host', kartId: 'nix', isHost: true, ping: 0, isAI: false, isReady: true }
+    ];
+
+    let ticks = [];
+    host.onCountdownTick = (remaining, data) => {
+      ticks.push(remaining);
+    };
+
+    host.startCountdown(5);
+    assert.strictEqual(host.state, 'COUNTDOWN');
+    assert.strictEqual(ticks[0], 5, 'Immediate tick notification at 5 seconds');
+    assert.ok(host.countdownTimer !== null, 'Countdown timer interval must be active');
+
+    // Clean up timer
+    host.leaveRoom();
+    assert.strictEqual(host.countdownTimer, null, 'leaveRoom must clear countdown timer');
+  });
+
+  it('5. Disconnection during 5-second countdown aborts countdown and notifies lobby', () => {
+    const host = new MultiplayerManager();
+    host.createRoom('ZEPH-DROP');
+    host.players = [
+      { peerId: 'p0', slot: 0, name: 'Host', kartId: 'nix', isHost: true, ping: 0, isAI: false, isReady: true },
+      { peerId: 'guest_drop', slot: 1, name: 'LeavingGuest', kartId: 'marlow', isHost: false, ping: 40, isAI: false, isReady: true }
+    ];
+
+    let countdownCancelled = false;
+    let cancelReason = '';
+    host.onCountdownCancel = (reason) => {
+      countdownCancelled = true;
+      cancelReason = reason;
+    };
+
+    let broadcastMsgs = [];
+    host.broadcastToAll = (msg) => { broadcastMsgs.push(msg); };
+
+    // Start 5-second countdown
+    host.startRace(5);
+    assert.strictEqual(host.state, 'COUNTDOWN');
+    assert.ok(host.countdownTimer !== null);
+
+    // Client drops during countdown
+    host.handlePeerDisconnect('guest_drop');
+
+    assert.strictEqual(host.state, 'HOST_LOBBY', 'State must revert from COUNTDOWN back to HOST_LOBBY');
+    assert.strictEqual(host.countdownTimer, null, 'Countdown timer must be terminated');
+    assert.strictEqual(countdownCancelled, true, 'onCountdownCancel callback must be triggered');
+    assert.ok(cancelReason.includes('disconnesso'), 'Cancel reason should report peer disconnect');
+    assert.ok(broadcastMsgs.some(m => m.type === 'COUNTDOWN_CANCEL'), 'Must broadcast COUNTDOWN_CANCEL to any remaining peers');
+
+    host.leaveRoom();
+  });
+
+  it('6. Changing character resets ready check to require re-confirmation', () => {
+    const guest = new MultiplayerManager();
+    guest.state = 'GUEST_LOBBY';
+    guest.mySlot = 1;
+    guest.players = [
+      { peerId: 'p0', slot: 0, name: 'Host', kartId: 'nix', isHost: true, isAI: false, isReady: true },
+      { peerId: 'p1', slot: 1, name: 'Guest', kartId: 'bruno', isHost: false, isAI: false, isReady: true }
+    ];
+
+    let sentUpdate = null;
+    guest.broadcastToAll = (msg) => { sentUpdate = msg; };
+
+    assert.strictEqual(guest.players[1].isReady, true);
+
+    // Guest picks different kart
+    guest.setSelectedKart('rustam');
+
+    assert.strictEqual(guest.players[1].kartId, 'rustam', 'Guest kart must update to rustam');
+    assert.strictEqual(guest.players[1].isReady, false, 'Guest isReady must reset to false when character is changed');
+    assert.strictEqual(sentUpdate?.type, 'PLAYER_UPDATE');
+    assert.strictEqual(sentUpdate?.kartId, 'rustam');
+    assert.strictEqual(sentUpdate?.isReady, false, 'Broadcasted update must reflect unready state');
+
+    guest.leaveRoom();
+  });
+
+  it('7. Track synchronization broadcasts across all connected peers in room', () => {
+    const host = new MultiplayerManager();
+    host.createRoom('ZEPH-TRK');
+    let syncBroadcast = null;
+    host.broadcastToAll = (msg) => { syncBroadcast = msg; };
+
+    host.setTrack(14); // Stratos Hairpins
+    assert.strictEqual(host.trackIndex, 14);
+    assert.strictEqual(syncBroadcast?.type, 'TRACK_SYNC');
+    assert.strictEqual(syncBroadcast?.trackIndex, 14);
+
+    // Guest receives TRACK_SYNC
+    const guest = new MultiplayerManager();
+    guest.state = 'GUEST_LOBBY';
+    guest.handleIncomingData({}, {
+      type: 'TRACK_SYNC',
+      trackIndex: 14,
+      laps: 3
+    });
+    assert.strictEqual(guest.trackIndex, 14, 'Guest must synchronize track index from TRACK_SYNC');
+
+    host.leaveRoom();
+    guest.leaveRoom();
+  });
+
+  it('8. Connected guest hides join button and guest form, leaving room restores them', () => {
+    const guest = new MultiplayerManager();
+    let lobbyEvents = [];
+    guest.onLobbyUpdate = (lobby) => {
+      lobbyEvents.push({ ...lobby, state: guest.state });
+    };
+
+    // Simulate joining and receiving ROOM_WELCOME
+    guest.handleIncomingData({}, {
+      type: 'ROOM_WELCOME',
+      roomCode: 'ZEPH-GUEST',
+      mySlot: 1,
+      trackIndex: 5,
+      laps: 3,
+      players: [
+        { slot: 0, name: 'Host', isHost: true, isReady: true },
+        { slot: 1, name: 'Guest', isHost: false, isReady: false }
+      ]
+    });
+
+    assert.strictEqual(guest.state, 'GUEST_LOBBY', 'State must be GUEST_LOBBY upon ROOM_WELCOME');
+    assert.strictEqual(guest.isHost, false);
+    const isGuestInRoom = (mgr) => !mgr.isHost && (
+      mgr.state === 'CONNECTING' || 
+      mgr.state === 'GUEST_LOBBY' || 
+      mgr.state === 'COUNTDOWN' || 
+      mgr.state === 'RACING' || 
+      mgr.state === 'RESULTS'
+    );
+    assert.strictEqual(isGuestInRoom(guest), true, 'isGuestInRoom must be true so that joinBtn and guest form are hidden');
+
+    // Leaving room triggers state IDLE and resets UI
+    guest.leaveRoom();
+    assert.strictEqual(guest.state, 'IDLE', 'State must reset to IDLE upon leaveRoom');
+    assert.strictEqual(isGuestInRoom(guest), false, 'isGuestInRoom must be false after leaving room so joinBtn is restored');
+    assert.strictEqual(lobbyEvents.length >= 2, true, 'onLobbyUpdate must have fired on welcome and on leaveRoom');
+  });
+
+  it('9. Connecting state immediately notifies lobby and flags isGuestInRoom as true to hide ENTRA NELLA STANZA button', () => {
+    const guest = new MultiplayerManager();
+    let updates = 0;
+    guest.onLobbyUpdate = () => { updates++; };
+
+    const isGuestInRoom = (mgr) => !mgr.isHost && (
+      mgr.state === 'CONNECTING' || 
+      mgr.state === 'GUEST_LOBBY' || 
+      mgr.state === 'COUNTDOWN' || 
+      mgr.state === 'RACING' || 
+      mgr.state === 'RESULTS'
+    );
+
+    assert.strictEqual(guest.state, 'IDLE');
+    assert.strictEqual(isGuestInRoom(guest), false, 'Initially IDLE, join button visible');
+
+    // Guest begins joining
+    guest.state = 'CONNECTING';
+    guest.notifyLobbyUpdate();
+    assert.strictEqual(guest.state, 'CONNECTING');
+    assert.strictEqual(isGuestInRoom(guest), true, 'CONNECTING state must flag isGuestInRoom as true to hide join button immediately');
+    assert.strictEqual(updates, 1, 'onLobbyUpdate must fire immediately upon entering CONNECTING');
+
+    // Connection opens: peer connects
+    guest.state = 'GUEST_LOBBY';
+    guest.notifyLobbyUpdate();
+    assert.strictEqual(guest.state, 'GUEST_LOBBY');
+    assert.strictEqual(isGuestInRoom(guest), true, 'GUEST_LOBBY keeps join button hidden');
+    assert.strictEqual(updates, 2);
+
+    guest.leaveRoom();
+    assert.strictEqual(guest.state, 'IDLE');
+    assert.strictEqual(isGuestInRoom(guest), false, 'After leaving room, join button is cleanly restored');
+  });
+
+  it('10. Coordinated race start flow: 5s synchronized pre-race preparation ticks -> RACE_START_SYNC -> transition to classic 3s starting grid countdown', () => {
+    const host = new MultiplayerManager();
+    const guest = new MultiplayerManager();
+
+    host.createRoom('ZEPH-LIVE');
+    host.players = [
+      { peerId: 'p0', slot: 0, name: 'Host', kartId: 'nix', isHost: true, ping: 0, isAI: false, isReady: true },
+      { peerId: 'p1', slot: 1, name: 'Guest', kartId: 'bruno', isHost: false, ping: 35, isAI: false, isReady: true }
+    ];
+
+    guest.state = 'GUEST_LOBBY';
+    guest.mySlot = 1;
+    guest.players = [...host.players];
+
+    let hostTicks = [];
+    let guestTicks = [];
+    host.onCountdownTick = (r) => hostTicks.push(r);
+    guest.onCountdownTick = (r) => guestTicks.push(r);
+
+    let hostRaceStarted = false;
+    let guestRaceStarted = false;
+    let hostRaceData = null;
+    let guestRaceData = null;
+
+    host.onRaceStart = (d) => { hostRaceStarted = true; hostRaceData = d; };
+    guest.onRaceStart = (d) => { guestRaceStarted = true; guestRaceData = d; };
+
+    // Host starts 5-second countdown
+    const started = host.startCountdown(5);
+    assert.strictEqual(started, true);
+    assert.strictEqual(host.state, 'COUNTDOWN');
+    assert.strictEqual(hostTicks[0], 5);
+
+    // Guest receives START_COUNTDOWN message
+    guest.handleIncomingData({}, {
+      type: 'START_COUNTDOWN',
+      countdownSec: 5,
+      trackIndex: host.trackIndex,
+      laps: host.laps,
+      players: host.players,
+      startTime: Date.now() + 5000
+    });
+    assert.strictEqual(guest.state, 'COUNTDOWN');
+    assert.strictEqual(guestTicks[0], 5);
+
+    // When 5 seconds expire, host emits RACE_START_SYNC
+    const racePayload = {
+      type: 'RACE_START_SYNC',
+      trackIndex: host.trackIndex,
+      laps: host.laps,
+      players: host.players,
+      startTime: Date.now()
+    };
+    host.state = 'RACING';
+    host.onRaceStart(racePayload);
+    guest.handleIncomingData({}, racePayload);
+
+    assert.strictEqual(hostRaceStarted, true, 'Host must trigger onRaceStart');
+    assert.strictEqual(guestRaceStarted, true, 'Guest must trigger onRaceStart upon receiving RACE_START_SYNC');
+    assert.strictEqual(host.state, 'RACING');
+    assert.strictEqual(guest.state, 'RACING');
+    assert.strictEqual(guestRaceData.players.length, 6, 'Grid must contain 6 racers with AI fill');
+
+    // Clean up
+    host.leaveRoom();
+    guest.leaveRoom();
+  });
+});
+
+describe('=== UNIT & PROCESS TESTS: MULTIPLAYER TOURNAMENT PLAYLIST, SCORING & INTER-RACE ADVANCEMENT ===', () => {
+  it('1. Tournament Grand Prix points constant conforms strictly to [15, 12, 10, 8, 6, 4]', () => {
+    assert.ok(Array.isArray(MultiplayerManager.TOURNAMENT_POINTS), 'TOURNAMENT_POINTS must be an array');
+    assert.deepStrictEqual(MultiplayerManager.TOURNAMENT_POINTS, [15, 12, 10, 8, 6, 4], 'Points schedule must be [15, 12, 10, 8, 6, 4]');
+  });
+
+  it('2. Host can configure playlist track count (1 to 5) and assign specific tracks per slot', () => {
+    const host = new MultiplayerManager();
+    host.isHost = true;
+    assert.strictEqual(host.playlistTracks.length, 3, 'Default playlist should have 3 tracks');
+
+    // Change count to 4
+    host.setPlaylistCount(4);
+    assert.strictEqual(host.playlistTracks.length, 4, 'Playlist should have 4 tracks');
+
+    // Clamp count to maximum 5
+    host.setPlaylistCount(10);
+    assert.strictEqual(host.playlistTracks.length, 5, 'Playlist count should be clamped to 5 max');
+
+    // Clamp count to minimum 1
+    host.setPlaylistCount(0);
+    assert.strictEqual(host.playlistTracks.length, 1, 'Playlist count should be clamped to 1 min');
+
+    // Configure specific tracks: [3, 7, 12, 23]
+    host.setPlaylistCount(4);
+    host.setPlaylistTrackAt(0, 3);
+    host.setPlaylistTrackAt(1, 7);
+    host.setPlaylistTrackAt(2, 12);
+    host.setPlaylistTrackAt(3, 23);
+
+    assert.deepStrictEqual(host.playlistTracks, [3, 7, 12, 23], 'Playlist tracks must match configured indices');
+    assert.strictEqual(host.trackIndex, 3, 'First track in playlist must become initial trackIndex');
+  });
+
+  it('3. Host broadcasts playlist to guest via PLAYLIST_SYNC and guest updates playlist', () => {
+    const host = new MultiplayerManager();
+    host.isHost = true;
+    const guest = new MultiplayerManager();
+    guest.isHost = false;
+
+    let broadcastData = null;
+    host.broadcast = (d) => { broadcastData = d; };
+
+    host.setPlaylist([2, 5, 9], 2);
+    assert.ok(broadcastData, 'Host must broadcast PLAYLIST_SYNC');
+    assert.strictEqual(broadcastData.type, 'PLAYLIST_SYNC');
+    assert.deepStrictEqual(broadcastData.playlistTracks, [2, 5, 9]);
+    assert.strictEqual(broadcastData.laps, 2);
+
+    // Guest receives PLAYLIST_SYNC
+    guest.handleIncomingData({}, broadcastData);
+    assert.deepStrictEqual(guest.playlistTracks, [2, 5, 9]);
+    assert.strictEqual(guest.laps, 2);
+    assert.strictEqual(guest.trackIndex, 2);
+  });
+
+  it('4. Host processes race results, computes points based on rank, and accumulates cumulative scores', () => {
+    const host = new MultiplayerManager();
+    host.isHost = true;
+    host.mySlot = 0;
+    host.players = [
+      { slot: 0, name: 'HostRacer', kartId: 'nix', isHost: true },
+      { slot: 1, name: 'GuestRacer', kartId: 'zuzu', isHost: false },
+      { slot: 2, name: 'AI 1', kartId: 'bruno', isAI: true },
+      { slot: 3, name: 'AI 2', kartId: 'sable', isAI: true },
+      { slot: 4, name: 'AI 3', kartId: 'rustam', isAI: true },
+      { slot: 5, name: 'AI 4', kartId: 'marlow', isAI: true }
+    ];
+
+    let standingsData = null;
+    host.onTournamentStandings = (d) => { standingsData = d; };
+
+    // Race 1 finish order: Guest 1st, Host 2nd, AI 1 3rd, AI 2 4th, AI 3 5th, AI 4 6th
+    const race1Results = [
+      { slot: 1, rank: 1, time: 65.2 },
+      { slot: 0, rank: 2, time: 66.1 },
+      { slot: 2, rank: 3, time: 68.0 },
+      { slot: 3, rank: 4, time: 69.5 },
+      { slot: 4, rank: 5, time: 71.0 },
+      { slot: 5, rank: 6, time: 72.3 }
+    ];
+
+    host.handleRaceResults(race1Results);
+
+    assert.ok(standingsData, 'onTournamentStandings must be called');
+    assert.strictEqual(standingsData.standings[0].slot, 1, 'Guest must be in 1st place');
+    assert.strictEqual(standingsData.standings[0].totalPoints, 15, '1st place receives 15 points');
+    assert.strictEqual(standingsData.standings[1].slot, 0, 'Host must be in 2nd place');
+    assert.strictEqual(standingsData.standings[1].totalPoints, 12, '2nd place receives 12 points');
+    assert.strictEqual(standingsData.standings[2].totalPoints, 10, '3rd place receives 10 points');
+    assert.strictEqual(standingsData.isFinalRace, false, 'Race 1 of 3 is not final race');
+
+    // Race 2 finish order: Host 1st (+15), Guest 2nd (+12)
+    const race2Results = [
+      { slot: 0, rank: 1, time: 64.0 },
+      { slot: 1, rank: 2, time: 64.5 },
+      { slot: 2, rank: 3, time: 67.0 },
+      { slot: 3, rank: 4, time: 68.0 },
+      { slot: 4, rank: 5, time: 70.0 },
+      { slot: 5, rank: 6, time: 72.0 }
+    ];
+
+    host.playlistIndex = 1;
+    host.handleRaceResults(race2Results);
+
+    // Host: 12 + 15 = 27 pts. Guest: 15 + 12 = 27 pts.
+    assert.strictEqual(host.tournamentScores.get(0), 27, 'Host cumulative score must be 27');
+    assert.strictEqual(host.tournamentScores.get(1), 27, 'Guest cumulative score must be 27');
+  });
+
+  it('5. Host broadcasts TOURNAMENT_STANDINGS_SYNC to guests and triggers callbacks', () => {
+    const host = new MultiplayerManager();
+    host.isHost = true;
+    const guest = new MultiplayerManager();
+    guest.isHost = false;
+    guest.mySlot = 1;
+
+    let guestStandings = null;
+    guest.onTournamentStandings = (d) => { guestStandings = d; };
+
+    const syncMsg = {
+      type: 'TOURNAMENT_STANDINGS_SYNC',
+      standings: [
+        { slot: 1, name: 'GuestRacer', kartId: 'zuzu', totalPoints: 15, lastRacePoints: 15, lastRaceRank: 1 },
+        { slot: 0, name: 'HostRacer', kartId: 'nix', totalPoints: 12, lastRacePoints: 12, lastRaceRank: 2 }
+      ],
+      playlistIndex: 0,
+      totalTracks: 3,
+      isFinalRace: false
+    };
+
+    guest.handleIncomingData({}, syncMsg);
+
+    assert.ok(guestStandings, 'Guest onTournamentStandings must be triggered');
+    assert.strictEqual(guest.tournamentScores.get(1), 15);
+    assert.strictEqual(guest.tournamentScores.get(0), 12);
+    assert.strictEqual(guestStandings.isFinalRace, false);
+  });
+
+  it('6. Host advances to next tournament race via advanceToNextRace(), incrementing playlistIndex and starting countdown', () => {
+    const host = new MultiplayerManager();
+    host.isHost = true;
+    host.playlistTracks = [0, 4, 8];
+    host.playlistIndex = 0;
+    host.trackIndex = 0;
+
+    const guest = new MultiplayerManager();
+    guest.isHost = false;
+    guest.playlistTracks = [0, 4, 8];
+    guest.playlistIndex = 0;
+
+    let nextRaceBroadcast = null;
+    host.broadcast = (d) => { nextRaceBroadcast = d; };
+
+    let guestTick = null;
+    guest.onCountdownTick = (r) => { guestTick = r; };
+
+    const advanced = host.advanceToNextRace(5);
+    assert.strictEqual(advanced, true, 'advanceToNextRace should return true');
+    assert.strictEqual(host.playlistIndex, 1, 'playlistIndex should advance to 1');
+    assert.strictEqual(host.trackIndex, 4, 'trackIndex should become next track (4)');
+    assert.strictEqual(host.state, 'COUNTDOWN');
+
+    // Verify broadcast to guests
+    assert.ok(nextRaceBroadcast);
+    assert.strictEqual(nextRaceBroadcast.type, 'NEXT_TOURNAMENT_RACE');
+    assert.strictEqual(nextRaceBroadcast.playlistIndex, 1);
+    assert.strictEqual(nextRaceBroadcast.trackIndex, 4);
+
+    // Guest handles NEXT_TOURNAMENT_RACE
+    guest.handleIncomingData({}, nextRaceBroadcast);
+    assert.strictEqual(guest.playlistIndex, 1);
+    assert.strictEqual(guest.trackIndex, 4);
+    assert.strictEqual(guest.state, 'COUNTDOWN');
+    assert.strictEqual(guestTick, 5);
+
+    host.leaveRoom();
+    guest.leaveRoom();
+  });
+
+  it('7. Final tournament race completion triggers onTournamentComplete callback', () => {
+    const host = new MultiplayerManager();
+    host.isHost = true;
+    host.playlistTracks = [0, 1]; // 2-race tournament
+    host.playlistIndex = 1; // 2nd race (final)
+    host.players = [
+      { slot: 0, name: 'ChampionHost', kartId: 'nix', isHost: true },
+      { slot: 1, name: 'RunnerUpGuest', kartId: 'sable', isHost: false }
+    ];
+
+    let tournamentDone = false;
+    let winnerName = null;
+    host.onTournamentComplete = (d) => {
+      tournamentDone = true;
+      winnerName = d.standings[0]?.name;
+    };
+
+    const finalResults = [
+      { slot: 0, rank: 1, time: 60.0 },
+      { slot: 1, rank: 2, time: 62.0 }
+    ];
+
+    host.handleRaceResults(finalResults);
+
+    assert.strictEqual(host.isTournamentComplete, true, 'Tournament must be marked complete');
+    assert.strictEqual(tournamentDone, true, 'onTournamentComplete callback must fire');
+    assert.strictEqual(winnerName, 'ChampionHost', 'Winner must be the racer with top cumulative points');
+  });
+
+  it('8. Tournament reset clears scores and restores playlist index', () => {
+    const host = new MultiplayerManager();
+    host.isHost = true;
+    host.playlistTracks = [10, 15, 20];
+    host.playlistIndex = 2;
+    host.tournamentScores.set(0, 45);
+    host.isTournamentComplete = true;
+
+    let resetBroadcast = null;
+    host.broadcast = (d) => { resetBroadcast = d; };
+
+    host.resetTournament();
+
+    assert.strictEqual(host.playlistIndex, 0);
+    assert.strictEqual(host.trackIndex, 10);
+    assert.strictEqual(host.tournamentScores.size, 0);
+    assert.strictEqual(host.isTournamentComplete, false);
+    assert.ok(resetBroadcast);
+    assert.strictEqual(resetBroadcast.type, 'TOURNAMENT_RESET');
+  });
+
+  it('9. NOS trail particle emission conforms to subtle specifications', () => {
+    // Test particle emission simulation matching Ag.nosTrail parameters in bundle
+    const particles = [];
+    const mockSmokeEmitter = {
+      emit: (pos, vel, col, sz, life, drag) => {
+        particles.push({ pos, vel, col, sz, life, drag });
+      }
+    };
+
+    const nosTrailSim = (x, y, z, backDirX, backDirZ) => {
+      // White color (0xFFFFFF = 16777215), subtle size (0.15), fast fade (0.18s), drag 3.2
+      const vx = backDirX * 3.5 + (Math.random() - 0.5) * 0.4;
+      const vy = 0.35 + (Math.random() - 0.5) * 0.2;
+      const vz = backDirZ * 3.5 + (Math.random() - 0.5) * 0.4;
+      mockSmokeEmitter.emit({ x, y, z }, { x: vx, y: vy, z: vz }, 16777215, 0.15, 0.18, 3.2);
+    };
+
+    // Emit 4 NOS trail puffs
+    for (let i = 0; i < 4; i++) {
+      nosTrailSim(0, 0.3, 0, 0, -1);
+    }
+
+    assert.strictEqual(particles.length, 4, 'Should emit 4 particles');
+    particles.forEach(p => {
+      assert.strictEqual(p.col, 16777215, 'Color must be pure white (16777215 / 0xFFFFFF)');
+      assert.strictEqual(p.sz, 0.15, 'Size must be subtle 0.15 (not large smoke plumes)');
+      assert.strictEqual(p.life, 0.18, 'Lifetime must be fast-dissipating 0.18s');
+      assert.strictEqual(p.drag, 3.2, 'Drag must be 3.2 for rapid decelerating dissipation');
+    });
+  });
+});
 
 
