@@ -2412,5 +2412,180 @@ describe('=== UNIT & PROCESS TESTS: MINE IMPACT & COLLISION MECHANICS ===', () =
   });
 });
 
+describe('=== UNIT & PROCESS TESTS: HYPER-REALISTIC ZEPHYR HURRICANE ===', () => {
+  it('1. Bundle verification for procedural hurricane geometry and assets', () => {
+    const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+    assert.ok(bundle.includes('buildHurricane='), 'buildHurricane helper must be present');
+    assert.ok(bundle.includes('xe(4.2,.45,6.8'), 'outer turbulent funnel cylinder geometry present');
+    assert.ok(bundle.includes('xe(2.6,.25,6.2'), 'inner counter-rotating storm wall cylinder geometry present');
+    assert.ok(bundle.includes('Xn(1.3,.12,6'), 'lower spiral accretion ring present');
+    assert.ok(bundle.includes('Xn(2.7,.16,6'), 'mid spiral accretion ring present');
+    assert.ok(bundle.includes('Xn(4.3,.22,6'), 'top spiral accretion ring present');
+    assert.ok(bundle.includes('_n(.52,0)'), 'orbiting storm cloud puff icosahedron geometry present');
+    assert.ok(bundle.includes('Da(.2,2.4'), 'ground spray plume ring geometry present');
+    assert.ok(bundle.includes('xe(.12,.12,6.6'), 'central electric lightning conduit present');
+    assert.ok(bundle.includes('Zephyr Hurricane'), 'item blurb updated with Zephyr Hurricane');
+    assert.ok(bundle.includes('v.s+80*t'), 'hurricane travels along track at 80 m/s');
+    assert.ok(bundle.includes('v.life=6.8'), 'hurricane lifetime set to 6.8 seconds');
+    assert.ok(bundle.includes('landSquash=1'), 'kart landing squash triggered on slam');
+    assert.ok(bundle.includes('-26'), 'violent downward velocity vy = -26 applied on ground slam');
+  });
+
+  it('2. Hurricane procedural structure and component rotation simulation', () => {
+    const mockHurricane = {
+      funnel: { rotation: { y: 0 } },
+      inner: { rotation: { y: 0 } },
+      rings: [
+        { rotation: { y: 0, z: 0.28 } },
+        { rotation: { y: 0, z: -0.22 } },
+        { rotation: { y: 0, z: 0.16 } }
+      ],
+      core: { material: { opacity: 0.75, color: { setHex: () => {} } } },
+      clouds: [
+        { mesh: { position: { x: 0, z: 0 } }, r: 2.6, s: 4.8, a: 0 },
+        { mesh: { position: { x: 0, z: 0 } }, r: 3.4, s: -3.6, a: 1 }
+      ],
+      plume: { rotation: { z: 0 } }
+    };
+
+    const dt = 0.016;
+    mockHurricane.funnel.rotation.y += dt * 14;
+    mockHurricane.inner.rotation.y -= dt * 18;
+    mockHurricane.rings[0].rotation.y += dt * 16;
+    mockHurricane.rings[1].rotation.y -= dt * 19;
+    mockHurricane.rings[2].rotation.y += dt * 23;
+    mockHurricane.plume.rotation.z += dt * 9;
+
+    assert.ok(mockHurricane.funnel.rotation.y > 0, 'outer funnel rotates counter-clockwise');
+    assert.ok(mockHurricane.inner.rotation.y < 0, 'inner funnel counter-rotates clockwise');
+    assert.ok(mockHurricane.rings[0].rotation.y > 0, 'ring 0 rotates with outer stream');
+    assert.ok(mockHurricane.rings[1].rotation.y < 0, 'ring 1 counter-rotates');
+    assert.ok(mockHurricane.plume.rotation.z > 0, 'ground plume spins');
+
+    for (const c of mockHurricane.clouds) {
+      c.a += dt * c.s;
+      c.mesh.position.x = Math.cos(c.a) * c.r;
+      c.mesh.position.z = Math.sin(c.a) * c.r;
+    }
+    assert.notStrictEqual(mockHurricane.clouds[0].mesh.position.x, 0, 'cloud orbital position updated');
+  });
+
+  it('3. Multi-racer suction, aerial lift and violent ground slam simulation', () => {
+    const vortex = {
+      pos: { x: 10, y: 1, z: 10 },
+      active: true,
+      hitRacers: new Set(['caster']),
+      absorbedRacers: []
+    };
+
+    let coinsDropped1 = false, coinsDropped2 = false;
+    let punch1 = 0, punch2 = 0;
+    let kb1 = null, kb2 = null;
+
+    const racer1 = {
+      id: 'racer1',
+      pos: { x: 12, y: 1, z: 12 },
+      state: { vy: 0, airHeight: 0, grounded: true, yaw: 0 },
+      hit: () => true,
+      dropCoins: () => { coinsDropped1 = true; },
+      kart: {
+        visual: { punch: (p) => { punch1 = p; } },
+        physics: { knockback: (vx, vz, spd, vy) => { kb1 = { vx, vz, spd, vy }; } }
+      }
+    };
+
+    const racer2 = {
+      id: 'racer2',
+      pos: { x: 14, y: 1, z: 14 },
+      state: { vy: 0, airHeight: 0, grounded: true, yaw: 0 },
+      hit: () => true,
+      dropCoins: () => { coinsDropped2 = true; },
+      kart: {
+        visual: { punch: (p) => { punch2 = p; } },
+        physics: { knockback: (vx, vz, spd, vy) => { kb2 = { vx, vz, spd, vy }; } }
+      }
+    };
+
+    const racers = [racer1, racer2];
+
+    for (const r of racers) {
+      if (!vortex.hitRacers.has(r.id)) {
+        const dx = r.pos.x - vortex.pos.x;
+        const dz = r.pos.z - vortex.pos.z;
+        const distSq = dx * dx + dz * dz;
+        if (distSq < 81) {
+          vortex.hitRacers.add(r.id);
+          vortex.absorbedRacers.push({
+            racer: r,
+            timer: 0.42,
+            baseY: r.pos.y,
+            angle: Math.atan2(dz, dx),
+            radius: Math.min(Math.sqrt(distSq), 4.5)
+          });
+        }
+      }
+    }
+
+    assert.strictEqual(vortex.absorbedRacers.length, 2, 'both racers sucked into hurricane');
+    assert.strictEqual(vortex.active, true, 'hurricane remains active to chase subsequent opponents');
+
+    const dt = 0.05;
+    for (let step = 0; step < 4; step++) {
+      for (const a of vortex.absorbedRacers) {
+        a.timer -= dt;
+        a.angle += dt * 16;
+        a.radius = Math.max(0.4, a.radius - dt * 6.5);
+        const r = a.racer;
+        const prog = 1 - Math.max(0, a.timer / 0.42);
+        if (prog > 0.12 && prog < 0.9) {
+          r.state.vy = 10;
+          r.state.grounded = false;
+          r.state.airHeight = 4.6 * Math.sin(prog * Math.PI);
+        }
+        r.state.yaw += dt * 22;
+      }
+    }
+
+    assert.strictEqual(racer1.state.grounded, false, 'racer 1 is lifted airborne');
+    assert.ok(racer1.state.airHeight > 2.0, 'racer 1 has high airHeight inside cyclone');
+    assert.ok(racer1.state.yaw > 0, 'racer 1 undergoes violent spinout');
+
+    while (vortex.absorbedRacers.length > 0) {
+      for (let i = vortex.absorbedRacers.length - 1; i >= 0; i--) {
+        const a = vortex.absorbedRacers[i];
+        a.timer -= dt;
+        if (a.timer <= 0) {
+          const r = a.racer;
+          r.state.vy = -26;
+          r.state.airHeight = 0;
+          r.state.grounded = true;
+          r.hit(1.4, 1);
+          r.dropCoins();
+          r.kart.visual.punch(1.8);
+          r.kart.physics.knockback(1, 1, 16, -26);
+          vortex.absorbedRacers.splice(i, 1);
+        }
+      }
+    }
+
+    assert.strictEqual(vortex.absorbedRacers.length, 0, 'all racers processed through ground slam');
+    assert.strictEqual(coinsDropped1, true, 'racer 1 dropped coins on slam');
+    assert.strictEqual(coinsDropped2, true, 'racer 2 dropped coins on slam');
+    assert.strictEqual(punch1, 1.8, 'visual squash/punch 1.8 applied on racer 1');
+    assert.strictEqual(punch2, 1.8, 'visual squash/punch 1.8 applied on racer 2');
+    assert.strictEqual(kb1.vy, -26, 'downward slam velocity -26 applied on racer 1');
+    assert.strictEqual(kb2.vy, -26, 'downward slam velocity -26 applied on racer 2');
+  });
+
+  it('4. Hurricane audio synthesis and SVG icon definitions', () => {
+    const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+    assert.ok(bundle.includes('sawtooth'), 'howling wind uses sawtooth oscillator');
+    assert.ok(bundle.includes('sweep'), 'audio includes frequency sweep');
+    assert.ok(bundle.includes('2200'), 'cyclonic wind noise filter cutoff frequency');
+    assert.ok(bundle.includes('case"vortex":return`<svg ${r}><path d="M8 12c10-5 22-5 32 0'), 'vortex SVG icon generator case exists');
+    assert.ok(bundle.includes('d="M22 6l4 7-6 2 8 8"'), 'lightning bolt path present in hurricane SVG');
+  });
+});
+
 
 
