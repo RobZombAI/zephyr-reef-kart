@@ -2973,3 +2973,73 @@ describe('=== UNIT & PROCESS TESTS: 10 GEOLOGICAL BIOMES & TRACK OVERHAUL ===', 
     );
   });
 });
+
+
+describe('=== UNIT & PROCESS TESTS: 10 GRAPHICAL ENHANCEMENTS & FIDELITY OVERHAUL ===', () => {
+  const bundleCode = fs.readFileSync('assets/index-C9rd31_W.js', 'utf8');
+  const cssCode = fs.readFileSync('assets/index-DMliwuo_.css', 'utf8');
+
+  it('1. Shadow Map Quality & Bias (Item 1)', () => {
+    assert.ok(bundleCode.includes('left:-75,right:75,top:75,bottom:-75'), 'Directional shadow camera bounds optimized for tight texel density');
+    assert.ok(bundleCode.includes('shadow.bias=-0.00025'), 'Shadow bias calibrated to eliminate shadow acne');
+    assert.ok(bundleCode.includes('shadow.normalBias=.042'), 'Shadow normalBias calibrated to eliminate peter-panning on slopes');
+  });
+
+  it('2. Road Surface Specular & PBR Realism (Item 2)', () => {
+    assert.ok(bundleCode.includes('d.roughness=.62'), 'Road surface roughness tuned for specular sheen');
+    assert.ok(bundleCode.includes('d.metalness=.16'), 'Road surface metalness set for subtle asphalt reflectivity');
+    assert.ok(bundleCode.includes('d.bumpScale=.032'), 'Road surface bump scale increased for tactile 3D grit');
+  });
+
+  it('3. Dynamic Biome Water & Molten Lava Shader (Item 3)', () => {
+    assert.ok(bundleCode.includes('uWaterColor:'), 'Water shader declares uWaterColor uniform');
+    assert.ok(bundleCode.includes('uniform vec3 uWaterColor;'), 'Fragment shader receives uWaterColor');
+    assert.ok(bundleCode.includes('vec3 _deepCol = uWaterColor * 0.42;'), 'Deep lagoon blends dynamically with theme water color');
+    assert.ok(bundleCode.includes('float cracks = smoothstep(0.04, 0.0, abs(lavaNoise - 0.15))'), 'Molten lava features animated incandescent crust fissures');
+  });
+
+  it('4. Sky Dome Atmospheric Horizon Scattering (Item 4)', () => {
+    assert.ok(bundleCode.includes('float horizonHaze=exp(-abs(d.y)*5.2);'), 'Exponential Rayleigh horizon haze scattering');
+    assert.ok(bundleCode.includes('c=mix(c,uSkyHorizon*1.12,horizonHaze*0.72);'), 'Sky dome smoothly blends into terrain horizon fog');
+    assert.ok(bundleCode.includes('c+=vec3(1.,.82,.55)*pow(sd,32.)*horizonHaze*.55;'), 'Warm solar atmospheric halo at horizon');
+  });
+
+  it('5. Kart Automotive Metallic Car Paint & Material Contrast (Item 5)', () => {
+    assert.ok(bundleCode.includes('o=r(s.kart.body,.22,.62)'), 'Kart chassis uses high-gloss automotive metallic paint');
+    assert.ok(bundleCode.includes('c=r(s.kart.rim,.15,.85)'), 'Kart rims use polished alloy finish');
+    assert.ok(bundleCode.includes('l=r(s.kart.tyre,.88,.04)'), 'Kart tyres use deep vulcanized matte rubber');
+  });
+
+  it('6. High-Speed Warp Streaks & Dynamic Speed Lines (Item 6)', () => {
+    assert.ok(cssCode.includes('repeating-conic-gradient('), 'Speedlines CSS has dynamic radial streaking pattern');
+    assert.ok(cssCode.includes('@keyframes speedwarp'), 'Speedlines warp animation declared in CSS');
+  });
+
+  it('7. Solar Bloom & Lens Glare Flare (Item 7)', () => {
+    assert.ok(bundleCode.includes('<div class="hud__glare" data-role="glare"></div>'), 'HUD includes solar glare overlay element');
+    assert.ok(bundleCode.includes('this.setSolarGlare='), 'UI provides setSolarGlare method');
+    assert.ok(bundleCode.includes('this.ui.setSolarGlare(_dot>.62?Math.pow((_dot-.62)/.38,2.2)*.85:0)'), 'Race loop computes camera-to-sun alignment glare');
+    assert.ok(cssCode.includes('.hud__glare{'), 'CSS defines optical lens glare styling');
+  });
+
+  it('8. Kart Headlight & Taillight Ground Projection (Item 8)', () => {
+    assert.ok(bundleCode.includes('rgba(255,250,220,0.5)'), 'Canvas generates twin front headlight projection pools');
+    assert.ok(bundleCode.includes('s.kart.glow'), 'Kart underglow neon color projected onto ground');
+    assert.ok(bundleCode.includes('polygonOffsetUnits:-6'), 'Ground projection decal uses polygonOffset to eliminate z-fighting');
+    assert.ok(bundleCode.includes('_gqd.geometry.dispose()'), 'Ground projection resources disposed cleanly on kart unload');
+  });
+
+  it('9. Anti-Aliased Textured Skidmarks (Item 9)', () => {
+    assert.ok(bundleCode.includes('varying vec2 vUv;'), 'Skidmark vertex and fragment shaders declare vUv');
+    assert.ok(bundleCode.includes('float edge = 1.0 - pow(abs(vUv.x * 2.0 - 1.0), 3.2);'), 'Skidmarks feature lateral anti-aliased edge feathering');
+    assert.ok(bundleCode.includes('float grooves = 0.78 + 0.22 * sin(vUv.x * 37.69);'), 'Skidmarks feature realistic rubber tyre tread grooves');
+    assert.ok(bundleCode.includes('this.geo.setAttribute("uv",new ve(_uvs,2))'), 'Geometry initializes UV coordinates for all skid quads');
+  });
+
+  it('10. HUD Telemetry Dials & Minimap Visual Polish (Item 10)', () => {
+    assert.ok(cssCode.includes('border:1px solid rgba(124,249,255,.45)'), 'HUD panels feature luminous glass border highlight');
+    assert.ok(cssCode.includes('text-shadow:0 2px 10px rgba(0,0,0,.92)'), 'Speedometer and telemetry text have strong drop-shadow contrast');
+    assert.ok(bundleCode.includes('e.strokeStyle="rgba(2, 8, 16, 0.95)",e.lineWidth=19'), 'Minimap uses high-contrast deep outer outline');
+    assert.ok(bundleCode.includes('e.arc(ox,oy,14,0,Math.PI*2),e.strokeStyle="rgba(255, 200, 87, 0.3)"'), 'Player minimap blip features glowing outer pulse ring');
+  });
+});
