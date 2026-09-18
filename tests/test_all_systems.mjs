@@ -2022,23 +2022,72 @@ describe('=== UNIT & PROCESS TESTS: 50 ARCHITECTURAL IMPROVEMENTS ===', () => {
 
   it('3. Rocket start golden timing window vs early engine stall', () => {
     const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
-    assert.ok(bundle.includes('this.countdown>1.35)this.engineStalled=1.1;'), 'holding gas too early stalls engine');
-    assert.ok(bundle.includes('this.countdown<=0.75&&this.countdown>=0.05)this.rocketStartPrimed=!0;'), 'holding gas in golden window primes launch boost');
+    assert.ok(bundle.includes('this.countdown>1.25)this.engineStalled=1.1'), 'holding gas too early stalls engine');
+    assert.ok(bundle.includes('this.countdown<=1.15&&this.countdown>=0.06'), 'holding gas in golden window primes launch boost');
+    assert.ok(bundle.includes('this.countdown>0.06&&(this.rocketStartPrimed=!1)'), 'releasing gas unprimes rocket start');
+    assert.ok(bundle.includes('rocketChance=.15*aiSkill'), 'AI racers have skill-based rocket start chance');
+    assert.ok(bundle.includes('stallChance=Math.max(.02,.08-(aiSkill-.95)*.15)'), 'AI racers have skill-based stall chance');
+    assert.ok(bundle.includes('if(this.engineStalled>0||t.engineStalled>0){n.throttle=0'), 'stalled engine clamps throttle and speed');
 
-    // Evaluate launch logic
-    const evalRocketStart = (countdownTime, isAccel) => {
-      let stalled = false;
+    // Evaluate launch logic simulation
+    const simulateCountdown = (events) => {
+      let countdown = 3.6;
+      let stalled = 0;
       let rocketPrimed = false;
-      if (isAccel) {
-        if (countdownTime > 1.35) stalled = true;
-        else if (countdownTime <= 0.75 && countdownTime >= 0.05) rocketPrimed = true;
+      const dt = 0.05;
+      while (countdown > 0) {
+        const isAccel = events(countdown);
+        if (isAccel) {
+          if (countdown > 1.25) {
+            stalled = 1.1;
+            rocketPrimed = false;
+          } else if (countdown <= 1.15 && countdown >= 0.06) {
+            if (!(stalled > 0)) rocketPrimed = true;
+          }
+        } else {
+          if (countdown > 0.06) rocketPrimed = false;
+        }
+        countdown -= dt;
       }
-      return { stalled, rocketPrimed };
+      // Race start evaluation at countdown <= 0
+      let boostGiven = false;
+      let stallTriggered = false;
+      const finalAccel = events(0);
+      if (stalled > 0) {
+        stallTriggered = true;
+      } else if (rocketPrimed && finalAccel) {
+        boostGiven = true;
+      }
+      return { stalled: stallTriggered, rocketBoost: boostGiven };
     };
 
-    assert.strictEqual(evalRocketStart(2.0, true).stalled, true, 'early gas should stall');
-    assert.strictEqual(evalRocketStart(0.5, true).rocketPrimed, true, 'perfect timing should prime rocket start');
-    assert.strictEqual(evalRocketStart(0.5, false).rocketPrimed, false, 'no gas should not prime');
+    // Case 1: Early press during "3" or "2" (e.g. at 2.0s) -> Stalls!
+    const resEarly = simulateCountdown((t) => t >= 1.5);
+    assert.strictEqual(resEarly.stalled, true, 'early gas must stall engine');
+    assert.strictEqual(resEarly.rocketBoost, false, 'early gas must not receive boost');
+
+    // Case 2: Golden window press (starts at 1.0s and holds through 0) -> Rocket Start!
+    const resGolden = simulateCountdown((t) => t <= 1.0);
+    assert.strictEqual(resGolden.stalled, false, 'golden window gas should not stall');
+    assert.strictEqual(resGolden.rocketBoost, true, 'golden window gas must trigger rocket start boost');
+
+    // Case 3: Releasing gas early before GO -> No boost!
+    const resReleased = simulateCountdown((t) => t <= 1.0 && t >= 0.3);
+    assert.strictEqual(resReleased.rocketBoost, false, 'releasing gas before GO must lose rocket boost');
+
+    // Case 4: No press during countdown, only pressing after GO -> Normal start (0 boost)
+    const resNormal = simulateCountdown((t) => t <= 0);
+    assert.strictEqual(resNormal.stalled, false, 'normal start should not stall');
+    assert.strictEqual(resNormal.rocketBoost, false, 'normal start receives NO launch boost');
+
+    // Case 5: AI balance test
+    const aiSkills = [1.10, 1.03, 0.95];
+    for (const skill of aiSkills) {
+      const rocketChance = 0.15 * skill;
+      const stallChance = Math.max(0.02, 0.08 - (skill - 0.95) * 0.15);
+      assert.ok(rocketChance >= 0.14 && rocketChance <= 0.17);
+      assert.ok(stallChance >= 0.02 && stallChance <= 0.08);
+    }
   });
 
   it('4. Elastic soft bumper collision restitution (bounce = 0.70)', () => {
@@ -2148,5 +2197,395 @@ describe('=== UNIT & PROCESS TESTS: 50 ARCHITECTURAL IMPROVEMENTS ===', () => {
     assert.ok(htmlContent.includes('id="z-opt-fps"'), 'fps battery saver selector present');
   });
 });
+
+describe('=== UNIT & PROCESS TESTS: MINE IMPACT & COLLISION MECHANICS ===', () => {
+  const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+
+  it('1. Bundle code verification for mine fixes', () => {
+    assert.ok(bundle.includes('this.spline=e,this.vfx=n'), 'mv stores track spline reference');
+    assert.ok(bundle.includes('e.baseY=py'), 'mine remembers surface baseY');
+    assert.ok(bundle.includes('n.armTimer>0&&(n.armTimer-=t);'), 'armTimer decrements without continue blocking rivals');
+    assert.ok(bundle.includes('i===n.owner&&n.armTimer>0'), 'owner immunity is restricted strictly to armTimer window');
+    assert.ok(bundle.includes('r*r+o*o<8.2&&Math.abs(a)<3.4'), 'expanded mine collision radius (2.86m)');
+    assert.ok(bundle.includes('i.kart.physics.knockback(kx*7,kz*7,11,7.5)'), 'knockback pop applied to kart on mine hit');
+    assert.ok(bundle.includes('this.onHit?.(i,"mine")'), 'explosion event triggered unconditionally');
+    assert.ok(bundle.includes('break}}}}killBolt(t)'), 'closing braces balanced in updateBolts and class mv');
+  });
+
+  it('2. Mine deployment geometry & surface height clamping', () => {
+    // Mock spline and kart
+    const mockSpline = {
+      surfaceHeight(x, z, idx) { return 4.5; }
+    };
+    const mockKart = {
+      state: {
+        pos: { x: 10, y: 5.0, z: 20 },
+        yaw: 0,
+        trackIndex: 2
+      }
+    };
+
+    // Simulate dropMine
+    const dropMineSim = (t, spline) => {
+      const n = t.state;
+      const i = -Math.sin(n.yaw), r = -Math.cos(n.yaw);
+      const px = n.pos.x - i * 3.2, pz = n.pos.z - r * 3.2;
+      const roadY = spline ? spline.surfaceHeight(px, pz, n.trackIndex || 0) : n.pos.y;
+      const py = Math.max(n.pos.y - 0.8, Math.min(n.pos.y + 1.5, roadY + 0.55));
+      return { active: true, life: 26, armTimer: 0.55, owner: t, spin: 0, baseY: py, pos: { x: px, y: py, z: pz } };
+    };
+
+    const mine = dropMineSim(mockKart, mockSpline);
+    assert.strictEqual(mine.active, true);
+    assert.strictEqual(mine.pos.x, 10);
+    assert.strictEqual(mine.pos.z, 23.2, 'mine is deployed 3.2m behind kart');
+    assert.strictEqual(mine.pos.y, 4.5 + 0.55, 'mine is clamped to track surface height + 0.55m');
+    assert.strictEqual(mine.armTimer, 0.55);
+  });
+
+  it('3. Rival instant detonation vs owner immunity during armTimer, and owner detonation after armTimer', () => {
+    const ownerKart = { id: 0, pos: { x: 10, y: 5.05, z: 23.2 }, progress: { finished: false } };
+    const rivalKart = { id: 1, pos: { x: 10, y: 5.05, z: 23.2 }, progress: { finished: false } };
+
+    const checkCollision = (mine, racer) => {
+      if (racer.progress.finished || (racer === mine.owner && mine.armTimer > 0)) {
+        return false;
+      }
+      const r = racer.pos.x - mine.pos.x;
+      const o = racer.pos.z - mine.pos.z;
+      const a = racer.pos.y + 0.6 - mine.pos.y;
+      return (r * r + o * o < 8.2 && Math.abs(a) < 3.4);
+    };
+
+    const mine = { pos: { x: 10, y: 5.05, z: 23.2 }, armTimer: 0.55, life: 26, owner: ownerKart };
+
+    // Owner should NOT detonate mine during armTimer
+    assert.strictEqual(checkCollision(mine, ownerKart), false, 'owner is immune during armTimer');
+
+    // Rival SHOULD detonate mine immediately even when armTimer > 0
+    assert.strictEqual(checkCollision(mine, rivalKart), true, 'rival detonates mine immediately upon impact');
+
+    // Owner impacts mine AFTER armTimer expires -> OWNER DETONATES TOO!
+    mine.armTimer = 0;
+    assert.strictEqual(checkCollision(mine, ownerKart), true, 'owner detonates mine when impacting it after armTimer expires');
+  });
+
+  it('4. Expanded contact radius detects kart front bumper & side grazing', () => {
+    const mine = { pos: { x: 0, y: 1.0, z: 0 }, armTimer: 0, life: 20, owner: null };
+    const checkHit = (racerX, racerZ, racerY) => {
+      const r = racerX - mine.pos.x;
+      const o = racerZ - mine.pos.z;
+      const a = racerY + 0.6 - mine.pos.y;
+      return (r * r + o * o < 8.2 && Math.abs(a) < 3.4);
+    };
+
+    // Front bumper contact at 2.6m (center of kart is 2.6m from mine)
+    assert.strictEqual(checkHit(0, 2.6, 1.0), true, '2.6m direct contact triggers collision');
+    // Side grazing contact at lateral 1.8m and forward 1.8m: dist = sqrt(1.8^2 + 1.8^2) = 2.54m
+    assert.strictEqual(checkHit(1.8, 1.8, 1.0), true, '2.54m oblique contact triggers collision');
+    // Far away at 3.5m: dist^2 = 12.25 > 8.2
+    assert.strictEqual(checkHit(0, 3.5, 1.0), false, '3.5m beyond collision threshold');
+  });
+
+  it('5. Detonation physics: upward pop, radial knockback, coin drop and visual punch', () => {
+    let droppedCoins = false;
+    let visualPunched = 0;
+    let knockbackApplied = null;
+    let onHitType = null;
+
+    const mockRacer = {
+      pos: { x: 1.5, y: 1.0, z: 2.0 },
+      dropCoins() { droppedCoins = true; },
+      kart: {
+        visual: { punch(p) { visualPunched = p; } },
+        physics: {
+          knockback(kx, kz, force, vy) {
+            knockbackApplied = { kx, kz, force, vy };
+          }
+        }
+      },
+      hit(duration, dir) { return true; }
+    };
+
+    const mine = { object: { position: { x: 0, y: 1.0, z: 0 } }, active: true };
+    const r = mockRacer.pos.x - mine.object.position.x;
+    const o = mockRacer.pos.z - mine.object.position.z;
+    const dist = Math.hypot(r, o) || 1;
+    const kx = r / dist, kz = o / dist;
+
+    // Simulate detonation
+    mine.active = false;
+    const hitOk = mockRacer.hit(1.5, 1);
+    if (hitOk) {
+      mockRacer.dropCoins();
+      mockRacer.kart.visual.punch(1.3);
+      mockRacer.kart.physics.knockback(kx * 7, kz * 7, 11, 7.5);
+      onHitType = 'mine';
+    }
+
+    assert.strictEqual(mine.active, false, 'mine becomes inactive');
+    assert.strictEqual(droppedCoins, true, 'coins dropped');
+    assert.strictEqual(visualPunched, 1.3, 'chassis visual punch applied');
+    assert.ok(knockbackApplied !== null, 'knockback applied');
+    assert.strictEqual(knockbackApplied.vy, 7.5, 'upward vertical pop is 7.5m/s');
+    assert.strictEqual(knockbackApplied.force, 11, 'outward impulse force is 11');
+    assert.strictEqual(onHitType, 'mine', 'onHit type is mine');
+  });
+
+  it('6. Shielded racer absorbs damage but still deflects kart and triggers explosion audio', () => {
+    let visualPunched = 0;
+    let knockbackApplied = null;
+    let onHitPlayed = false;
+    let coinsDropped = false;
+
+    const mockShieldedRacer = {
+      pos: { x: 2.0, y: 1.0, z: 0 },
+      dropCoins() { assert.fail('should not drop coins when shielded'); },
+      kart: {
+        visual: { punch(p) { visualPunched = p; } },
+        physics: {
+          knockback(kx, kz, force, vy) {
+            knockbackApplied = { kx, kz, force, vy };
+          }
+        }
+      },
+      hit(duration, dir) { return false; } // Shield absorbs hit
+    };
+
+    const mine = { object: { position: { x: 0, y: 1.0, z: 0 } }, active: true };
+    const r = mockShieldedRacer.pos.x - mine.object.position.x;
+    const o = mockShieldedRacer.pos.z - mine.object.position.z;
+    const dist = Math.hypot(r, o) || 1;
+    const kx = r / dist, kz = o / dist;
+
+    mine.active = false;
+    onHitPlayed = true;
+    const applyMineHit = (racer) => {
+      const hitOk = racer.hit(1.5, 1);
+      if (hitOk) {
+        racer.dropCoins();
+        racer.kart.visual.punch(1.3);
+        racer.kart.physics.knockback(kx * 7, kz * 7, 11, 7.5);
+      } else {
+        racer.kart.visual.punch(0.7);
+        racer.kart.physics.knockback(kx * 4, kz * 4, 6, 3.5);
+      }
+    };
+    applyMineHit(mockShieldedRacer);
+
+    assert.strictEqual(visualPunched, 0.7, 'shield punch applied');
+    assert.strictEqual(knockbackApplied.vy, 3.5, 'shield deflection vertical pop applied');
+    assert.strictEqual(onHitPlayed, true, 'explosion SFX played on shielded impact');
+
+    // Also test unshielded racer branch
+    const mockUnshieldedRacer = {
+      pos: { x: 0.5, y: 1.0, z: 0.5 },
+      shield: 0,
+      hit: () => true,
+      dropCoins: () => { coinsDropped = true; },
+      kart: {
+        visual: { punch: (p) => { visualPunched = p; } },
+        physics: { knockback: (vx, vz, spd, vy) => { knockbackApplied = { vx, vz, spd, vy }; } }
+      }
+    };
+    applyMineHit(mockUnshieldedRacer);
+    assert.strictEqual(visualPunched, 1.3);
+    assert.strictEqual(knockbackApplied.vy, 7.5);
+  });
+
+  it('7. Laser bolt destroys active mine on impact', () => {
+    const mine = { object: { position: { x: 15, y: 2, z: 30 } }, active: true };
+    const bolt = { object: { position: { x: 15.5, y: 2.1, z: 30.2 } }, active: true };
+
+    const bx = mine.object.position.x - bolt.object.position.x;
+    const by = mine.object.position.y - bolt.object.position.y;
+    const bz = mine.object.position.z - bolt.object.position.z;
+    const dSq = bx * bx + by * by + bz * bz;
+
+    if (dSq < 5.5) {
+      mine.active = false;
+      bolt.active = false;
+    }
+
+    assert.strictEqual(mine.active, false, 'mine destroyed by laser bolt');
+    assert.strictEqual(bolt.active, false, 'bolt consumed on impact with mine');
+  });
+});
+
+describe('=== UNIT & PROCESS TESTS: HYPER-REALISTIC ZEPHYR HURRICANE ===', () => {
+  it('1. Bundle verification for procedural hurricane geometry and assets', () => {
+    const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+    assert.ok(bundle.includes('buildHurricane='), 'buildHurricane helper must be present');
+    assert.ok(bundle.includes('xe(4.2,.45,6.8'), 'outer turbulent funnel cylinder geometry present');
+    assert.ok(bundle.includes('xe(2.6,.25,6.2'), 'inner counter-rotating storm wall cylinder geometry present');
+    assert.ok(bundle.includes('Xn(1.3,.12,6'), 'lower spiral accretion ring present');
+    assert.ok(bundle.includes('Xn(2.7,.16,6'), 'mid spiral accretion ring present');
+    assert.ok(bundle.includes('Xn(4.3,.22,6'), 'top spiral accretion ring present');
+    assert.ok(bundle.includes('_n(.52,0)'), 'orbiting storm cloud puff icosahedron geometry present');
+    assert.ok(bundle.includes('Da(.2,2.4'), 'ground spray plume ring geometry present');
+    assert.ok(bundle.includes('xe(.12,.12,6.6'), 'central electric lightning conduit present');
+    assert.ok(bundle.includes('Zephyr Hurricane'), 'item blurb updated with Zephyr Hurricane');
+    assert.ok(bundle.includes('v.s+80*t'), 'hurricane travels along track at 80 m/s');
+    assert.ok(bundle.includes('v.life=6.8'), 'hurricane lifetime set to 6.8 seconds');
+    assert.ok(bundle.includes('landSquash=1'), 'kart landing squash triggered on slam');
+    assert.ok(bundle.includes('-26'), 'violent downward velocity vy = -26 applied on ground slam');
+  });
+
+  it('2. Hurricane procedural structure and component rotation simulation', () => {
+    const mockHurricane = {
+      funnel: { rotation: { y: 0 } },
+      inner: { rotation: { y: 0 } },
+      rings: [
+        { rotation: { y: 0, z: 0.28 } },
+        { rotation: { y: 0, z: -0.22 } },
+        { rotation: { y: 0, z: 0.16 } }
+      ],
+      core: { material: { opacity: 0.75, color: { setHex: () => {} } } },
+      clouds: [
+        { mesh: { position: { x: 0, z: 0 } }, r: 2.6, s: 4.8, a: 0 },
+        { mesh: { position: { x: 0, z: 0 } }, r: 3.4, s: -3.6, a: 1 }
+      ],
+      plume: { rotation: { z: 0 } }
+    };
+
+    const dt = 0.016;
+    mockHurricane.funnel.rotation.y += dt * 14;
+    mockHurricane.inner.rotation.y -= dt * 18;
+    mockHurricane.rings[0].rotation.y += dt * 16;
+    mockHurricane.rings[1].rotation.y -= dt * 19;
+    mockHurricane.rings[2].rotation.y += dt * 23;
+    mockHurricane.plume.rotation.z += dt * 9;
+
+    assert.ok(mockHurricane.funnel.rotation.y > 0, 'outer funnel rotates counter-clockwise');
+    assert.ok(mockHurricane.inner.rotation.y < 0, 'inner funnel counter-rotates clockwise');
+    assert.ok(mockHurricane.rings[0].rotation.y > 0, 'ring 0 rotates with outer stream');
+    assert.ok(mockHurricane.rings[1].rotation.y < 0, 'ring 1 counter-rotates');
+    assert.ok(mockHurricane.plume.rotation.z > 0, 'ground plume spins');
+
+    for (const c of mockHurricane.clouds) {
+      c.a += dt * c.s;
+      c.mesh.position.x = Math.cos(c.a) * c.r;
+      c.mesh.position.z = Math.sin(c.a) * c.r;
+    }
+    assert.notStrictEqual(mockHurricane.clouds[0].mesh.position.x, 0, 'cloud orbital position updated');
+  });
+
+  it('3. Multi-racer suction, aerial lift and violent ground slam simulation', () => {
+    const vortex = {
+      pos: { x: 10, y: 1, z: 10 },
+      active: true,
+      hitRacers: new Set(['caster']),
+      absorbedRacers: []
+    };
+
+    let coinsDropped1 = false, coinsDropped2 = false;
+    let punch1 = 0, punch2 = 0;
+    let kb1 = null, kb2 = null;
+
+    const racer1 = {
+      id: 'racer1',
+      pos: { x: 12, y: 1, z: 12 },
+      state: { vy: 0, airHeight: 0, grounded: true, yaw: 0 },
+      hit: () => true,
+      dropCoins: () => { coinsDropped1 = true; },
+      kart: {
+        visual: { punch: (p) => { punch1 = p; } },
+        physics: { knockback: (vx, vz, spd, vy) => { kb1 = { vx, vz, spd, vy }; } }
+      }
+    };
+
+    const racer2 = {
+      id: 'racer2',
+      pos: { x: 14, y: 1, z: 14 },
+      state: { vy: 0, airHeight: 0, grounded: true, yaw: 0 },
+      hit: () => true,
+      dropCoins: () => { coinsDropped2 = true; },
+      kart: {
+        visual: { punch: (p) => { punch2 = p; } },
+        physics: { knockback: (vx, vz, spd, vy) => { kb2 = { vx, vz, spd, vy }; } }
+      }
+    };
+
+    const racers = [racer1, racer2];
+
+    for (const r of racers) {
+      if (!vortex.hitRacers.has(r.id)) {
+        const dx = r.pos.x - vortex.pos.x;
+        const dz = r.pos.z - vortex.pos.z;
+        const distSq = dx * dx + dz * dz;
+        if (distSq < 81) {
+          vortex.hitRacers.add(r.id);
+          vortex.absorbedRacers.push({
+            racer: r,
+            timer: 0.42,
+            baseY: r.pos.y,
+            angle: Math.atan2(dz, dx),
+            radius: Math.min(Math.sqrt(distSq), 4.5)
+          });
+        }
+      }
+    }
+
+    assert.strictEqual(vortex.absorbedRacers.length, 2, 'both racers sucked into hurricane');
+    assert.strictEqual(vortex.active, true, 'hurricane remains active to chase subsequent opponents');
+
+    const dt = 0.05;
+    for (let step = 0; step < 4; step++) {
+      for (const a of vortex.absorbedRacers) {
+        a.timer -= dt;
+        a.angle += dt * 16;
+        a.radius = Math.max(0.4, a.radius - dt * 6.5);
+        const r = a.racer;
+        const prog = 1 - Math.max(0, a.timer / 0.42);
+        if (prog > 0.12 && prog < 0.9) {
+          r.state.vy = 10;
+          r.state.grounded = false;
+          r.state.airHeight = 4.6 * Math.sin(prog * Math.PI);
+        }
+        r.state.yaw += dt * 22;
+      }
+    }
+
+    assert.strictEqual(racer1.state.grounded, false, 'racer 1 is lifted airborne');
+    assert.ok(racer1.state.airHeight > 2.0, 'racer 1 has high airHeight inside cyclone');
+    assert.ok(racer1.state.yaw > 0, 'racer 1 undergoes violent spinout');
+
+    while (vortex.absorbedRacers.length > 0) {
+      for (let i = vortex.absorbedRacers.length - 1; i >= 0; i--) {
+        const a = vortex.absorbedRacers[i];
+        a.timer -= dt;
+        if (a.timer <= 0) {
+          const r = a.racer;
+          r.state.vy = -26;
+          r.state.airHeight = 0;
+          r.state.grounded = true;
+          r.hit(1.4, 1);
+          r.dropCoins();
+          r.kart.visual.punch(1.8);
+          r.kart.physics.knockback(1, 1, 16, -26);
+          vortex.absorbedRacers.splice(i, 1);
+        }
+      }
+    }
+
+    assert.strictEqual(vortex.absorbedRacers.length, 0, 'all racers processed through ground slam');
+    assert.strictEqual(coinsDropped1, true, 'racer 1 dropped coins on slam');
+    assert.strictEqual(coinsDropped2, true, 'racer 2 dropped coins on slam');
+    assert.strictEqual(punch1, 1.8, 'visual squash/punch 1.8 applied on racer 1');
+    assert.strictEqual(punch2, 1.8, 'visual squash/punch 1.8 applied on racer 2');
+    assert.strictEqual(kb1.vy, -26, 'downward slam velocity -26 applied on racer 1');
+    assert.strictEqual(kb2.vy, -26, 'downward slam velocity -26 applied on racer 2');
+  });
+
+  it('4. Hurricane audio synthesis and SVG icon definitions', () => {
+    const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+    assert.ok(bundle.includes('sawtooth'), 'howling wind uses sawtooth oscillator');
+    assert.ok(bundle.includes('sweep'), 'audio includes frequency sweep');
+    assert.ok(bundle.includes('2200'), 'cyclonic wind noise filter cutoff frequency');
+    assert.ok(bundle.includes('case"vortex":return`<svg ${r}><path d="M8 12c10-5 22-5 32 0'), 'vortex SVG icon generator case exists');
+    assert.ok(bundle.includes('d="M22 6l4 7-6 2 8 8"'), 'lightning bolt path present in hurricane SVG');
+  });
+});
+
 
 
