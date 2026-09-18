@@ -2615,10 +2615,10 @@ describe('=== UNIT & PROCESS TESTS: MULTI-KART COLLISION & CLUSTER STABILITY ===
 
   it('1. Bundle verification for multi-kart collision & anti-jitter improvements', () => {
     assert.ok(bundle.includes('getEffR='), 'oriented elliptical hull calculation must be defined');
-    assert.ok(bundle.includes('a=1.34*sc,b=.92*sc'), 'elliptical semi-axes (longitudinal 1.34m, lateral 0.92m) must be set');
+    assert.ok(bundle.includes('a=1.68*sc,b=1.12*sc'), 'elliptical semi-axes (longitudinal 1.68m, lateral 1.12m) must be set');
     assert.ok(bundle.includes('clampTrack='), 'track boundary clamping for resolving multi-kart displacement must be defined');
     assert.ok(bundle.includes('pen=(c-d)-.03'), 'slop tolerance (0.03m) must be applied to prevent contact jitter');
-    assert.ok(bundle.includes('const push=Math.min(.2,pen*.55)'), 'relaxation push per pass must be clamped to prevent pinballing');
+    assert.ok(bundle.includes('const push=Math.min(.55,pen*.75)'), 'relaxation push per pass must be calibrated to prevent interpenetration');
     assert.ok(bundle.includes('effBounce='), 'restitution must be velocity-dependent');
     assert.ok(bundle.includes('Math.abs(S)<2.5?0'), 'resting contact relative velocity (<2.5 m/s) must have zero bounce');
     assert.ok(bundle.includes('Math.abs(S)>3'), 'visual punch must be gated to energetic impacts');
@@ -2632,8 +2632,8 @@ describe('=== UNIT & PROCESS TESTS: MULTI-KART COLLISION & CLUSTER STABILITY ===
       const uf = ux * fx + uz * fz;
       const us = ux * sx + uz * sz;
       const sc = scale;
-      const a = 1.34 * sc;
-      const b = 0.92 * sc;
+      const a = 1.68 * sc;
+      const b = 1.12 * sc;
       const dsq = (b * uf) * (b * uf) + (a * us) * (a * us);
       return (a * b) / Math.sqrt(Math.max(1e-4, dsq));
     };
@@ -2642,23 +2642,23 @@ describe('=== UNIT & PROCESS TESTS: MULTI-KART COLLISION & CLUSTER STABILITY ===
     // Kart facing yaw = 0 (forward is (0, -1))
     const rFront = calcEffR(0, 0, -1);
     const rBack = calcEffR(0, 0, 1);
-    assert.ok(Math.abs(rFront - 1.34) < 0.01, `front effective radius should be ~1.34m, got ${rFront}`);
-    assert.ok(Math.abs(rBack - 1.34) < 0.01, `rear effective radius should be ~1.34m, got ${rBack}`);
+    assert.ok(Math.abs(rFront - 1.68) < 0.01, `front effective radius should be ~1.68m, got ${rFront}`);
+    assert.ok(Math.abs(rBack - 1.68) < 0.01, `rear effective radius should be ~1.68m, got ${rBack}`);
 
     // Lateral side-by-side approach (east-west door contact)
     const rSideL = calcEffR(0, -1, 0);
     const rSideR = calcEffR(0, 1, 0);
-    assert.ok(Math.abs(rSideL - 0.92) < 0.01, `side effective radius should be ~0.92m, got ${rSideL}`);
-    assert.ok(Math.abs(rSideR - 0.92) < 0.01, `side effective radius should be ~0.92m, got ${rSideR}`);
+    assert.ok(Math.abs(rSideL - 1.12) < 0.01, `side effective radius should be ~1.12m, got ${rSideL}`);
+    assert.ok(Math.abs(rSideR - 1.12) < 0.01, `side effective radius should be ~1.12m, got ${rSideR}`);
 
-    // Wheel-to-wheel racing scenario: Two karts driving parallel at 2.0m lateral clearance
+    // Wheel-to-wheel racing scenario: Two karts driving parallel at 2.4m lateral clearance
     const kart1_effR = calcEffR(0, 1, 0);
     const kart2_effR = calcEffR(0, -1, 0);
-    const totalEllipticalR = kart1_effR + kart2_effR; // 1.84m
+    const totalEllipticalR = kart1_effR + kart2_effR; // 2.24m
     const totalCircularR = 1.65 + 1.65; // 3.30m
 
-    assert.ok(totalEllipticalR < 2.0, 'elliptical total radius (1.84m) allows clean 2.0m wheel-to-wheel racing');
-    assert.ok(totalCircularR > 2.0, 'circular radius (3.30m) causes 1.3m false penetration at 2.0m spacing');
+    assert.ok(totalEllipticalR < 2.4, 'elliptical total radius (2.24m) allows clean 2.4m wheel-to-wheel racing');
+    assert.ok(totalCircularR > 2.4, 'circular radius (3.30m) causes 0.9m false penetration at 2.4m spacing');
   });
 
   it('3. Multi-kart pack cluster relaxation convergence (3 and 4 karts pack)', () => {
@@ -2673,13 +2673,13 @@ describe('=== UNIT & PROCESS TESTS: MULTI-KART COLLISION & CLUSTER STABILITY ===
       const y = k.yaw, fx = -Math.sin(y), fz = -Math.cos(y);
       const sx = -fz, sz = fx;
       const uf = ux * fx + uz * fz, us = ux * sx + uz * sz;
-      const a = 1.34, b = 0.92;
+      const a = 1.68, b = 1.12;
       const dsq = (b * uf) * (b * uf) + (a * us) * (a * us);
       return (a * b) / Math.sqrt(Math.max(1e-4, dsq));
     };
 
     const t = racers.length;
-    for (let it = 0; it < 2; it++) {
+    for (let it = 0; it < 3; it++) {
       for (let e = 0; e < t; e++) {
         const n = racers[e];
         for (let i = e + 1; i < t; i++) {
@@ -2692,12 +2692,13 @@ describe('=== UNIT & PROCESS TESTS: MULTI-KART COLLISION & CLUSTER STABILITY ===
           const c = rn + rr;
           const pen = (c - d) - 0.03;
           if (pen <= 0) continue;
-          const push = Math.min(0.2, pen * 0.55);
+          const push = Math.min(0.55, pen * 0.75);
+          const pPush = push * 0.85;
           const v = n.weight, p = r.weight, m = v + p;
-          n.pos.x -= u * push * (p / m);
-          n.pos.z -= f * push * (p / m);
-          r.pos.x += u * push * (v / m);
-          r.pos.z += f * push * (v / m);
+          n.pos.x -= u * pPush * (p / m);
+          n.pos.z -= f * pPush * (p / m);
+          r.pos.x += u * pPush * (v / m);
+          r.pos.z += f * pPush * (v / m);
         }
       }
     }
