@@ -2918,4 +2918,52 @@ describe('=== UNIT & PROCESS TESTS: 10 GEOLOGICAL BIOMES & TRACK OVERHAUL ===', 
       assert.ok(indexHtml.includes(modalNames[i]), `index.html contains ${modalNames[i]}`);
     }
   });
+
+  it('8. Exhaust Smoke & Particle Reduction for Mobile Visibility', () => {
+    // 1. Point size cap in particle vertex shader yg (reduced from 192.0 to 40.0, multiplier 220.0)
+    assert.ok(
+      bundleCode.includes('gl_PointSize = clamp(aSize * (220.0 / max(1.0, -mv.z)), 0.0, 40.0);'),
+      'Particle vertex shader caps gl_PointSize to 40.0 to prevent screen-covering billboard blobs'
+    );
+
+    // 2. Smoke fragment shader transparency (reduced from 1.0 opaque to soft 0.32)
+    assert.ok(
+      bundleCode.includes('gl_FragColor = vec4(vColor, a * vAlpha * 0.32);'),
+      'Smoke fragment shader softens alpha to 0.32 for clear visibility through puffs'
+    );
+
+    // 3. Exhaust puff size, vertical velocity, gravity, and lifetime in Ag.exhaust
+    assert.ok(
+      bundleCode.includes('0.06+Math.random()*0.14+o*0.08'),
+      'Exhaust upward lift reduced so particles stay low near tarmac behind bumper'
+    );
+    assert.ok(
+      bundleCode.includes('o>.55?.14:.09'),
+      'Exhaust particle size reduced from 0.3-0.42 to 0.09-0.14'
+    );
+    assert.ok(
+      bundleCode.includes('.07+o*.05'),
+      'Exhaust particle lifetime shortened so puffs dissipate quickly behind the kart'
+    );
+
+    // 4. Boost trail smoke reduction in Ag.boostTrail
+    assert.ok(
+      bundleCode.includes('Math.random()<.16&&this.smoke.emit'),
+      'Boost trail smoke frequency reduced from 35% to 16%'
+    );
+    assert.ok(
+      bundleCode.includes('10217471,.26,.18,1.4,-2.5,1.3'),
+      'Boost trail smoke particle radius and growth multiplier reduced'
+    );
+
+    // 5. Intelligent emission throttling in syncVisual
+    assert.ok(
+      bundleCode.includes('const isThrottle=this.controls.throttle>0||a;'),
+      'Exhaust emissions only occur when kart is actively throttling or boosting'
+    );
+    assert.ok(
+      bundleCode.includes('const exRate=a?0.48:(this.isPlayer?0.32:0.24);'),
+      'Exhaust emission rate is throttled cleanly for player and AI'
+    );
+  });
 });
