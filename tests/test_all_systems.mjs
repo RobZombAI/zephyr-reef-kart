@@ -3061,13 +3061,13 @@ describe('=== UNIT & PROCESS TESTS: REAR & CLOSE-KART VISUAL STABILITY ===', () 
     );
   });
 
-  it('3. Proximity Camera Fading & Lens Near-Clip Protection', () => {
+  it('3. Proximity Camera Fading & Lens Near-Clip Protection (Schmitt-Trigger & Anti-Doubling)', () => {
     assert.ok(bundleCode.includes('updateProximityFade('), 'ac class defines updateProximityFade method');
     assert.ok(bundleCode.includes('resetProximityFade()'), 'ac class defines resetProximityFade method');
-    assert.ok(bundleCode.includes('if(o<1.75){this.kart.object.visible=!1'), 'Karts closer than 1.75m to camera lens are culled to prevent interior slicing');
-    assert.ok(bundleCode.includes('if(dLOS<1.45){this.kart.object.visible=!1'), 'Opponents directly behind player in line of sight are culled to prevent occluding player');
-    assert.ok(bundleCode.includes('occA=Math.max(.12,(dLOS-1.45)/.95)'), 'Opponents moving to overtake smoothly fade in laterally');
-    assert.ok(bundleCode.includes('this.camera.camera.position,_lb=this.camera.lookBack>0.5,_pl=this.player;for(const _rk of this.racers){_rk.updateProximityFade?.(_cPos,_pl,_lb)}'), 'Ev.syncVisual updates proximity fade with player and lookback mode');
+    assert.ok(bundleCode.includes('this._fadeAlpha<.04'), 'Schmitt trigger culls karts only when smoothly faded below 0.04 to eliminate flicker');
+    assert.ok(bundleCode.includes('this._fadeAlpha>.20'), 'Schmitt trigger unhides karts only when alpha exceeds 0.20 for stable hysteresis');
+    assert.ok(bundleCode.includes('l.mat.depthWrite=!0'), 'Kart materials preserve depthWrite:true during fade to prevent double-mesh geometry ("si sdoppia")');
+    assert.ok(bundleCode.includes('_rk.updateProximityFade?.(_cPos,_pl,_lb'), 'Ev.syncVisual updates proximity fade with camera, player, lookback, and delta time');
   });
 
   it('4. Opponent Exhaust Smoke Suppression in Proximity Zone', () => {
