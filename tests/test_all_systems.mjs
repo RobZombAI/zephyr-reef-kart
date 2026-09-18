@@ -3733,6 +3733,15 @@ describe('=== UNIT & PROCESS TESTS: AI OPPONENT OVERHAUL & ANTI-FLICKER PRECISIO
     assert.ok(bundle.includes('f.polygonOffsetFactor=-4,f.polygonOffsetUnits=-8'), 'Racing line material uses enhanced polygon offset');
     assert.ok(bundle.includes('this.camera=new Ke(e.fovBase,t,.16,1400)') || bundle.includes('this.camera=new Ke(e.fovBase,t,.08,2200)'), 'Race camera depth near/far ratio optimized');
   });
+
+  it('7. AI corner anticipation and 100% full throttle drift exit', () => {
+    assert.ok(bundle.includes('let _=$*o.skill*this.rubberBand;const M=de(c*c/26,12,60),b=a.minSpeedAhead(h+2,M)*o.skill*this.rubberBand;_=Math.min(_,b);'), 'AI computes target speed using upcoming corner braking anticipation');
+    assert.ok(bundle.includes('this.driftHold>0&&(this.driftHold-=t,k=!0,G=1)'), 'AI sustains 100% throttle through drift');
+  });
+
+  it('8. Relentless competitive rubberbanding (minimum 1.04x speed, up to 1.16x catchup)', () => {
+    assert.ok(bundle.includes('rubberBandFor(t){const n=this.player.progress.distance-t.progress.distance;return n>180?1.16:n>90?1.12:n>30?1.08:1.04}'), 'AI never slows down when leading and aggressively catches up');
+  });
 });
 
 
