@@ -3315,15 +3315,123 @@ describe('=== UNIT & PROCESS TESTS: MULTIPLAYER READY CHECK, 5S COUNTDOWN & LOBB
 
     assert.strictEqual(guest.state, 'GUEST_LOBBY', 'State must be GUEST_LOBBY upon ROOM_WELCOME');
     assert.strictEqual(guest.isHost, false);
-    const isGuestConnected = !guest.isHost && (guest.state === 'GUEST_LOBBY' || guest.state === 'COUNTDOWN' || guest.state === 'RACING');
-    assert.strictEqual(isGuestConnected, true, 'isGuestConnected must be true so that joinBtn and guest form are hidden');
+    const isGuestInRoom = (mgr) => !mgr.isHost && (
+      mgr.state === 'CONNECTING' || 
+      mgr.state === 'GUEST_LOBBY' || 
+      mgr.state === 'COUNTDOWN' || 
+      mgr.state === 'RACING' || 
+      mgr.state === 'RESULTS'
+    );
+    assert.strictEqual(isGuestInRoom(guest), true, 'isGuestInRoom must be true so that joinBtn and guest form are hidden');
 
     // Leaving room triggers state IDLE and resets UI
     guest.leaveRoom();
     assert.strictEqual(guest.state, 'IDLE', 'State must reset to IDLE upon leaveRoom');
-    const isGuestConnectedAfterLeave = !guest.isHost && (guest.state === 'GUEST_LOBBY' || guest.state === 'COUNTDOWN' || guest.state === 'RACING');
-    assert.strictEqual(isGuestConnectedAfterLeave, false, 'isGuestConnected must be false after leaving room so joinBtn is restored');
+    assert.strictEqual(isGuestInRoom(guest), false, 'isGuestInRoom must be false after leaving room so joinBtn is restored');
     assert.strictEqual(lobbyEvents.length >= 2, true, 'onLobbyUpdate must have fired on welcome and on leaveRoom');
+  });
+
+  it('9. Connecting state immediately notifies lobby and flags isGuestInRoom as true to hide ENTRA NELLA STANZA button', () => {
+    const guest = new MultiplayerManager();
+    let updates = 0;
+    guest.onLobbyUpdate = () => { updates++; };
+
+    const isGuestInRoom = (mgr) => !mgr.isHost && (
+      mgr.state === 'CONNECTING' || 
+      mgr.state === 'GUEST_LOBBY' || 
+      mgr.state === 'COUNTDOWN' || 
+      mgr.state === 'RACING' || 
+      mgr.state === 'RESULTS'
+    );
+
+    assert.strictEqual(guest.state, 'IDLE');
+    assert.strictEqual(isGuestInRoom(guest), false, 'Initially IDLE, join button visible');
+
+    // Guest begins joining
+    guest.state = 'CONNECTING';
+    guest.notifyLobbyUpdate();
+    assert.strictEqual(guest.state, 'CONNECTING');
+    assert.strictEqual(isGuestInRoom(guest), true, 'CONNECTING state must flag isGuestInRoom as true to hide join button immediately');
+    assert.strictEqual(updates, 1, 'onLobbyUpdate must fire immediately upon entering CONNECTING');
+
+    // Connection opens: peer connects
+    guest.state = 'GUEST_LOBBY';
+    guest.notifyLobbyUpdate();
+    assert.strictEqual(guest.state, 'GUEST_LOBBY');
+    assert.strictEqual(isGuestInRoom(guest), true, 'GUEST_LOBBY keeps join button hidden');
+    assert.strictEqual(updates, 2);
+
+    guest.leaveRoom();
+    assert.strictEqual(guest.state, 'IDLE');
+    assert.strictEqual(isGuestInRoom(guest), false, 'After leaving room, join button is cleanly restored');
+  });
+
+  it('10. Coordinated race start flow: 5s synchronized pre-race preparation ticks -> RACE_START_SYNC -> transition to classic 3s starting grid countdown', () => {
+    const host = new MultiplayerManager();
+    const guest = new MultiplayerManager();
+
+    host.createRoom('ZEPH-LIVE');
+    host.players = [
+      { peerId: 'p0', slot: 0, name: 'Host', kartId: 'nix', isHost: true, ping: 0, isAI: false, isReady: true },
+      { peerId: 'p1', slot: 1, name: 'Guest', kartId: 'bruno', isHost: false, ping: 35, isAI: false, isReady: true }
+    ];
+
+    guest.state = 'GUEST_LOBBY';
+    guest.mySlot = 1;
+    guest.players = [...host.players];
+
+    let hostTicks = [];
+    let guestTicks = [];
+    host.onCountdownTick = (r) => hostTicks.push(r);
+    guest.onCountdownTick = (r) => guestTicks.push(r);
+
+    let hostRaceStarted = false;
+    let guestRaceStarted = false;
+    let hostRaceData = null;
+    let guestRaceData = null;
+
+    host.onRaceStart = (d) => { hostRaceStarted = true; hostRaceData = d; };
+    guest.onRaceStart = (d) => { guestRaceStarted = true; guestRaceData = d; };
+
+    // Host starts 5-second countdown
+    const started = host.startCountdown(5);
+    assert.strictEqual(started, true);
+    assert.strictEqual(host.state, 'COUNTDOWN');
+    assert.strictEqual(hostTicks[0], 5);
+
+    // Guest receives START_COUNTDOWN message
+    guest.handleIncomingData({}, {
+      type: 'START_COUNTDOWN',
+      countdownSec: 5,
+      trackIndex: host.trackIndex,
+      laps: host.laps,
+      players: host.players,
+      startTime: Date.now() + 5000
+    });
+    assert.strictEqual(guest.state, 'COUNTDOWN');
+    assert.strictEqual(guestTicks[0], 5);
+
+    // When 5 seconds expire, host emits RACE_START_SYNC
+    const racePayload = {
+      type: 'RACE_START_SYNC',
+      trackIndex: host.trackIndex,
+      laps: host.laps,
+      players: host.players,
+      startTime: Date.now()
+    };
+    host.state = 'RACING';
+    host.onRaceStart(racePayload);
+    guest.handleIncomingData({}, racePayload);
+
+    assert.strictEqual(hostRaceStarted, true, 'Host must trigger onRaceStart');
+    assert.strictEqual(guestRaceStarted, true, 'Guest must trigger onRaceStart upon receiving RACE_START_SYNC');
+    assert.strictEqual(host.state, 'RACING');
+    assert.strictEqual(guest.state, 'RACING');
+    assert.strictEqual(guestRaceData.players.length, 6, 'Grid must contain 6 racers with AI fill');
+
+    // Clean up
+    host.leaveRoom();
+    guest.leaveRoom();
   });
 });
 

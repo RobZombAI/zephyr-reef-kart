@@ -1702,10 +1702,19 @@
         const mpCountdownOverlay = document.getElementById('z-mp-countdown-overlay');
         const mpCountdownNum = document.getElementById('z-mp-countdown-num');
         const mpCountdownTrack = document.getElementById('z-mp-countdown-track');
+        const mpCountdownStatus = document.getElementById('z-mp-countdown-status');
         const mpCountdownBar = document.getElementById('z-mp-countdown-bar');
         const emoteBar = document.getElementById('z-emote-bar');
 
         let mp = null;
+
+        const isGuestInRoom = () => mp && !mp.isHost && (
+          mp.state === 'CONNECTING' || 
+          mp.state === 'GUEST_LOBBY' || 
+          mp.state === 'COUNTDOWN' || 
+          mp.state === 'RACING' || 
+          mp.state === 'RESULTS'
+        );
 
         const initMultiplayer = () => {
           if (window.MultiplayerManager && !mp) {
@@ -1765,8 +1774,8 @@
                 guestInfoEl.innerHTML = `Stanza: <b style="color: #ffc857; font-family: monospace;">${curRoom}</b> • Circuito: <b>${tName}</b> (${lobby.laps} giri)<br>In attesa che l'Host avvii la gara...`;
               }
 
-              // Manage Guest UI: hide join button and join form when connected to room
-              const isGuestConnected = !mp.isHost && (mp.state === 'GUEST_LOBBY' || mp.state === 'COUNTDOWN' || mp.state === 'RACING');
+              // Manage Guest UI: hide join button and join form when connecting or connected to room
+              const isGuestConnected = isGuestInRoom();
               if (joinBtn) {
                 if (isGuestConnected) {
                   joinBtn.style.display = 'none';
@@ -1850,9 +1859,26 @@
               }
               mpModal?.classList.add('hidden');
               if (mpCountdownNum) {
-                mpCountdownNum.textContent = remaining > 0 ? String(remaining) : 'VIA!';
+                if (remaining > 0) {
+                  mpCountdownNum.textContent = String(remaining);
+                  mpCountdownNum.style.color = '#ffffff';
+                } else {
+                  mpCountdownNum.textContent = 'PRONTI!';
+                  mpCountdownNum.style.color = '#34d399';
+                }
                 mpCountdownNum.style.transform = 'scale(1.35)';
                 setTimeout(() => { if (mpCountdownNum) mpCountdownNum.style.transform = 'scale(1)'; }, 150);
+              }
+              if (mpCountdownStatus) {
+                const STATUS_PREP = {
+                  5: "Sincronizzazione piloti e caricamento circuito... (5 sec)",
+                  4: "Controllo griglia e posizionamento kart... (4 sec)",
+                  3: "Riscaldamento motori e assetto gomme... (3 sec)",
+                  2: "Posizionamento sulla linea di partenza... (2 sec)",
+                  1: "Semaforo in arrivo: prepararsi al via! (1 sec)",
+                  0: "Tutti in griglia! Inizio partenza classica..."
+                };
+                mpCountdownStatus.textContent = STATUS_PREP[remaining] || "Preparazione partenza...";
               }
               if (mpCountdownTrack) {
                 const tName = (window.__ZEPHYR_TRACKS && window.__ZEPHYR_TRACKS[data.trackIndex]?.name) || 'Circuito';
@@ -1861,6 +1887,9 @@
               if (mpCountdownBar) {
                 const pct = Math.round(((5 - Math.max(0, remaining)) / 5) * 100);
                 mpCountdownBar.style.width = `${pct}%`;
+              }
+              if (window.__zephyr?.audio?.play) {
+                window.__zephyr.audio.play('ui_move', { volume: 0.4 });
               }
             };
 
@@ -1885,23 +1914,27 @@
               }
               const curTrack = parseInt(localStorage.getItem('zephyr_track') || '0', 10);
               if (curTrack !== data.trackIndex) {
-                // Must reload with correct track spline & theme
-                localStorage.setItem('zephyr_track', String(data.trackIndex));
-                sessionStorage.setItem('zephyr_mp_autojoin', JSON.stringify({
-                  roomCode: mp.roomCode,
-                  isHost: mp.isHost,
-                  playerName: mp.playerName,
-                  laps: data.laps,
-                  trackIndex: data.trackIndex,
-                  action: 'start_race',
-                  players: data.players,
-                  mySlot: mp.mySlot
-                }));
-                window.location.reload();
-                return;
+                if (window.__zephyr?.loadTrack) {
+                  window.__zephyr.loadTrack(data.trackIndex);
+                } else {
+                  // Fallback: reload with correct track spline & theme
+                  localStorage.setItem('zephyr_track', String(data.trackIndex));
+                  sessionStorage.setItem('zephyr_mp_autojoin', JSON.stringify({
+                    roomCode: mp.roomCode,
+                    isHost: mp.isHost,
+                    playerName: mp.playerName,
+                    laps: data.laps,
+                    trackIndex: data.trackIndex,
+                    action: 'start_race',
+                    players: data.players,
+                    mySlot: mp.mySlot
+                  }));
+                  window.location.reload();
+                  return;
+                }
               }
 
-              // Track already matches! Launch immediately
+              // Track loaded! Launch immediately into starting grid (classic 3-second countdown 3... 2... 1... VIA!)
               mpModal?.classList.add('hidden');
               if (window.__zephyr) {
                 window.__zephyr.startMultiplayerRace(data.trackIndex, data.laps, data.players, mp.mySlot);
@@ -2009,11 +2042,15 @@
           // Sync guest UI if guest tab is active
           const isGuestTab = tabGuest && tabGuest.classList.contains('active');
           if (isGuestTab && mp) {
-            const isGuestConnected = !mp.isHost && (mp.state === 'GUEST_LOBBY' || mp.state === 'COUNTDOWN' || mp.state === 'RACING');
+            const isGuestConnected = isGuestInRoom();
             if (isGuestConnected) {
               if (joinBtn) { joinBtn.style.display = 'none'; joinBtn.classList.add('hidden'); }
               if (guestForm) { guestForm.style.display = 'none'; guestForm.classList.add('hidden'); }
               if (guestWaitingBox) { guestWaitingBox.style.display = 'block'; guestWaitingBox.classList.remove('hidden'); }
+            } else if (mp.state === 'IDLE') {
+              if (joinBtn) { joinBtn.style.display = 'block'; joinBtn.classList.remove('hidden'); joinBtn.disabled = false; joinBtn.textContent = '🔗 ENTRA NELLA STANZA'; }
+              if (guestForm) { guestForm.style.display = 'block'; guestForm.classList.remove('hidden'); }
+              if (guestWaitingBox) { guestWaitingBox.style.display = 'none'; guestWaitingBox.classList.add('hidden'); }
             }
           }
         };
@@ -2055,13 +2092,13 @@
             guestView?.classList.remove('hidden');
             hostView?.classList.add('hidden');
             haptic(15);
-            const isGuestConnected = mp && !mp.isHost && (mp.state === 'GUEST_LOBBY' || mp.state === 'COUNTDOWN' || mp.state === 'RACING');
+            const isGuestConnected = isGuestInRoom();
             if (isGuestConnected) {
               if (joinBtn) { joinBtn.style.display = 'none'; joinBtn.classList.add('hidden'); }
               if (guestForm) { guestForm.style.display = 'none'; guestForm.classList.add('hidden'); }
               if (guestWaitingBox) { guestWaitingBox.style.display = 'block'; guestWaitingBox.classList.remove('hidden'); }
             } else if (mp && mp.state === 'IDLE') {
-              if (joinBtn) { joinBtn.style.display = 'block'; joinBtn.classList.remove('hidden'); }
+              if (joinBtn) { joinBtn.style.display = 'block'; joinBtn.classList.remove('hidden'); joinBtn.disabled = false; joinBtn.textContent = '🔗 ENTRA NELLA STANZA'; }
               if (guestForm) { guestForm.style.display = 'block'; guestForm.classList.remove('hidden'); }
               if (guestWaitingBox) { guestWaitingBox.style.display = 'none'; guestWaitingBox.classList.add('hidden'); }
             }
@@ -2152,26 +2189,34 @@
           initMultiplayer();
           if (guestKartSelect) mp.setSelectedKart(guestKartSelect.value);
           haptic(25);
-          joinBtn.disabled = true;
-          joinBtn.textContent = '⏳ CONNESSIONE...';
+
+          // IMMEDIATELY hide join button and guest form!
+          if (joinBtn) {
+            joinBtn.style.display = 'none';
+            joinBtn.classList.add('hidden');
+          }
+          if (guestForm) {
+            guestForm.style.display = 'none';
+            guestForm.classList.add('hidden');
+          }
+          // IMMEDIATELY show waiting box with connecting status!
+          if (guestWaitingBox) {
+            guestWaitingBox.style.display = 'block';
+            guestWaitingBox.classList.remove('hidden');
+          }
+          if (guestInfoEl) {
+            guestInfoEl.innerHTML = `⏳ Connessione alla stanza <b style="color: #ffc857; font-family: monospace;">${code}</b> in corso...`;
+          }
+
           mp.joinRoom(code, guestNameInput?.value);
+
           setTimeout(() => {
-            // Re-enable join button ONLY if connection was NOT established (i.e. still not in GUEST_LOBBY)
-            if (mp && mp.state !== 'GUEST_LOBBY' && mp.state !== 'COUNTDOWN' && mp.state !== 'RACING') {
-              joinBtn.disabled = false;
-              joinBtn.textContent = '🔗 ENTRA NELLA STANZA';
-              joinBtn.style.display = 'block';
-              joinBtn.classList.remove('hidden');
-              if (guestForm) {
-                guestForm.style.display = 'block';
-                guestForm.classList.remove('hidden');
-              }
-              if (guestWaitingBox) {
-                guestWaitingBox.style.display = 'none';
-                guestWaitingBox.classList.add('hidden');
-              }
+            // Re-enable join button ONLY if still connecting and not connected
+            if (mp && mp.state === 'CONNECTING') {
+              if (window.__zephyr?.ui?.toast) window.__zephyr.ui.toast('Tempo di connessione scaduto. Riprova.', 2.5);
+              mp.leaveRoom();
             }
-          }, 5000);
+          }, 8000);
         });
 
         // Leave Room (Guest)

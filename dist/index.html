@@ -28,10 +28,10 @@
     <meta name="twitter:title" content="🌴 Zephyr Reef Grand Prix — 3D Fantasy Kart Racer" />
     <meta name="twitter:description" content="Play Zephyr Reef Grand Prix in your browser! 3D arcade kart racer with 4 fantasy tracks, dynamic AI racers, power-ups, and full touch controls." />
     <meta name="twitter:image" content="https://robzombai.github.io/zephyr-reef-kart/og-image.jpg" />
-    <link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png" />
-    <link rel="icon" type="image/png" sizes="64x64" href="./assets/favicon.png" />
-    <link rel="apple-touch-icon" sizes="192x192" href="./assets/icon-192.png" />
-    <link rel="shortcut icon" href="./assets/favicon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192-B1sjPZV4.png" />
+    <link rel="icon" type="image/png" sizes="64x64" href="./assets/favicon-D-jFYCg5.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="./assets/icon-192-B1sjPZV4.png" />
+    <link rel="shortcut icon" href="./assets/favicon-D-jFYCg5.png" />
     <script>
       // Clean legacy caches and service workers
       if ('serviceWorker' in navigator) {
@@ -46,495 +46,9 @@
       }
     </script>
     <script src="./assets/peerjs.min.js"></script>
-    <script type="module" src="./assets/multiplayerManager.js?v=zephyr-6.2.0"></script>
-    <script type="module" crossorigin src="./assets/index-C9rd31_W.js?v=zephyr-6.2.0"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DMliwuo_.css?v=zephyr-6.2.0">
-    <style>
-      /* Mobile Touch Controls Layer */
-      .zephyr-touch-layer {
-        position: fixed;
-        inset: 0;
-        pointer-events: none;
-        z-index: 99999;
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-end;
-        padding-left: max(16px, env(safe-area-inset-left));
-        padding-right: max(16px, env(safe-area-inset-right));
-        padding-bottom: max(16px, env(safe-area-inset-bottom));
-        padding-top: max(14px, env(safe-area-inset-top));
-        box-sizing: border-box;
-      }
-      .touch-group {
-        pointer-events: auto;
-        display: flex;
-        user-select: none;
-        -webkit-user-select: none;
-        touch-action: none;
-        transition: opacity 0.25s ease, transform 0.25s ease;
-      }
-      .touch-group-left {
-        gap: 14px;
-        align-items: center;
-        margin-bottom: 6px;
-      }
-      .touch-group-top {
-        position: absolute;
-        top: max(14px, env(safe-area-inset-top));
-        right: max(14px, env(safe-area-inset-right));
-        gap: 8px;
-        flex-wrap: wrap;
-        justify-content: flex-end;
-      }
-      .touch-group-right {
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 10px;
-        margin-bottom: 6px;
-      }
-      .z-actions-row {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-      }
-      .touch-pedals {
-        display: flex;
-        gap: 14px;
-        align-items: center;
-      }
-      .z-btn {
-        pointer-events: auto;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        background: rgba(16, 44, 56, 0.88);
-        border: 2px solid rgba(118, 255, 240, 0.65);
-        border-radius: 50%;
-        color: #ffffff;
-        font-family: sans-serif;
-        font-weight: 800;
-        text-shadow: 0 0 8px rgba(118, 255, 240, 0.8);
-        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.65), inset 0 0 14px rgba(118, 255, 240, 0.25);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        transition: transform 0.08s ease, background 0.08s ease, box-shadow 0.08s ease;
-        user-select: none;
-        -webkit-user-select: none;
-        touch-action: none;
-      }
-      .z-btn:active, .z-btn.active {
-        transform: scale(0.88);
-        background: rgba(118, 255, 240, 0.45);
-        box-shadow: 0 0 30px rgba(118, 255, 240, 0.95);
-      }
-      .z-steer {
-        width: 76px;
-        height: 76px;
-        font-size: 28px;
-        color: #76fff0;
-      }
-      .z-gas {
-        width: 84px;
-        height: 84px;
-        border-color: rgba(255, 176, 236, 0.85);
-        color: #ffb0ec;
-        font-size: 16px;
-        letter-spacing: 0.1em;
-      }
-      .z-gas:active, .z-gas.active {
-        background: rgba(255, 47, 208, 0.45);
-        box-shadow: 0 0 32px rgba(255, 47, 208, 0.95);
-      }
-      .z-brake {
-        width: 70px;
-        height: 70px;
-        border-color: rgba(255, 100, 100, 0.75);
-        color: #ff6464;
-        font-size: 13px;
-      }
-      .z-brake:active, .z-brake.active {
-        background: rgba(239, 68, 68, 0.45);
-        box-shadow: 0 0 28px rgba(239, 68, 68, 0.95);
-      }
-      .z-drift {
-        width: 116px;
-        height: 48px;
-        border-radius: 24px;
-        border-color: rgba(255, 219, 173, 0.85);
-        color: #f1dbad;
-        flex-direction: row;
-        gap: 6px;
-        font-size: 14px;
-      }
-      .z-drift:active, .z-drift.active {
-        background: rgba(255, 200, 87, 0.45);
-        box-shadow: 0 0 30px rgba(255, 200, 87, 0.95);
-      }
-      .z-item {
-        width: 116px;
-        height: 48px;
-        border-radius: 24px;
-        border-color: rgba(251, 191, 36, 0.75);
-        color: #fbbf24;
-        flex-direction: row;
-        gap: 6px;
-        font-size: 14px;
-        opacity: 0.65;
-        transition: all 0.2s ease;
-      }
-      .z-item.ready {
-        opacity: 1;
-        background: rgba(251, 191, 36, 0.4);
-        border-color: #f59e0b;
-        color: #ffffff;
-        box-shadow: 0 0 26px rgba(251, 191, 36, 0.95);
-        animation: z-pulse 0.8s infinite alternate;
-      }
-      .z-item.rolling {
-        opacity: 1;
-        background: rgba(118, 255, 240, 0.3);
-        border-color: #76fff0;
-        animation: z-spin-icon 0.15s infinite;
-      }
-      @keyframes z-pulse {
-        0% { transform: scale(1); }
-        100% { transform: scale(1.08); box-shadow: 0 0 35px rgba(251, 191, 36, 1); }
-      }
-      @keyframes z-spin-icon {
-        0% { transform: scale(0.95); }
-        50% { transform: scale(1.05); }
-        100% { transform: scale(0.95); }
-      }
-      .z-retro {
-        width: 84px;
-        height: 48px;
-        border-radius: 24px;
-        border-color: rgba(118, 255, 240, 0.65);
-        color: #76fff0;
-        font-size: 12px;
-        font-weight: 800;
-      }
-      .z-mini {
-        pointer-events: auto;
-        padding: 8px 14px;
-        background: rgba(16, 44, 56, 0.9);
-        border: 1px solid rgba(118, 255, 240, 0.4);
-        border-radius: 16px;
-        color: #ffffff;
-        font-size: 12px;
-        font-weight: 700;
-        backdrop-filter: blur(6px);
-        -webkit-backdrop-filter: blur(6px);
-        cursor: pointer;
-        transition: transform 0.08s ease, background 0.12s ease;
-      }
-      .z-mini:active {
-        transform: scale(0.93);
-        background: rgba(118, 255, 240, 0.3);
-      }
-
-      /* Track Selection and Pause Modal Overlays */
-      .z-modal {
-        position: fixed;
-        inset: 0;
-        background: rgba(3, 10, 20, 0.92);
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
-        z-index: 100000;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        transition: opacity 0.25s ease;
-      }
-      .hidden, .z-modal.hidden {
-        display: none !important;
-      }
-      .z-modal-card {
-        background: rgba(16, 44, 56, 0.95);
-        border: 2px solid rgba(118, 255, 240, 0.6);
-        border-radius: 20px;
-        padding: 24px 32px;
-        max-width: 650px;
-        width: 100%;
-        box-shadow: 0 10px 45px rgba(0, 0, 0, 0.85);
-      }
-      .z-track-list {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-        margin: 14px 0;
-        max-height: 64vh;
-        overflow-y: auto;
-        padding-right: 6px;
-      }
-      .z-cup-header {
-        grid-column: 1 / -1;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: linear-gradient(90deg, rgba(118, 255, 240, 0.2), rgba(8, 26, 36, 0.6));
-        padding: 7px 12px;
-        border-radius: 8px;
-        border-left: 4px solid #76fff0;
-        margin-top: 10px;
-      }
-      .z-cup-title {
-        font-size: 13px;
-        font-weight: 900;
-        color: #76fff0;
-        letter-spacing: 0.5px;
-      }
-      .z-cup-diff {
-        font-size: 11px;
-        color: #ffc857;
-        font-weight: 700;
-      }
-      .z-track-item {
-        background: rgba(8, 26, 36, 0.85);
-        border: 2px solid rgba(255, 255, 255, 0.15);
-        border-radius: 14px;
-        padding: 14px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        transition: all 0.18s ease;
-      }
-      .z-track-item:hover, .z-track-item.active {
-        border-color: #76fff0;
-        background: rgba(20, 60, 80, 0.92);
-        box-shadow: 0 0 24px rgba(118, 255, 240, 0.45);
-        transform: translateY(-2px);
-      }
-
-      /* In-race Banners */
-      .z-banner {
-        position: fixed;
-        top: 30%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        padding: 16px 36px;
-        border-radius: 14px;
-        font-size: 26px;
-        font-weight: 900;
-        letter-spacing: 0.12em;
-        pointer-events: none;
-        z-index: 10000;
-        text-align: center;
-        font-family: sans-serif;
-      }
-      .z-banner-wrong {
-        background: rgba(220, 38, 38, 0.95);
-        border: 3px solid #ffffff;
-        color: #ffffff;
-        box-shadow: 0 0 45px rgba(220, 38, 38, 1);
-        animation: z-flash 0.35s infinite alternate;
-      }
-      .z-banner-lap {
-        background: linear-gradient(135deg, rgba(255, 47, 208, 0.95), rgba(118, 255, 240, 0.95));
-        border: 3px solid #ffffff;
-        color: #ffffff;
-        box-shadow: 0 0 50px rgba(255, 47, 208, 0.95);
-        animation: z-bounce 0.6s infinite alternate;
-      }
-      @keyframes z-flash {
-        0% { transform: translate(-50%, -50%) scale(1); }
-        100% { transform: translate(-50%, -50%) scale(1.08); background: #ffffff; color: #dc2626; }
-      }
-      @keyframes z-bounce {
-        0% { transform: translate(-50%, -50%) scale(1); }
-        100% { transform: translate(-50%, -50%) scale(1.1); }
-      }
-
-      /* Title Screen Custom Track Badge */
-      .z-title-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        background: rgba(16, 44, 56, 0.85);
-        border: 1.5px solid rgba(118, 255, 240, 0.5);
-        border-radius: 20px;
-        padding: 8px 18px;
-        font-size: 13px;
-        font-weight: 800;
-        color: #76fff0;
-        margin-top: 6px;
-        cursor: pointer;
-        transition: all 0.15s ease;
-      }
-      .z-title-badge:hover {
-        background: rgba(20, 60, 80, 0.95);
-        border-color: #76fff0;
-        box-shadow: 0 0 20px rgba(118, 255, 240, 0.5);
-      }
-
-      /* Multiplayer Modal & Social Styles */
-      .z-mp-tab {
-        background: rgba(8, 26, 36, 0.85);
-        border: 1.5px solid rgba(118, 255, 240, 0.25);
-        color: #94a3b8;
-        transition: all 0.18s ease;
-      }
-      .z-mp-tab:hover {
-        color: #ffffff;
-        border-color: rgba(118, 255, 240, 0.6);
-      }
-      .z-mp-tab.active {
-        background: rgba(16, 44, 56, 0.95);
-        border-color: #76fff0;
-        color: #ffffff;
-        box-shadow: 0 0 20px rgba(118, 255, 240, 0.4);
-      }
-      .z-emote-bar {
-        position: fixed;
-        top: 75px;
-        left: max(16px, env(safe-area-inset-left));
-        z-index: 99999;
-        display: flex;
-        gap: 8px;
-        pointer-events: auto;
-      }
-      .z-emote-btn {
-        background: rgba(16, 44, 56, 0.92);
-        border: 2px solid #ffc857;
-        border-radius: 14px;
-        font-size: 20px;
-        padding: 6px 12px;
-        cursor: pointer;
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        box-shadow: 0 4px 14px rgba(0,0,0,0.5);
-        transition: transform 0.08s ease, background 0.12s ease;
-      }
-      .z-emote-btn:active {
-        transform: scale(0.85);
-        background: rgba(255, 200, 87, 0.4);
-      }
-      @keyframes z-pop-bounce {
-        0% { transform: translate(-50%, -100%) scale(0.4); opacity: 0; }
-        60% { transform: translate(-50%, -100%) scale(1.15); opacity: 1; }
-        100% { transform: translate(-50%, -100%) scale(1); opacity: 1; }
-      }
-
-      /* Universal Safe Area Insets & Responsive Android HUD Layouts */
-      .hud__pos {
-        top: max(16px, env(safe-area-inset-top)) !important;
-        left: max(16px, env(safe-area-inset-left)) !important;
-      }
-      .hud__timers {
-        top: max(16px, env(safe-area-inset-top)) !important;
-      }
-      .hud__standings {
-        top: max(16px, env(safe-area-inset-top)) !important;
-        right: max(16px, env(safe-area-inset-right)) !important;
-      }
-      .hud__speed {
-        bottom: max(116px, calc(env(safe-area-inset-bottom) + 104px)) !important;
-        left: max(18px, env(safe-area-inset-left)) !important;
-      }
-      .hud__coins {
-        bottom: max(226px, calc(env(safe-area-inset-bottom) + 214px)) !important;
-        left: max(18px, env(safe-area-inset-left)) !important;
-      }
-      .hud__minimap {
-        bottom: max(180px, calc(env(safe-area-inset-bottom) + 168px)) !important;
-        right: max(18px, env(safe-area-inset-right)) !important;
-      }
-
-      /* Mobile HUD layout adjustments to avoid pedal overlap */
-      @media (max-width: 900px) {
-        .hud__speed {
-          bottom: max(112px, calc(env(safe-area-inset-bottom) + 102px)) !important;
-          left: max(14px, env(safe-area-inset-left)) !important;
-          transform: scale(0.85);
-          transform-origin: bottom left;
-        }
-        .hud__coins {
-          bottom: max(212px, calc(env(safe-area-inset-bottom) + 200px)) !important;
-          left: max(14px, env(safe-area-inset-left)) !important;
-          transform: scale(0.88);
-          transform-origin: bottom left;
-        }
-        .hud__minimap {
-          bottom: max(175px, calc(env(safe-area-inset-bottom) + 165px)) !important;
-          right: max(14px, env(safe-area-inset-right)) !important;
-          width: 140px !important;
-          height: 140px !important;
-        }
-        .hud__drift {
-          bottom: max(16px, env(safe-area-inset-bottom)) !important;
-          width: 180px !important;
-        }
-      }
-
-      /* Android Ultra-Wide Landscape Phones (360px - 520px height) */
-      @media (max-height: 520px) {
-        .z-steer { width: 66px; height: 66px; font-size: 24px; }
-        .z-gas { width: 72px; height: 72px; font-size: 14px; }
-        .z-brake { width: 60px; height: 60px; font-size: 12px; }
-        .z-drift, .z-item { width: 102px; height: 42px; font-size: 13px; }
-        .hud__speed {
-          bottom: max(96px, calc(env(safe-area-inset-bottom) + 90px)) !important;
-          left: max(12px, env(safe-area-inset-left)) !important;
-          transform: scale(0.76);
-          transform-origin: bottom left;
-        }
-        .hud__coins {
-          bottom: max(176px, calc(env(safe-area-inset-bottom) + 170px)) !important;
-          left: max(12px, env(safe-area-inset-left)) !important;
-          transform: scale(0.78);
-          transform-origin: bottom left;
-        }
-        .hud__minimap {
-          bottom: max(152px, calc(env(safe-area-inset-bottom) + 146px)) !important;
-          right: max(12px, env(safe-area-inset-right)) !important;
-          width: 114px !important;
-          height: 114px !important;
-        }
-        .hud__pos {
-          top: max(8px, env(safe-area-inset-top)) !important;
-          left: max(10px, env(safe-area-inset-left)) !important;
-          transform: scale(0.82);
-          transform-origin: top left;
-        }
-        .hud__timers {
-          top: max(8px, env(safe-area-inset-top)) !important;
-          transform: translate(-50%) scale(0.85);
-          transform-origin: top center;
-        }
-        .hud__standings {
-          top: max(8px, env(safe-area-inset-top)) !important;
-          right: max(68px, calc(env(safe-area-inset-right) + 60px)) !important;
-          transform: scale(0.82);
-          transform-origin: top right;
-        }
-      }
-
-      /* Tablets & Foldables (4:3, 16:10, 1:1) */
-      @media (min-height: 521px) and (max-aspect-ratio: 16/10) {
-        .hud__minimap {
-          bottom: max(180px, calc(env(safe-area-inset-bottom) + 170px)) !important;
-          right: max(22px, env(safe-area-inset-right)) !important;
-          width: 156px !important;
-          height: 156px !important;
-        }
-        .hud__speed {
-          bottom: max(120px, calc(env(safe-area-inset-bottom) + 110px)) !important;
-          left: max(22px, env(safe-area-inset-left)) !important;
-          transform: scale(0.9);
-          transform-origin: bottom left;
-        }
-        .hud__coins {
-          bottom: max(224px, calc(env(safe-area-inset-bottom) + 214px)) !important;
-          left: max(22px, env(safe-area-inset-left)) !important;
-          transform: scale(0.92);
-          transform-origin: bottom left;
-        }
-      }
-    </style>
+    <style>.zephyr-touch-layer{pointer-events:none;z-index:99999;padding-left:max(16px, env(safe-area-inset-left));padding-right:max(16px, env(safe-area-inset-right));padding-bottom:max(16px, env(safe-area-inset-bottom));padding-top:max(14px, env(safe-area-inset-top));box-sizing:border-box;justify-content:space-between;align-items:flex-end;display:flex;position:fixed;inset:0}.touch-group{pointer-events:auto;-webkit-user-select:none;user-select:none;touch-action:none;transition:opacity .25s,transform .25s;display:flex}.touch-group-left{align-items:center;gap:14px;margin-bottom:6px}.touch-group-top{top:max(14px, env(safe-area-inset-top));right:max(14px, env(safe-area-inset-right));flex-wrap:wrap;justify-content:flex-end;gap:8px;position:absolute}.touch-group-right{flex-direction:column;align-items:flex-end;gap:10px;margin-bottom:6px}.z-actions-row{align-items:center;gap:10px;display:flex}.touch-pedals{align-items:center;gap:14px;display:flex}.z-btn{pointer-events:auto;color:#fff;text-shadow:0 0 8px #76fff0cc;-webkit-backdrop-filter:blur(8px);-webkit-user-select:none;user-select:none;touch-action:none;background:#102c38e0;border:2px solid #76fff0a6;border-radius:50%;flex-direction:column;justify-content:center;align-items:center;font-family:sans-serif;font-weight:800;transition:transform 80ms,background 80ms,box-shadow 80ms;display:flex;box-shadow:0 4px 18px #000000a6,inset 0 0 14px #76fff040}.z-btn:active,.z-btn.active{background:#76fff073;transform:scale(.88);box-shadow:0 0 30px #76fff0f2}.z-steer{color:#76fff0;width:76px;height:76px;font-size:28px}.z-gas{color:#ffb0ec;letter-spacing:.1em;border-color:#ffb0ecd9;width:84px;height:84px;font-size:16px}.z-gas:active,.z-gas.active{background:#ff2fd073;box-shadow:0 0 32px #ff2fd0f2}.z-brake{color:#ff6464;border-color:#ff6464bf;width:70px;height:70px;font-size:13px}.z-brake:active,.z-brake.active{background:#ef444473;box-shadow:0 0 28px #ef4444f2}.z-drift{color:#f1dbad;border-color:#ffdbadd9;border-radius:24px;flex-direction:row;gap:6px;width:116px;height:48px;font-size:14px}.z-drift:active,.z-drift.active{background:#ffc85773;box-shadow:0 0 30px #ffc857f2}.z-item{color:#fbbf24;opacity:.65;border-color:#fbbf24bf;border-radius:24px;flex-direction:row;gap:6px;width:116px;height:48px;font-size:14px;transition:all .2s}.z-item.ready{opacity:1;color:#fff;background:#fbbf2466;border-color:#f59e0b;animation:.8s infinite alternate z-pulse;box-shadow:0 0 26px #fbbf24f2}.z-item.rolling{opacity:1;background:#76fff04d;border-color:#76fff0;animation:.15s infinite z-spin-icon}@keyframes z-pulse{0%{transform:scale(1)}to{transform:scale(1.08);box-shadow:0 0 35px #fbbf24}}@keyframes z-spin-icon{0%{transform:scale(.95)}50%{transform:scale(1.05)}to{transform:scale(.95)}}.z-retro{color:#76fff0;border-color:#76fff0a6;border-radius:24px;width:84px;height:48px;font-size:12px;font-weight:800}.z-mini{pointer-events:auto;color:#fff;-webkit-backdrop-filter:blur(6px);cursor:pointer;background:#102c38e6;border:1px solid #76fff066;border-radius:16px;padding:8px 14px;font-size:12px;font-weight:700;transition:transform 80ms,background .12s}.z-mini:active{background:#76fff04d;transform:scale(.93)}.z-modal{-webkit-backdrop-filter:blur(14px);z-index:100000;background:#030a14eb;flex-direction:column;justify-content:center;align-items:center;padding:20px;transition:opacity .25s;display:flex;position:fixed;inset:0}.hidden,.z-modal.hidden{display:none!important}.z-modal-card{background:#102c38f2;border:2px solid #76fff099;border-radius:20px;width:100%;max-width:650px;padding:24px 32px;box-shadow:0 10px 45px #000000d9}.z-track-list{grid-template-columns:1fr 1fr;gap:10px;max-height:64vh;margin:14px 0;padding-right:6px;display:grid;overflow-y:auto}.z-cup-header{background:linear-gradient(90deg,#76fff033,#081a2499);border-left:4px solid #76fff0;border-radius:8px;grid-column:1/-1;justify-content:space-between;align-items:center;margin-top:10px;padding:7px 12px;display:flex}.z-cup-title{color:#76fff0;letter-spacing:.5px;font-size:13px;font-weight:900}.z-cup-diff{color:#ffc857;font-size:11px;font-weight:700}.z-track-item{cursor:pointer;background:#081a24d9;border:2px solid #ffffff26;border-radius:14px;align-items:center;gap:12px;padding:14px;transition:all .18s;display:flex}.z-track-item:hover,.z-track-item.active{background:#143c50eb;border-color:#76fff0;transform:translateY(-2px);box-shadow:0 0 24px #76fff073}.z-banner{letter-spacing:.12em;pointer-events:none;z-index:10000;text-align:center;border-radius:14px;padding:16px 36px;font-family:sans-serif;font-size:26px;font-weight:900;position:fixed;top:30%;left:50%;transform:translate(-50%,-50%)}.z-banner-wrong{color:#fff;background:#dc2626f2;border:3px solid #fff;animation:.35s infinite alternate z-flash;box-shadow:0 0 45px #dc2626}.z-banner-lap{color:#fff;background:linear-gradient(135deg,#ff2fd0f2,#76fff0f2);border:3px solid #fff;animation:.6s infinite alternate z-bounce;box-shadow:0 0 50px #ff2fd0f2}@keyframes z-flash{0%{transform:translate(-50%,-50%)scale(1)}to{color:#dc2626;background:#fff;transform:translate(-50%,-50%)scale(1.08)}}@keyframes z-bounce{0%{transform:translate(-50%,-50%)scale(1)}to{transform:translate(-50%,-50%)scale(1.1)}}.z-title-badge{color:#76fff0;cursor:pointer;background:#102c38d9;border:1.5px solid #76fff080;border-radius:20px;align-items:center;gap:8px;margin-top:6px;padding:8px 18px;font-size:13px;font-weight:800;transition:all .15s;display:inline-flex}.z-title-badge:hover{background:#143c50f2;border-color:#76fff0;box-shadow:0 0 20px #76fff080}.z-mp-tab{color:#94a3b8;background:#081a24d9;border:1.5px solid #76fff040;transition:all .18s}.z-mp-tab:hover{color:#fff;border-color:#76fff099}.z-mp-tab.active{color:#fff;background:#102c38f2;border-color:#76fff0;box-shadow:0 0 20px #76fff066}.z-emote-bar{top:75px;left:max(16px, env(safe-area-inset-left));z-index:99999;pointer-events:auto;gap:8px;display:flex;position:fixed}.z-emote-btn{cursor:pointer;-webkit-backdrop-filter:blur(8px);background:#102c38eb;border:2px solid #ffc857;border-radius:14px;padding:6px 12px;font-size:20px;transition:transform 80ms,background .12s;box-shadow:0 4px 14px #00000080}.z-emote-btn:active{background:#ffc85766;transform:scale(.85)}@keyframes z-pop-bounce{0%{opacity:0;transform:translate(-50%,-100%)scale(.4)}60%{opacity:1;transform:translate(-50%,-100%)scale(1.15)}to{opacity:1;transform:translate(-50%,-100%)scale(1)}}.hud__pos{top:max(16px, env(safe-area-inset-top))!important;left:max(16px, env(safe-area-inset-left))!important}.hud__timers{top:max(16px, env(safe-area-inset-top))!important}.hud__standings{top:max(16px, env(safe-area-inset-top))!important;right:max(16px, env(safe-area-inset-right))!important}.hud__speed{bottom:max(116px, calc(env(safe-area-inset-bottom) + 104px))!important;left:max(18px, env(safe-area-inset-left))!important}.hud__coins{bottom:max(226px, calc(env(safe-area-inset-bottom) + 214px))!important;left:max(18px, env(safe-area-inset-left))!important}.hud__minimap{bottom:max(180px, calc(env(safe-area-inset-bottom) + 168px))!important;right:max(18px, env(safe-area-inset-right))!important}@media (width<=900px){.hud__speed{transform-origin:0 100%;transform:scale(.85);bottom:max(112px, calc(env(safe-area-inset-bottom) + 102px))!important;left:max(14px, env(safe-area-inset-left))!important}.hud__coins{transform-origin:0 100%;transform:scale(.88);bottom:max(212px, calc(env(safe-area-inset-bottom) + 200px))!important;left:max(14px, env(safe-area-inset-left))!important}.hud__minimap{bottom:max(175px, calc(env(safe-area-inset-bottom) + 165px))!important;right:max(14px, env(safe-area-inset-right))!important;width:140px!important;height:140px!important}.hud__drift{bottom:max(16px, env(safe-area-inset-bottom))!important;width:180px!important}}@media (height<=520px){.z-steer{width:66px;height:66px;font-size:24px}.z-gas{width:72px;height:72px;font-size:14px}.z-brake{width:60px;height:60px;font-size:12px}.z-drift,.z-item{width:102px;height:42px;font-size:13px}.hud__speed{transform-origin:0 100%;transform:scale(.76);bottom:max(96px, calc(env(safe-area-inset-bottom) + 90px))!important;left:max(12px, env(safe-area-inset-left))!important}.hud__coins{transform-origin:0 100%;transform:scale(.78);bottom:max(176px, calc(env(safe-area-inset-bottom) + 170px))!important;left:max(12px, env(safe-area-inset-left))!important}.hud__minimap{bottom:max(152px, calc(env(safe-area-inset-bottom) + 146px))!important;right:max(12px, env(safe-area-inset-right))!important;width:114px!important;height:114px!important}.hud__pos{transform-origin:0 0;transform:scale(.82);top:max(8px, env(safe-area-inset-top))!important;left:max(10px, env(safe-area-inset-left))!important}.hud__timers{transform-origin:top;transform:translate(-50%)scale(.85);top:max(8px, env(safe-area-inset-top))!important}.hud__standings{transform-origin:100% 0;transform:scale(.82);top:max(8px, env(safe-area-inset-top))!important;right:max(68px, calc(env(safe-area-inset-right) + 60px))!important}}@media (height>=521px) and (aspect-ratio<=16/10){.hud__minimap{bottom:max(180px, calc(env(safe-area-inset-bottom) + 170px))!important;right:max(22px, env(safe-area-inset-right))!important;width:156px!important;height:156px!important}.hud__speed{transform-origin:0 100%;transform:scale(.9);bottom:max(120px, calc(env(safe-area-inset-bottom) + 110px))!important;left:max(22px, env(safe-area-inset-left))!important}.hud__coins{transform-origin:0 100%;transform:scale(.92);bottom:max(224px, calc(env(safe-area-inset-bottom) + 214px))!important;left:max(22px, env(safe-area-inset-left))!important}}</style>
+    <script type="module" crossorigin src="./assets/index-e4xkmxF5.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-hfJkH06T.css">
   </head>
   <body>
     <div id="app">
@@ -1702,10 +1216,19 @@
         const mpCountdownOverlay = document.getElementById('z-mp-countdown-overlay');
         const mpCountdownNum = document.getElementById('z-mp-countdown-num');
         const mpCountdownTrack = document.getElementById('z-mp-countdown-track');
+        const mpCountdownStatus = document.getElementById('z-mp-countdown-status');
         const mpCountdownBar = document.getElementById('z-mp-countdown-bar');
         const emoteBar = document.getElementById('z-emote-bar');
 
         let mp = null;
+
+        const isGuestInRoom = () => mp && !mp.isHost && (
+          mp.state === 'CONNECTING' || 
+          mp.state === 'GUEST_LOBBY' || 
+          mp.state === 'COUNTDOWN' || 
+          mp.state === 'RACING' || 
+          mp.state === 'RESULTS'
+        );
 
         const initMultiplayer = () => {
           if (window.MultiplayerManager && !mp) {
@@ -1765,8 +1288,8 @@
                 guestInfoEl.innerHTML = `Stanza: <b style="color: #ffc857; font-family: monospace;">${curRoom}</b> • Circuito: <b>${tName}</b> (${lobby.laps} giri)<br>In attesa che l'Host avvii la gara...`;
               }
 
-              // Manage Guest UI: hide join button and join form when connected to room
-              const isGuestConnected = !mp.isHost && (mp.state === 'GUEST_LOBBY' || mp.state === 'COUNTDOWN' || mp.state === 'RACING');
+              // Manage Guest UI: hide join button and join form when connecting or connected to room
+              const isGuestConnected = isGuestInRoom();
               if (joinBtn) {
                 if (isGuestConnected) {
                   joinBtn.style.display = 'none';
@@ -1850,9 +1373,26 @@
               }
               mpModal?.classList.add('hidden');
               if (mpCountdownNum) {
-                mpCountdownNum.textContent = remaining > 0 ? String(remaining) : 'VIA!';
+                if (remaining > 0) {
+                  mpCountdownNum.textContent = String(remaining);
+                  mpCountdownNum.style.color = '#ffffff';
+                } else {
+                  mpCountdownNum.textContent = 'PRONTI!';
+                  mpCountdownNum.style.color = '#34d399';
+                }
                 mpCountdownNum.style.transform = 'scale(1.35)';
                 setTimeout(() => { if (mpCountdownNum) mpCountdownNum.style.transform = 'scale(1)'; }, 150);
+              }
+              if (mpCountdownStatus) {
+                const STATUS_PREP = {
+                  5: "Sincronizzazione piloti e caricamento circuito... (5 sec)",
+                  4: "Controllo griglia e posizionamento kart... (4 sec)",
+                  3: "Riscaldamento motori e assetto gomme... (3 sec)",
+                  2: "Posizionamento sulla linea di partenza... (2 sec)",
+                  1: "Semaforo in arrivo: prepararsi al via! (1 sec)",
+                  0: "Tutti in griglia! Inizio partenza classica..."
+                };
+                mpCountdownStatus.textContent = STATUS_PREP[remaining] || "Preparazione partenza...";
               }
               if (mpCountdownTrack) {
                 const tName = (window.__ZEPHYR_TRACKS && window.__ZEPHYR_TRACKS[data.trackIndex]?.name) || 'Circuito';
@@ -1861,6 +1401,9 @@
               if (mpCountdownBar) {
                 const pct = Math.round(((5 - Math.max(0, remaining)) / 5) * 100);
                 mpCountdownBar.style.width = `${pct}%`;
+              }
+              if (window.__zephyr?.audio?.play) {
+                window.__zephyr.audio.play('ui_move', { volume: 0.4 });
               }
             };
 
@@ -1885,23 +1428,27 @@
               }
               const curTrack = parseInt(localStorage.getItem('zephyr_track') || '0', 10);
               if (curTrack !== data.trackIndex) {
-                // Must reload with correct track spline & theme
-                localStorage.setItem('zephyr_track', String(data.trackIndex));
-                sessionStorage.setItem('zephyr_mp_autojoin', JSON.stringify({
-                  roomCode: mp.roomCode,
-                  isHost: mp.isHost,
-                  playerName: mp.playerName,
-                  laps: data.laps,
-                  trackIndex: data.trackIndex,
-                  action: 'start_race',
-                  players: data.players,
-                  mySlot: mp.mySlot
-                }));
-                window.location.reload();
-                return;
+                if (window.__zephyr?.loadTrack) {
+                  window.__zephyr.loadTrack(data.trackIndex);
+                } else {
+                  // Fallback: reload with correct track spline & theme
+                  localStorage.setItem('zephyr_track', String(data.trackIndex));
+                  sessionStorage.setItem('zephyr_mp_autojoin', JSON.stringify({
+                    roomCode: mp.roomCode,
+                    isHost: mp.isHost,
+                    playerName: mp.playerName,
+                    laps: data.laps,
+                    trackIndex: data.trackIndex,
+                    action: 'start_race',
+                    players: data.players,
+                    mySlot: mp.mySlot
+                  }));
+                  window.location.reload();
+                  return;
+                }
               }
 
-              // Track already matches! Launch immediately
+              // Track loaded! Launch immediately into starting grid (classic 3-second countdown 3... 2... 1... VIA!)
               mpModal?.classList.add('hidden');
               if (window.__zephyr) {
                 window.__zephyr.startMultiplayerRace(data.trackIndex, data.laps, data.players, mp.mySlot);
@@ -2009,11 +1556,15 @@
           // Sync guest UI if guest tab is active
           const isGuestTab = tabGuest && tabGuest.classList.contains('active');
           if (isGuestTab && mp) {
-            const isGuestConnected = !mp.isHost && (mp.state === 'GUEST_LOBBY' || mp.state === 'COUNTDOWN' || mp.state === 'RACING');
+            const isGuestConnected = isGuestInRoom();
             if (isGuestConnected) {
               if (joinBtn) { joinBtn.style.display = 'none'; joinBtn.classList.add('hidden'); }
               if (guestForm) { guestForm.style.display = 'none'; guestForm.classList.add('hidden'); }
               if (guestWaitingBox) { guestWaitingBox.style.display = 'block'; guestWaitingBox.classList.remove('hidden'); }
+            } else if (mp.state === 'IDLE') {
+              if (joinBtn) { joinBtn.style.display = 'block'; joinBtn.classList.remove('hidden'); joinBtn.disabled = false; joinBtn.textContent = '🔗 ENTRA NELLA STANZA'; }
+              if (guestForm) { guestForm.style.display = 'block'; guestForm.classList.remove('hidden'); }
+              if (guestWaitingBox) { guestWaitingBox.style.display = 'none'; guestWaitingBox.classList.add('hidden'); }
             }
           }
         };
@@ -2055,13 +1606,13 @@
             guestView?.classList.remove('hidden');
             hostView?.classList.add('hidden');
             haptic(15);
-            const isGuestConnected = mp && !mp.isHost && (mp.state === 'GUEST_LOBBY' || mp.state === 'COUNTDOWN' || mp.state === 'RACING');
+            const isGuestConnected = isGuestInRoom();
             if (isGuestConnected) {
               if (joinBtn) { joinBtn.style.display = 'none'; joinBtn.classList.add('hidden'); }
               if (guestForm) { guestForm.style.display = 'none'; guestForm.classList.add('hidden'); }
               if (guestWaitingBox) { guestWaitingBox.style.display = 'block'; guestWaitingBox.classList.remove('hidden'); }
             } else if (mp && mp.state === 'IDLE') {
-              if (joinBtn) { joinBtn.style.display = 'block'; joinBtn.classList.remove('hidden'); }
+              if (joinBtn) { joinBtn.style.display = 'block'; joinBtn.classList.remove('hidden'); joinBtn.disabled = false; joinBtn.textContent = '🔗 ENTRA NELLA STANZA'; }
               if (guestForm) { guestForm.style.display = 'block'; guestForm.classList.remove('hidden'); }
               if (guestWaitingBox) { guestWaitingBox.style.display = 'none'; guestWaitingBox.classList.add('hidden'); }
             }
@@ -2152,26 +1703,34 @@
           initMultiplayer();
           if (guestKartSelect) mp.setSelectedKart(guestKartSelect.value);
           haptic(25);
-          joinBtn.disabled = true;
-          joinBtn.textContent = '⏳ CONNESSIONE...';
+
+          // IMMEDIATELY hide join button and guest form!
+          if (joinBtn) {
+            joinBtn.style.display = 'none';
+            joinBtn.classList.add('hidden');
+          }
+          if (guestForm) {
+            guestForm.style.display = 'none';
+            guestForm.classList.add('hidden');
+          }
+          // IMMEDIATELY show waiting box with connecting status!
+          if (guestWaitingBox) {
+            guestWaitingBox.style.display = 'block';
+            guestWaitingBox.classList.remove('hidden');
+          }
+          if (guestInfoEl) {
+            guestInfoEl.innerHTML = `⏳ Connessione alla stanza <b style="color: #ffc857; font-family: monospace;">${code}</b> in corso...`;
+          }
+
           mp.joinRoom(code, guestNameInput?.value);
+
           setTimeout(() => {
-            // Re-enable join button ONLY if connection was NOT established (i.e. still not in GUEST_LOBBY)
-            if (mp && mp.state !== 'GUEST_LOBBY' && mp.state !== 'COUNTDOWN' && mp.state !== 'RACING') {
-              joinBtn.disabled = false;
-              joinBtn.textContent = '🔗 ENTRA NELLA STANZA';
-              joinBtn.style.display = 'block';
-              joinBtn.classList.remove('hidden');
-              if (guestForm) {
-                guestForm.style.display = 'block';
-                guestForm.classList.remove('hidden');
-              }
-              if (guestWaitingBox) {
-                guestWaitingBox.style.display = 'none';
-                guestWaitingBox.classList.add('hidden');
-              }
+            // Re-enable join button ONLY if still connecting and not connected
+            if (mp && mp.state === 'CONNECTING') {
+              if (window.__zephyr?.ui?.toast) window.__zephyr.ui.toast('Tempo di connessione scaduto. Riprova.', 2.5);
+              mp.leaveRoom();
             }
-          }, 5000);
+          }, 8000);
         });
 
         // Leave Room (Guest)

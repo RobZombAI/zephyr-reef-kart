@@ -227,6 +227,7 @@ export class MultiplayerManager {
     const hostPeerId = MultiplayerManager.getPeerId(this.roomCode);
 
     this.state = 'CONNECTING';
+    this.notifyLobbyUpdate();
     const guestPeerId = `zephyr-guest-${Math.floor(10000 + Math.random() * 90000)}`;
 
     this.initPeer(guestPeerId, () => {
@@ -236,6 +237,8 @@ export class MultiplayerManager {
 
       conn.on('open', () => {
         this.toast('Connesso all\'Host! Invio dati pilota...');
+        this.state = 'GUEST_LOBBY';
+        this.notifyLobbyUpdate();
         conn.send({
           type: 'JOIN_REQUEST',
           name: this.playerName,
@@ -251,6 +254,7 @@ export class MultiplayerManager {
       conn.on('error', (err) => {
         console.error('Peer connection error:', err);
         this.toast('Errore di connessione alla stanza');
+        this.leaveRoom();
       });
     });
   }
@@ -292,6 +296,9 @@ export class MultiplayerManager {
           this.toast(`Stanza non trovata! Controlla il codice.`);
         } else {
           this.toast(`Errore di rete: ${err.type}`);
+        }
+        if (this.state === 'CONNECTING') {
+          this.leaveRoom();
         }
         if (this.onError) this.onError(err);
       });
