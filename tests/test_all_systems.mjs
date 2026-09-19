@@ -4088,3 +4088,63 @@ describe('=== UNIT & PROCESS TESTS: 50 GAMEPLAY, 20 QUALITATIVE GRAPHICS & 100 S
     assert.ok(bundleCode.includes('o=r(s.kart.body,.22,.62)'), 'Kart body uses clearcoat metallic specular lobe');
   });
 });
+
+describe('=== UNIT & PROCESS TESTS: 80+ ENHANCEMENTS, 24 BESPOKE LEVEL LANDMARKS & FLUID MODES ===', () => {
+  const bundleCode = fs.readFileSync('assets/index-C9rd31_W.js', 'utf8');
+
+  it('1. Architecture: All 24 Tracks have unique, distinct landmark arrays in specificTrackLandmarks', () => {
+    const expectedLandmarks = [
+      'temple_colonnade', 'radar_tower', 'giant_redwood', 'stadium_jumbotron',
+      'mine_headframe', 'ice_shard_monolith', 'cyber_skyscraper', 'lava_chimney',
+      'hell_obelisk', 'stargate_ring', 'kraken_tentacle', 'bioluminescent_shroom',
+      'cloud_palace', 'storm_pylon', 'sky_needle', 'vortex_funnel',
+      'abyssal_trident', 'acropolis_rotunda', 'dragon_ribcage', 'prism_pyramid',
+      'smelter_forge', 'tachyon_gate', 'singularity_collider', 'omega_monument'
+    ];
+    for (let i = 0; i < expectedLandmarks.length; i++) {
+      assert.ok(bundleCode.includes(expectedLandmarks[i]), `specificTrackLandmarks defines signature landmark ${expectedLandmarks[i]} for track ${i}`);
+    }
+  });
+
+  it('2. 3D Procedural Builders: All 24 Signature Landmark kinds implemented in Kg', () => {
+    const customKinds = [
+      'temple_colonnade', 'radar_tower', 'giant_redwood', 'stadium_jumbotron',
+      'mine_headframe', 'ice_shard_monolith', 'cyber_skyscraper', 'lava_chimney',
+      'hell_obelisk', 'stargate_ring', 'kraken_tentacle', 'bioluminescent_shroom',
+      'cloud_palace', 'storm_pylon', 'sky_needle', 'vortex_funnel',
+      'abyssal_trident', 'acropolis_rotunda', 'dragon_ribcage', 'prism_pyramid',
+      'smelter_forge', 'tachyon_gate', 'singularity_collider', 'omega_monument'
+    ];
+    for (const kind of customKinds) {
+      assert.ok(bundleCode.includes(`_.kind==="${kind}"`), `Kg implements procedural 3D builder branch for ${kind}`);
+    }
+  });
+
+  it('3. Fluid Shaders: Supports 4 distinct dynamic fluid regimes (Lava, Ice, Cyber, Toxic)', () => {
+    assert.ok(bundleCode.includes('uIsLava'), 'Shader includes uIsLava uniform for tracks 7, 8, 20');
+    assert.ok(bundleCode.includes('uIsIce'), 'Shader includes uIsIce uniform for Track 5');
+    assert.ok(bundleCode.includes('uIsCyber'), 'Shader includes uIsCyber uniform for Track 6');
+    assert.ok(bundleCode.includes('uIsToxic'), 'Shader includes uIsToxic uniform for Track 11');
+    assert.ok(bundleCode.includes('if (uIsIce > 0.5)'), 'Fragment shader implements glacial ice shelf glint and vein branching');
+    assert.ok(bundleCode.includes('if (uIsCyber > 0.5)'), 'Fragment shader implements synthetic cyber neon grid and scanline pulse');
+    assert.ok(bundleCode.includes('if (uIsToxic > 0.5)'), 'Fragment shader implements luminous mutagen ooze and bubbling');
+  });
+
+  it('4. Environment: Biome-specific instanced scenery geometries and palettes per Cup', () => {
+    assert.ok(bundleCode.includes('_cupGeos='), 'Kg defines distinct instanced prop geometry sets per Cup');
+    assert.ok(bundleCode.includes('_cupCols='), 'Kg defines distinct instanced prop color palettes per Cup');
+    assert.ok(bundleCode.includes('const I=_cupGeos[curCup]||_cupGeos[0]'), 'Instanced mesh selects Cup geometry array');
+    assert.ok(bundleCode.includes('$=_cupCols[curCup]||_cupCols[0]'), 'Instanced mesh selects Cup color palette');
+  });
+
+  it('5. Physics: Track-specific environmental physics modifiers active in av.step', () => {
+    assert.ok(bundleCode.includes('window.__CURRENT_TRACK_INDEX===5&&o.drifting)G*=.82'), 'Track 5 Glacier Peak reduces lateral drift grip for icy sliding');
+    assert.ok(bundleCode.includes('window.__CURRENT_TRACK_INDEX===13||window.__CURRENT_TRACK_INDEX===14||window.__CURRENT_TRACK_INDEX===15)&&!l.grounded'), 'Tracks 13-15 Nimbus Overpass simulate airborne crosswind buffeting');
+    assert.ok(bundleCode.includes('(window.__CURRENT_TRACK_INDEX===7||window.__CURRENT_TRACK_INDEX===8||window.__CURRENT_TRACK_INDEX===20)&&o.padBoostTime>0)z*=1.06'), 'Tracks 7, 8, 20 Volcanic tracks supercharge geothermal boost pads by 6%');
+  });
+
+  it('6. Clearance: Custom wide/floating landmark clearance logic', () => {
+    assert.ok(bundleCode.includes('_isFloatOrWide='), '_isFloatOrWide classification defines clearance rules');
+    assert.ok(bundleCode.includes('_isFloatOrWide?22:_.kind==="shell"?18:8'), 'Clearance radius expanded to 22m for large signature landmarks');
+  });
+});
