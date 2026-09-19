@@ -5,7 +5,7 @@ import { execSync } from 'child_process';
 const rootDir = process.cwd();
 const artifactsDir = '/Users/robzomb/.gemini/antigravity/brain/0394039c-7986-43d7-9058-02535fa2c8fe';
 
-console.log('=== Synchronizing all mirrors and native packages to v6.9.2 ===');
+console.log('=== Synchronizing all mirrors and native packages to v6.9.3 ===');
 
 const bundle = path.join(rootDir, 'assets/index-C9rd31_W.js');
 const indexHtml = path.join(rootDir, 'index.html');

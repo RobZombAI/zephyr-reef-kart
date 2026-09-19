@@ -1509,7 +1509,7 @@ describe('=== UNIT & PROCESS TESTS: CHARACTER SELECTION SYNC ===', () => {
   });
 
   it('2. Kart roster valid specs', () => {
-    const validKarts = ['nix', 'bruno', 'sable', 'zuzu', 'rustam', 'marlow'];
+    const validKarts = ['nix', 'bruno', 'sable', 'zuzu', 'rustam', 'marlow', 'princess', 'pirate'];
     for (const id of validKarts) {
       assert.ok(typeof id === 'string' && id.length > 0);
     }
@@ -4175,9 +4175,9 @@ describe('=== UNIT & PROCESS TESTS: PERMANENT MAXIMUM HIGH QUALITY GRAPHICS LOCK
     assert.ok(bundleCode.includes('antialias:this.quality.antialias'), 'WebGL initializes with antialiasing enabled');
   });
 
-  it('6. HTML boots with APP_VERSION zephyr-6.9.2 and sanitizes localStorage quality to high', () => {
-    assert.ok(indexHtml.includes("var APP_VERSION = 'zephyr-6.9.2';"), 'index.html defines APP_VERSION zephyr-6.9.2');
-    assert.ok(zephyrHtml.includes("var APP_VERSION = 'zephyr-6.9.2';"), 'zephyr.html defines APP_VERSION zephyr-6.9.2');
+  it('6. HTML boots with APP_VERSION zephyr-6.9.3 and sanitizes localStorage quality to high', () => {
+    assert.ok(indexHtml.includes("var APP_VERSION = 'zephyr-6.9.3';"), 'index.html defines APP_VERSION zephyr-6.9.3');
+    assert.ok(zephyrHtml.includes("var APP_VERSION = 'zephyr-6.9.3';"), 'zephyr.html defines APP_VERSION zephyr-6.9.3');
     assert.ok(indexHtml.includes("parsed.quality = 'high';"), 'index.html resets any non-high quality setting to high');
     assert.ok(zephyrHtml.includes("parsed.quality = 'high';"), 'zephyr.html resets any non-high quality setting to high');
   });
@@ -4303,4 +4303,71 @@ describe('=== UNIT & PROCESS TESTS: TRACK UNLOCKING PROGRESSION (1ST PLACE REQUI
   });
 });
 
+describe('=== UNIT & PROCESS TESTS: NEW CHARACTERS (PRINCESS AURELIA & CAPTAIN BLACKBEARD) ===', () => {
+  const bundleCode = fs.readFileSync('assets/index-C9rd31_W.js', 'utf8');
+  const indexHtml = fs.readFileSync('index.html', 'utf8');
+  const zephyrHtml = fs.readFileSync('zephyr.html', 'utf8');
 
+  it('1. Roster expands to 8 racers with Princess Aurelia and Captain Blackbeard', () => {
+    // Princess Aurelia check
+    assert.ok(bundleCode.includes('id:"princess"'), 'Roster includes princess id');
+    assert.ok(bundleCode.includes('name:"Principessa Aurelia"'), 'Roster includes Principessa Aurelia');
+    assert.ok(bundleCode.includes('archetype:"Royal Sovereign"'), 'Princess has Royal Sovereign archetype');
+    assert.ok(bundleCode.includes('speed:1.04,accel:1.08,handling:1.08,weight:.88'), 'Princess has balanced agile stats');
+
+    // Captain Blackbeard check
+    assert.ok(bundleCode.includes('id:"pirate"'), 'Roster includes pirate id');
+    assert.ok(bundleCode.includes('name:"Capitan Barbanera"'), 'Roster includes Capitan Barbanera');
+    assert.ok(bundleCode.includes('archetype:"Dread Corsair"'), 'Pirate has Dread Corsair archetype');
+    assert.ok(bundleCode.includes('speed:1.12,accel:.9,handling:.92,weight:1.2'), 'Pirate has heavy ramming stats');
+  });
+
+  it('2. 3D Procedural Driver Models implemented in bundle', () => {
+    // Princess 3D features
+    assert.ok(bundleCode.includes('s.body==="princess"'), 'Driver generator handles princess body');
+    assert.ok(bundleCode.includes('gem=pe(u,new br(.06,0)'), 'Princess includes crown sapphire gem');
+    assert.ok(bundleCode.includes('cape=tn(d,r,'), 'Princess includes royal cape mesh');
+
+    // Pirate 3D features
+    assert.ok(bundleCode.includes('s.body==="pirate"'), 'Driver generator handles pirate body');
+    assert.ok(bundleCode.includes('[-.18,.06,-.31],[.13,.13,.035]'), 'Pirate includes eye patch');
+    assert.ok(bundleCode.includes('.41,-.02,0'), 'Pirate includes golden earring');
+    assert.ok(bundleCode.includes('pe(g[0],new Xn(.11,.032,6,12'), 'Pirate includes metallic hook hand');
+  });
+
+  it('3. 2D Canvas Portrait generation supports princess and pirate', () => {
+    assert.ok(bundleCode.includes('s.body==="princess"'), 'Portrait generator handles princess');
+    assert.ok(bundleCode.includes('s.body==="pirate"'), 'Portrait generator handles pirate');
+  });
+
+  it('4. Multiplayer Lobby Kart options and KART_INFO updated in HTML and zephyr.html', () => {
+    // index.html
+    assert.ok(indexHtml.includes('<option value="princess">👑 Principessa Aurelia (Regale)</option>'), 'index.html has princess option');
+    assert.ok(indexHtml.includes('<option value="pirate">🏴‍☠️ Capitan Barbanera (Corsaro)</option>'), 'index.html has pirate option');
+    assert.ok(indexHtml.includes("princess: { icon: '👑', label: 'Principessa' }"), 'index.html has princess KART_INFO');
+    assert.ok(indexHtml.includes("pirate: { icon: '🏴‍☠️', label: 'Pirata' }"), 'index.html has pirate KART_INFO');
+
+    // zephyr.html
+    assert.ok(zephyrHtml.includes('<option value="princess">👑 Principessa Aurelia (Regale)</option>'), 'zephyr.html has princess option');
+    assert.ok(zephyrHtml.includes('<option value="pirate">🏴‍☠️ Capitan Barbanera (Corsaro)</option>'), 'zephyr.html has pirate option');
+    assert.ok(zephyrHtml.includes("princess: { icon: '👑', label: 'Principessa' }"), 'zephyr.html has princess KART_INFO');
+    assert.ok(zephyrHtml.includes("pirate: { icon: '🏴‍☠️', label: 'Pirata' }"), 'zephyr.html has pirate KART_INFO');
+  });
+
+  it('5. Native assets and mirrors are in exact synchronization', () => {
+    const distHtml = fs.readFileSync('dist/index.html', 'utf8');
+    const publicHtml = fs.readFileSync('public/index.html', 'utf8');
+    const androidHtml = fs.readFileSync('android/ZephyrReefKart/app/src/main/assets/index.html', 'utf8');
+    const iosHtml = fs.readFileSync('ios/ZephyrReefKart/ZephyrReefKart/Resources/WebAssets/index.html', 'utf8');
+
+    assert.ok(distHtml.includes('Principessa Aurelia'), 'dist has Princess');
+    assert.ok(publicHtml.includes('Principessa Aurelia'), 'public has Princess');
+    assert.ok(androidHtml.includes('Principessa Aurelia'), 'android has Princess');
+    assert.ok(iosHtml.includes('Principessa Aurelia'), 'ios has Princess');
+
+    assert.ok(distHtml.includes('Capitan Barbanera'), 'dist has Pirate');
+    assert.ok(publicHtml.includes('Capitan Barbanera'), 'public has Pirate');
+    assert.ok(androidHtml.includes('Capitan Barbanera'), 'android has Pirate');
+    assert.ok(iosHtml.includes('Capitan Barbanera'), 'ios has Pirate');
+  });
+});
