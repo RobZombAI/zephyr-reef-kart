@@ -74,8 +74,9 @@ async function run() {
     const speedlinesInfo = await pageDesk.evaluate(() => {
       const director = window.__zephyr.director;
       const input = window.__zephyr.input;
-      input.keys['ArrowUp'] = true;
-      input.keys['KeyW'] = true;
+      if (input && input.held) {
+        input.held.add('accel');
+      }
       for (let f = 0; f < 180; f++) {
         director.update(0.0166, input);
       }
