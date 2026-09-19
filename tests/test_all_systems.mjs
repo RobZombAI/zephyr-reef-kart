@@ -4175,11 +4175,132 @@ describe('=== UNIT & PROCESS TESTS: PERMANENT MAXIMUM HIGH QUALITY GRAPHICS LOCK
     assert.ok(bundleCode.includes('antialias:this.quality.antialias'), 'WebGL initializes with antialiasing enabled');
   });
 
-  it('6. HTML boots with APP_VERSION zephyr-6.9.1 and sanitizes localStorage quality to high', () => {
-    assert.ok(indexHtml.includes("var APP_VERSION = 'zephyr-6.9.1';"), 'index.html defines APP_VERSION zephyr-6.9.1');
-    assert.ok(zephyrHtml.includes("var APP_VERSION = 'zephyr-6.9.1';"), 'zephyr.html defines APP_VERSION zephyr-6.9.1');
+  it('6. HTML boots with APP_VERSION zephyr-6.9.2 and sanitizes localStorage quality to high', () => {
+    assert.ok(indexHtml.includes("var APP_VERSION = 'zephyr-6.9.2';"), 'index.html defines APP_VERSION zephyr-6.9.2');
+    assert.ok(zephyrHtml.includes("var APP_VERSION = 'zephyr-6.9.2';"), 'zephyr.html defines APP_VERSION zephyr-6.9.2');
     assert.ok(indexHtml.includes("parsed.quality = 'high';"), 'index.html resets any non-high quality setting to high');
     assert.ok(zephyrHtml.includes("parsed.quality = 'high';"), 'zephyr.html resets any non-high quality setting to high');
   });
 });
+
+describe('=== UNIT & PROCESS TESTS: TRACK UNLOCKING PROGRESSION (1ST PLACE REQUIREMENT) ===', () => {
+  const bundleCode = fs.readFileSync('assets/index-C9rd31_W.js', 'utf8');
+  const indexHtml = fs.readFileSync('index.html', 'utf8');
+  const zephyrHtml = fs.readFileSync('zephyr.html', 'utf8');
+
+  it('1. CSS styling defines locked & won indicators, badges and shake animations', () => {
+    assert.ok(indexHtml.includes('.z-track-item.locked'), 'index.html defines .z-track-item.locked styling');
+    assert.ok(indexHtml.includes('.z-track-item.won'), 'index.html defines .z-track-item.won styling');
+    assert.ok(indexHtml.includes('.z-track-lock-badge'), 'index.html defines .z-track-lock-badge');
+    assert.ok(indexHtml.includes('.z-track-won-badge'), 'index.html defines .z-track-won-badge');
+    assert.ok(indexHtml.includes('@keyframes z-shake'), 'index.html defines z-shake error feedback animation');
+
+    assert.ok(zephyrHtml.includes('.z-track-item.locked'), 'zephyr.html defines .z-track-item.locked styling');
+    assert.ok(zephyrHtml.includes('.z-track-item.won'), 'zephyr.html defines .z-track-item.won styling');
+    assert.ok(zephyrHtml.includes('.z-track-lock-badge'), 'zephyr.html defines .z-track-lock-badge');
+    assert.ok(zephyrHtml.includes('.z-track-won-badge'), 'zephyr.html defines .z-track-won-badge');
+    assert.ok(zephyrHtml.includes('@keyframes z-shake'), 'zephyr.html defines z-shake error feedback animation');
+  });
+
+  it('2. HTML modal progression logic: getUnlockedMax, updateRecordDisplays and click guard', () => {
+    assert.ok(indexHtml.includes('const getUnlockedMax = () => {'), 'index.html defines getUnlockedMax()');
+    assert.ok(indexHtml.includes("localStorage.getItem('zephyr_max_unlocked_track')"), 'getUnlockedMax() checks zephyr_max_unlocked_track');
+    assert.ok(indexHtml.includes("item.classList.toggle('locked', !isUnlocked)"), 'updateRecordDisplays() marks locked track cards');
+    assert.ok(indexHtml.includes("item.classList.toggle('won', isWon)"), 'updateRecordDisplays() marks won track cards');
+    assert.ok(indexHtml.includes("z-track-lock-badge"), 'updateRecordDisplays() adds lock badge');
+    assert.ok(indexHtml.includes("z-track-won-badge"), 'updateRecordDisplays() adds won badge');
+    assert.ok(indexHtml.includes("trackIdx > maxUnlocked"), 'Click listener guards against selecting locked tracks');
+    assert.ok(indexHtml.includes("z-shake"), 'Click on locked track triggers shake feedback');
+
+    assert.ok(zephyrHtml.includes('const getUnlockedMax = () => {'), 'zephyr.html defines getUnlockedMax()');
+    assert.ok(zephyrHtml.includes("localStorage.getItem('zephyr_max_unlocked_track')"), 'zephyr.html checks zephyr_max_unlocked_track');
+    assert.ok(zephyrHtml.includes("trackIdx > maxUnlocked"), 'zephyr.html guards against selecting locked tracks');
+  });
+
+  it('3. In-engine bundle: buildResults button reference, showResults victory progression check', () => {
+    assert.ok(bundleCode.includes('this.btnNextTrack=this.button("Prossima Pista ❯"'), 'buildResults retains reference to btnNextTrack');
+    assert.ok(bundleCode.includes('zephyr_max_unlocked_track'), 'bundle references zephyr_max_unlocked_track in progression logic');
+    assert.ok(bundleCode.includes('zephyr_won_track_'), 'bundle records won track flags zephyr_won_track_<idx>');
+    assert.ok(bundleCode.includes('localStorage.setItem("zephyr_won_track_"+'), 'showResults sets won track flag');
+  });
+
+  it('4. In-engine bundle: showResults updates Next Track button state based on unlocking', () => {
+    assert.ok(bundleCode.includes('🔒 Prossima Pista (Bloccata)'), 'showResults disables button and sets locked text if next track is not unlocked');
+    assert.ok(bundleCode.includes('Prossima Pista ❯'), 'showResults restores enabled text when next track is unlocked');
+    assert.ok(bundleCode.includes('🎉 NUOVO CIRCUITO SBLOCCATO: PISTA'), 'showResults displays celebration banner when a new track is unlocked');
+  });
+
+  it('5. In-engine bundle: loadTrack and nextTrack enforce locked track boundary', () => {
+    assert.ok(bundleCode.includes('🔒 Livello bloccato! Devi arrivare 1° nella Pista'), 'loadTrack toasts warning when attempting to switch to a locked track');
+    assert.ok(bundleCode.includes('🔒 Pista successiva bloccata! Devi arrivare 1° per sbloccarla.'), 'nextTrack toasts warning when next track is locked');
+    assert.ok(bundleCode.includes('const maxU=parseInt(localStorage.getItem("zephyr_max_unlocked_track")||"0",10)||0'), 'buildWorld clamps initial track to max unlocked');
+  });
+
+  it('6. Progression simulation: 1st place finishes required to advance through tracks sequentially', () => {
+    // Clean mock localStorage
+    globalThis.localStorage.clear();
+    
+    // Helper replicating progression
+    function getMaxUnlocked() {
+      return parseInt(globalThis.localStorage.getItem('zephyr_max_unlocked_track') || '0', 10) || 0;
+    }
+    function recordRaceFinish(trackIdx, rank) {
+      if (rank === 1) {
+        globalThis.localStorage.setItem(`zephyr_won_track_${trackIdx}`, '1');
+        const curMax = getMaxUnlocked();
+        if (trackIdx + 1 > curMax) {
+          globalThis.localStorage.setItem('zephyr_max_unlocked_track', String(trackIdx + 1));
+          return true; // newly unlocked
+        }
+      }
+      return false;
+    }
+
+    // Default state: Only track 0 unlocked
+    assert.strictEqual(getMaxUnlocked(), 0, 'Initially, only track 0 (Coral Sanctuary) is unlocked');
+
+    // Finish 2nd place on track 0: No unlock!
+    let unlocked = recordRaceFinish(0, 2);
+    assert.strictEqual(unlocked, false, 'Finishing 2nd place does NOT unlock the next track');
+    assert.strictEqual(getMaxUnlocked(), 0, 'Max unlocked track remains 0 after 2nd place finish');
+    assert.strictEqual(globalThis.localStorage.getItem('zephyr_won_track_0'), null, 'Track 0 not marked won');
+
+    // Finish 3rd place on track 0: No unlock!
+    unlocked = recordRaceFinish(0, 3);
+    assert.strictEqual(unlocked, false, 'Finishing 3rd place does NOT unlock the next track');
+    assert.strictEqual(getMaxUnlocked(), 0, 'Max unlocked track remains 0');
+
+    // Finish 1st place on track 0: UNLOCK Track 1!
+    unlocked = recordRaceFinish(0, 1);
+    assert.strictEqual(unlocked, true, 'Finishing 1st place unlocks Track 1');
+    assert.strictEqual(getMaxUnlocked(), 1, 'Max unlocked track is now 1');
+    assert.strictEqual(globalThis.localStorage.getItem('zephyr_won_track_0'), '1', 'Track 0 marked won');
+
+    // Winning track 0 again: Already unlocked, won't advance past 1
+    unlocked = recordRaceFinish(0, 1);
+    assert.strictEqual(unlocked, false, 'Winning Track 0 again does not advance past track 1');
+    assert.strictEqual(getMaxUnlocked(), 1, 'Max unlocked track stays 1');
+
+    // Finish 2nd place on track 1: Track 2 remains locked!
+    unlocked = recordRaceFinish(1, 2);
+    assert.strictEqual(unlocked, false, 'Finishing 2nd place on Track 1 does not unlock Track 2');
+    assert.strictEqual(getMaxUnlocked(), 1, 'Max unlocked track is still 1');
+
+    // Finish 1st place on track 1: UNLOCK Track 2!
+    unlocked = recordRaceFinish(1, 1);
+    assert.strictEqual(unlocked, true, 'Finishing 1st place on Track 1 unlocks Track 2');
+    assert.strictEqual(getMaxUnlocked(), 2, 'Max unlocked track is now 2');
+    assert.strictEqual(globalThis.localStorage.getItem('zephyr_won_track_1'), '1', 'Track 1 marked won');
+
+    // Finish 1st place sequentially all the way to track 23
+    for (let t = 2; t < 24; t++) {
+      assert.strictEqual(getMaxUnlocked(), t, `Before winning track ${t}, maxUnlocked is ${t}`);
+      recordRaceFinish(t, 1);
+      assert.strictEqual(getMaxUnlocked(), t + 1, `After winning track ${t}, maxUnlocked is ${t + 1}`);
+      assert.strictEqual(globalThis.localStorage.getItem(`zephyr_won_track_${t}`), '1', `Track ${t} marked won`);
+    }
+    assert.strictEqual(getMaxUnlocked(), 24, 'All 24 tracks can be progressively unlocked by finishing 1st');
+  });
+});
+
 
