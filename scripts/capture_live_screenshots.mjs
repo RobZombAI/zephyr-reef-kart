@@ -15,9 +15,13 @@ async function run() {
     console.log("Testing iPhone landscape viewport (844x390)...");
     const pageMob = await browser.newPage();
     await pageMob.setViewport({ width: 844, height: 390, isMobile: true, hasTouch: true });
-    await pageMob.goto("https://robzombai.github.io/zephyr-reef-kart/?v=zephyr-6.7.0&t=" + Date.now(), { waitUntil: "networkidle2", timeout: 35000 });
+    await pageMob.goto("https://robzombai.github.io/zephyr-reef-kart/?v=zephyr-6.8.0&t=" + Date.now(), { waitUntil: "networkidle2", timeout: 35000 });
     await pageMob.waitForFunction(() => !!window.__zephyr, { timeout: 25000 });
     await new Promise(r => setTimeout(r, 2000));
+
+    const mobQuality = await pageMob.evaluate(() => window.__zephyr.quality.level);
+    console.log("Mobile active quality level:", mobQuality);
+
     await pageMob.screenshot({ path: path.join(artifactsDir, "live_github_iphone_title.png") });
     console.log("Saved live_github_iphone_title.png");
 
@@ -31,9 +35,13 @@ async function run() {
     console.log("Testing Desktop viewport (1280x720)...");
     const pageDesk = await browser.newPage();
     await pageDesk.setViewport({ width: 1280, height: 720, isMobile: false, hasTouch: false });
-    await pageDesk.goto("https://robzombai.github.io/zephyr-reef-kart/?v=zephyr-6.6.0&t=" + Date.now(), { waitUntil: "networkidle2", timeout: 35000 });
+    await pageDesk.goto("https://robzombai.github.io/zephyr-reef-kart/?v=zephyr-6.8.0&t=" + Date.now(), { waitUntil: "networkidle2", timeout: 35000 });
     await pageDesk.waitForFunction(() => !!window.__zephyr, { timeout: 25000 });
     await new Promise(r => setTimeout(r, 2000));
+
+    const deskQuality = await pageDesk.evaluate(() => window.__zephyr.quality.level);
+    console.log("Desktop active quality level:", deskQuality);
+
     await pageDesk.screenshot({ path: path.join(artifactsDir, "live_github_desktop_title.png") });
     console.log("Saved live_github_desktop_title.png");
 
