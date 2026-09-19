@@ -35,7 +35,7 @@
     <script>
       // Clean legacy caches and service workers & force fresh load on version change
       (function() {
-        var APP_VERSION = 'zephyr-6.9.2';
+        var APP_VERSION = 'zephyr-6.9.3';
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistrations().then(function(regs) {
             for (var r of regs) r.unregister();
@@ -69,9 +69,9 @@
       })();
     </script>
     <script src="./assets/peerjs.min.js"></script>
-    <script type="module" src="./assets/multiplayerManager.js?v=zephyr-6.9.2"></script>
-    <script type="module" crossorigin src="./assets/index-C9rd31_W.js?v=zephyr-6.9.2"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DMliwuo_.css?v=zephyr-6.9.2">
+    <script type="module" src="./assets/multiplayerManager.js?v=zephyr-6.9.3"></script>
+    <script type="module" crossorigin src="./assets/index-C9rd31_W.js?v=zephyr-6.9.3"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DMliwuo_.css?v=zephyr-6.9.3">
     <style>
       /* Mobile Touch Controls Layer */
       .zephyr-touch-layer {
@@ -1068,6 +1068,8 @@
                   <option value="zuzu">⚡ Zuzu (Drifter)</option>
                   <option value="rustam">⚙️ Rustam (Tinkerer)</option>
                   <option value="marlow">🐸 Marlow (Corsair)</option>
+                  <option value="princess">👑 Principessa Aurelia (Regale)</option>
+                  <option value="pirate">🏴‍☠️ Capitan Barbanera (Corsaro)</option>
                 </select>
               </div>
               <div style="flex: 1; min-width: 150px; text-align: left;">
@@ -1138,6 +1140,8 @@
                     <option value="zuzu">⚡ Zuzu (Drifter)</option>
                     <option value="rustam">⚙️ Rustam (Tinkerer)</option>
                     <option value="marlow">🐸 Marlow (Corsair)</option>
+                    <option value="princess">👑 Principessa Aurelia (Regale)</option>
+                    <option value="pirate">🏴‍☠️ Capitan Barbanera (Corsaro)</option>
                   </select>
                 </div>
               </div>
@@ -1170,6 +1174,8 @@
                   <option value="zuzu">⚡ Zuzu (Drifter)</option>
                   <option value="rustam">⚙️ Rustam (Tinkerer)</option>
                   <option value="marlow">🐸 Marlow (Corsair)</option>
+                  <option value="princess">👑 Principessa Aurelia (Regale)</option>
+                  <option value="pirate">🏴‍☠️ Capitan Barbanera (Corsaro)</option>
                 </select>
               </div>
 
@@ -1990,7 +1996,9 @@
               sable: { icon: '🦋', label: 'Sable' },
               zuzu: { icon: '⚡', label: 'Zuzu' },
               rustam: { icon: '⚙️', label: 'Rustam' },
-              marlow: { icon: '🐸', label: 'Marlow' }
+              marlow: { icon: '🐸', label: 'Marlow' },
+              princess: { icon: '👑', label: 'Principessa' },
+              pirate: { icon: '🏴‍☠️', label: 'Pirata' }
             };
 
             const ALL_TRACKS = [
