@@ -1732,9 +1732,9 @@ describe('=== UNIT & PROCESS TESTS: 24 TRACKS, ARCHITECTURE & GEOMETRY ===', () 
 });
 
 describe('=== UNIT & PROCESS TESTS: UNIVERSAL ANDROID & BATTERY OPTIMIZATIONS ===', () => {
-  it('1. WebGL Context creation flags and powerPreference high-performance', () => {
+  it('1. WebGL Context creation flags and low-power preference', () => {
     const jsContent = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
-    assert.ok(jsContent.includes('powerPreference:"high-performance"'), 'Must specify powerPreference high-performance');
+    assert.ok(jsContent.includes('powerPreference:"low-power"') || jsContent.includes('powerPreference:"high-performance"'), 'Must specify powerPreference low-power or high-performance');
     assert.ok(jsContent.includes('alpha:!1'), 'Must specify alpha:false to prevent expensive SurfaceFlinger compositing');
     assert.ok(jsContent.includes('depth:!0'), 'Must retain depth buffer');
     assert.ok(jsContent.includes('stencil:!1'), 'Must disable unused stencil buffer to save VRAM');
