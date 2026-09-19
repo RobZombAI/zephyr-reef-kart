@@ -1,0 +1,2580 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Zephyr Reef Grand Prix — 3D Fantasy Kart Racer</title>
+    <meta name="title" content="Zephyr Reef Grand Prix — 3D Fantasy Kart Racer" />
+    <meta name="description" content="Zephyr Reef Grand Prix: an original 3D fantasy kart racer in WebGL & Three.js. 4 tracks, dynamic AI opponents, continuous guardrails, turbo boosts, and mobile touch controls." />
+
+    <!-- Open Graph / Facebook / WhatsApp / Telegram / Discord -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://robzombai.github.io/zephyr-reef-kart/" />
+    <meta property="og:title" content="🌴 Zephyr Reef Grand Prix — 3D Fantasy Kart Racer" />
+    <meta property="og:description" content="Play Zephyr Reef Grand Prix in your browser! 3D arcade kart racer with 4 fantasy tracks, dynamic AI racers, power-ups, and full touch controls." />
+    <meta property="og:image" content="https://robzombai.github.io/zephyr-reef-kart/og-image.jpg" />
+    <meta property="og:image:secure_url" content="https://robzombai.github.io/zephyr-reef-kart/og-image.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="720" />
+    <meta property="og:image:alt" content="Zephyr Reef Grand Prix 3D Racing Title" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://robzombai.github.io/zephyr-reef-kart/" />
+    <meta name="twitter:title" content="🌴 Zephyr Reef Grand Prix — 3D Fantasy Kart Racer" />
+    <meta name="twitter:description" content="Play Zephyr Reef Grand Prix in your browser! 3D arcade kart racer with 4 fantasy tracks, dynamic AI racers, power-ups, and full touch controls." />
+    <meta name="twitter:image" content="https://robzombai.github.io/zephyr-reef-kart/og-image.jpg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="64x64" href="./assets/favicon.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="./assets/icon-192.png" />
+    <link rel="shortcut icon" href="./assets/favicon.png" />
+    <script>
+      // Clean legacy caches and service workers & force fresh load on version change
+      (function() {
+        var APP_VERSION = 'zephyr-6.3.0';
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(regs) {
+            for (var r of regs) r.unregister();
+          });
+        }
+        if ('caches' in window) {
+          caches.keys().then(function(names) {
+            for (var n of names) caches.delete(n);
+          });
+        }
+        try {
+          var storedVersion = localStorage.getItem('zephyr_client_version');
+          if (storedVersion !== APP_VERSION) {
+            localStorage.setItem('zephyr_client_version', APP_VERSION);
+            if (storedVersion && window.location.search.indexOf('v=') === -1) {
+              window.location.replace(window.location.pathname + '?v=' + APP_VERSION);
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <script src="./assets/peerjs.min.js"></script>
+    <script type="module" src="./assets/multiplayerManager.js?v=zephyr-6.3.0"></script>
+    <script type="module" crossorigin src="./assets/index-C9rd31_W.js?v=zephyr-6.3.0"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DMliwuo_.css?v=zephyr-6.3.0">
+    <style>
+      /* Mobile Touch Controls Layer */
+      .zephyr-touch-layer {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 99999;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        padding-left: max(16px, env(safe-area-inset-left));
+        padding-right: max(16px, env(safe-area-inset-right));
+        padding-bottom: max(16px, env(safe-area-inset-bottom));
+        padding-top: max(14px, env(safe-area-inset-top));
+        box-sizing: border-box;
+      }
+      .touch-group {
+        pointer-events: auto;
+        display: flex;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: none;
+        transition: opacity 0.25s ease, transform 0.25s ease;
+      }
+      .touch-group-left {
+        gap: 14px;
+        align-items: center;
+        margin-bottom: 6px;
+      }
+      .touch-group-top {
+        position: absolute;
+        top: max(14px, env(safe-area-inset-top));
+        right: max(14px, env(safe-area-inset-right));
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+      .touch-group-right {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 10px;
+        margin-bottom: 6px;
+      }
+      .z-actions-row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .touch-pedals {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+      }
+      .z-btn {
+        pointer-events: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: rgba(16, 44, 56, 0.88);
+        border: 2px solid rgba(118, 255, 240, 0.65);
+        border-radius: 50%;
+        color: #ffffff;
+        font-family: sans-serif;
+        font-weight: 800;
+        text-shadow: 0 0 8px rgba(118, 255, 240, 0.8);
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.65), inset 0 0 14px rgba(118, 255, 240, 0.25);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        transition: transform 0.08s ease, background 0.08s ease, box-shadow 0.08s ease;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: none;
+      }
+      .z-btn:active, .z-btn.active {
+        transform: scale(0.88);
+        background: rgba(118, 255, 240, 0.45);
+        box-shadow: 0 0 30px rgba(118, 255, 240, 0.95);
+      }
+      .z-steer {
+        width: 76px;
+        height: 76px;
+        font-size: 28px;
+        color: #76fff0;
+      }
+      .z-gas {
+        width: 84px;
+        height: 84px;
+        border-color: rgba(255, 176, 236, 0.85);
+        color: #ffb0ec;
+        font-size: 16px;
+        letter-spacing: 0.1em;
+      }
+      .z-gas:active, .z-gas.active {
+        background: rgba(255, 47, 208, 0.45);
+        box-shadow: 0 0 32px rgba(255, 47, 208, 0.95);
+      }
+      .z-brake {
+        width: 70px;
+        height: 70px;
+        border-color: rgba(255, 100, 100, 0.75);
+        color: #ff6464;
+        font-size: 13px;
+      }
+      .z-brake:active, .z-brake.active {
+        background: rgba(239, 68, 68, 0.45);
+        box-shadow: 0 0 28px rgba(239, 68, 68, 0.95);
+      }
+      .z-drift {
+        width: 116px;
+        height: 48px;
+        border-radius: 24px;
+        border-color: rgba(255, 219, 173, 0.85);
+        color: #f1dbad;
+        flex-direction: row;
+        gap: 6px;
+        font-size: 14px;
+      }
+      .z-drift:active, .z-drift.active {
+        background: rgba(255, 200, 87, 0.45);
+        box-shadow: 0 0 30px rgba(255, 200, 87, 0.95);
+      }
+      .z-item {
+        width: 116px;
+        height: 48px;
+        border-radius: 24px;
+        border-color: rgba(251, 191, 36, 0.75);
+        color: #fbbf24;
+        flex-direction: row;
+        gap: 6px;
+        font-size: 14px;
+        opacity: 0.65;
+        transition: all 0.2s ease;
+      }
+      .z-item.ready {
+        opacity: 1;
+        background: rgba(251, 191, 36, 0.4);
+        border-color: #f59e0b;
+        color: #ffffff;
+        box-shadow: 0 0 26px rgba(251, 191, 36, 0.95);
+        animation: z-pulse 0.8s infinite alternate;
+      }
+      .z-item.rolling {
+        opacity: 1;
+        background: rgba(118, 255, 240, 0.3);
+        border-color: #76fff0;
+        animation: z-spin-icon 0.15s infinite;
+      }
+      @keyframes z-pulse {
+        0% { transform: scale(1); }
+        100% { transform: scale(1.08); box-shadow: 0 0 35px rgba(251, 191, 36, 1); }
+      }
+      @keyframes z-spin-icon {
+        0% { transform: scale(0.95); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(0.95); }
+      }
+      .z-retro {
+        width: 84px;
+        height: 48px;
+        border-radius: 24px;
+        border-color: rgba(118, 255, 240, 0.65);
+        color: #76fff0;
+        font-size: 12px;
+        font-weight: 800;
+      }
+      .z-mini {
+        pointer-events: auto;
+        padding: 8px 14px;
+        background: rgba(16, 44, 56, 0.9);
+        border: 1px solid rgba(118, 255, 240, 0.4);
+        border-radius: 16px;
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 700;
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        cursor: pointer;
+        transition: transform 0.08s ease, background 0.12s ease;
+      }
+      .z-mini:active {
+        transform: scale(0.93);
+        background: rgba(118, 255, 240, 0.3);
+      }
+
+      /* Track Selection and Pause Modal Overlays */
+      .z-modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(3, 10, 20, 0.92);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        z-index: 100000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        transition: opacity 0.25s ease;
+      }
+      .hidden, .z-modal.hidden {
+        display: none !important;
+      }
+      .z-modal-card {
+        background: rgba(16, 44, 56, 0.95);
+        border: 2px solid rgba(118, 255, 240, 0.6);
+        border-radius: 20px;
+        padding: 24px 32px;
+        max-width: 650px;
+        width: 100%;
+        box-shadow: 0 10px 45px rgba(0, 0, 0, 0.85);
+      }
+      .z-track-list {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin: 14px 0;
+        max-height: 64vh;
+        overflow-y: auto;
+        padding-right: 6px;
+      }
+      .z-cup-header {
+        grid-column: 1 / -1;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: linear-gradient(90deg, rgba(118, 255, 240, 0.2), rgba(8, 26, 36, 0.6));
+        padding: 7px 12px;
+        border-radius: 8px;
+        border-left: 4px solid #76fff0;
+        margin-top: 10px;
+      }
+      .z-cup-title {
+        font-size: 13px;
+        font-weight: 900;
+        color: #76fff0;
+        letter-spacing: 0.5px;
+      }
+      .z-cup-diff {
+        font-size: 11px;
+        color: #ffc857;
+        font-weight: 700;
+      }
+      .z-track-item {
+        background: rgba(8, 26, 36, 0.85);
+        border: 2px solid rgba(255, 255, 255, 0.15);
+        border-radius: 14px;
+        padding: 14px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        transition: all 0.18s ease;
+      }
+      .z-track-item:hover, .z-track-item.active {
+        border-color: #76fff0;
+        background: rgba(20, 60, 80, 0.92);
+        box-shadow: 0 0 24px rgba(118, 255, 240, 0.45);
+        transform: translateY(-2px);
+      }
+
+      /* In-race Banners */
+      .z-banner {
+        position: fixed;
+        top: 30%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 16px 36px;
+        border-radius: 14px;
+        font-size: 26px;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        pointer-events: none;
+        z-index: 10000;
+        text-align: center;
+        font-family: sans-serif;
+      }
+      .z-banner-wrong {
+        background: rgba(220, 38, 38, 0.95);
+        border: 3px solid #ffffff;
+        color: #ffffff;
+        box-shadow: 0 0 45px rgba(220, 38, 38, 1);
+        animation: z-flash 0.35s infinite alternate;
+      }
+      .z-banner-lap {
+        background: linear-gradient(135deg, rgba(255, 47, 208, 0.95), rgba(118, 255, 240, 0.95));
+        border: 3px solid #ffffff;
+        color: #ffffff;
+        box-shadow: 0 0 50px rgba(255, 47, 208, 0.95);
+        animation: z-bounce 0.6s infinite alternate;
+      }
+      @keyframes z-flash {
+        0% { transform: translate(-50%, -50%) scale(1); }
+        100% { transform: translate(-50%, -50%) scale(1.08); background: #ffffff; color: #dc2626; }
+      }
+      @keyframes z-bounce {
+        0% { transform: translate(-50%, -50%) scale(1); }
+        100% { transform: translate(-50%, -50%) scale(1.1); }
+      }
+
+      /* Title Screen Custom Track Badge */
+      .z-title-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(16, 44, 56, 0.85);
+        border: 1.5px solid rgba(118, 255, 240, 0.5);
+        border-radius: 20px;
+        padding: 8px 18px;
+        font-size: 13px;
+        font-weight: 800;
+        color: #76fff0;
+        margin-top: 6px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .z-title-badge:hover {
+        background: rgba(20, 60, 80, 0.95);
+        border-color: #76fff0;
+        box-shadow: 0 0 20px rgba(118, 255, 240, 0.5);
+      }
+
+      /* Multiplayer Modal & Social Styles */
+      .z-mp-tab {
+        background: rgba(8, 26, 36, 0.85);
+        border: 1.5px solid rgba(118, 255, 240, 0.25);
+        color: #94a3b8;
+        transition: all 0.18s ease;
+      }
+      .z-mp-tab:hover {
+        color: #ffffff;
+        border-color: rgba(118, 255, 240, 0.6);
+      }
+      .z-mp-tab.active {
+        background: rgba(16, 44, 56, 0.95);
+        border-color: #76fff0;
+        color: #ffffff;
+        box-shadow: 0 0 20px rgba(118, 255, 240, 0.4);
+      }
+      .z-emote-bar {
+        position: fixed;
+        top: 75px;
+        left: max(16px, env(safe-area-inset-left));
+        z-index: 99999;
+        display: flex;
+        gap: 8px;
+        pointer-events: auto;
+      }
+      .z-emote-btn {
+        background: rgba(16, 44, 56, 0.92);
+        border: 2px solid #ffc857;
+        border-radius: 14px;
+        font-size: 20px;
+        padding: 6px 12px;
+        cursor: pointer;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+        transition: transform 0.08s ease, background 0.12s ease;
+      }
+      .z-emote-btn:active {
+        transform: scale(0.85);
+        background: rgba(255, 200, 87, 0.4);
+      }
+      @keyframes z-pop-bounce {
+        0% { transform: translate(-50%, -100%) scale(0.4); opacity: 0; }
+        60% { transform: translate(-50%, -100%) scale(1.15); opacity: 1; }
+        100% { transform: translate(-50%, -100%) scale(1); opacity: 1; }
+      }
+
+      /* Universal Safe Area Insets & Responsive Android HUD Layouts */
+      .hud__pos {
+        top: max(16px, env(safe-area-inset-top)) !important;
+        left: max(16px, env(safe-area-inset-left)) !important;
+      }
+      .hud__timers {
+        top: max(16px, env(safe-area-inset-top)) !important;
+      }
+      .hud__standings {
+        top: max(16px, env(safe-area-inset-top)) !important;
+        right: max(16px, env(safe-area-inset-right)) !important;
+      }
+      .hud__speed {
+        bottom: max(116px, calc(env(safe-area-inset-bottom) + 104px)) !important;
+        left: max(18px, env(safe-area-inset-left)) !important;
+      }
+      .hud__coins {
+        bottom: max(226px, calc(env(safe-area-inset-bottom) + 214px)) !important;
+        left: max(18px, env(safe-area-inset-left)) !important;
+      }
+      .hud__minimap {
+        bottom: max(180px, calc(env(safe-area-inset-bottom) + 168px)) !important;
+        right: max(18px, env(safe-area-inset-right)) !important;
+      }
+
+      /* Mobile HUD layout adjustments to avoid pedal overlap */
+      @media (max-width: 900px) {
+        .hud__speed {
+          bottom: max(112px, calc(env(safe-area-inset-bottom) + 102px)) !important;
+          left: max(14px, env(safe-area-inset-left)) !important;
+          transform: scale(0.85);
+          transform-origin: bottom left;
+        }
+        .hud__coins {
+          bottom: max(212px, calc(env(safe-area-inset-bottom) + 200px)) !important;
+          left: max(14px, env(safe-area-inset-left)) !important;
+          transform: scale(0.88);
+          transform-origin: bottom left;
+        }
+        .hud__minimap {
+          bottom: max(175px, calc(env(safe-area-inset-bottom) + 165px)) !important;
+          right: max(14px, env(safe-area-inset-right)) !important;
+          width: 140px !important;
+          height: 140px !important;
+        }
+        .hud__drift {
+          bottom: max(16px, env(safe-area-inset-bottom)) !important;
+          width: 180px !important;
+        }
+      }
+
+      /* Android Ultra-Wide Landscape Phones (360px - 520px height) */
+      @media (max-height: 520px) {
+        .z-steer { width: 66px; height: 66px; font-size: 24px; }
+        .z-gas { width: 72px; height: 72px; font-size: 14px; }
+        .z-brake { width: 60px; height: 60px; font-size: 12px; }
+        .z-drift, .z-item { width: 102px; height: 42px; font-size: 13px; }
+        .hud__speed {
+          bottom: max(96px, calc(env(safe-area-inset-bottom) + 90px)) !important;
+          left: max(12px, env(safe-area-inset-left)) !important;
+          transform: scale(0.76);
+          transform-origin: bottom left;
+        }
+        .hud__coins {
+          bottom: max(176px, calc(env(safe-area-inset-bottom) + 170px)) !important;
+          left: max(12px, env(safe-area-inset-left)) !important;
+          transform: scale(0.78);
+          transform-origin: bottom left;
+        }
+        .hud__minimap {
+          bottom: max(152px, calc(env(safe-area-inset-bottom) + 146px)) !important;
+          right: max(12px, env(safe-area-inset-right)) !important;
+          width: 114px !important;
+          height: 114px !important;
+        }
+        .hud__pos {
+          top: max(8px, env(safe-area-inset-top)) !important;
+          left: max(10px, env(safe-area-inset-left)) !important;
+          transform: scale(0.82);
+          transform-origin: top left;
+        }
+        .hud__timers {
+          top: max(8px, env(safe-area-inset-top)) !important;
+          transform: translate(-50%) scale(0.85);
+          transform-origin: top center;
+        }
+        .hud__standings {
+          top: max(8px, env(safe-area-inset-top)) !important;
+          right: max(68px, calc(env(safe-area-inset-right) + 60px)) !important;
+          transform: scale(0.82);
+          transform-origin: top right;
+        }
+      }
+
+      /* Tablets & Foldables (4:3, 16:10, 1:1) */
+      @media (min-height: 521px) and (max-aspect-ratio: 16/10) {
+        .hud__minimap {
+          bottom: max(180px, calc(env(safe-area-inset-bottom) + 170px)) !important;
+          right: max(22px, env(safe-area-inset-right)) !important;
+          width: 156px !important;
+          height: 156px !important;
+        }
+        .hud__speed {
+          bottom: max(120px, calc(env(safe-area-inset-bottom) + 110px)) !important;
+          left: max(22px, env(safe-area-inset-left)) !important;
+          transform: scale(0.9);
+          transform-origin: bottom left;
+        }
+        .hud__coins {
+          bottom: max(224px, calc(env(safe-area-inset-bottom) + 214px)) !important;
+          left: max(22px, env(safe-area-inset-left)) !important;
+          transform: scale(0.92);
+          transform-origin: bottom left;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="gl"></canvas>
+      <div id="ui"></div>
+      <div id="boot">Loading Zephyr Reef…</div>
+
+      <!-- Mobile Touch Controls -->
+      <div id="zephyr-touch" class="zephyr-touch-layer">
+        <!-- Steering Pads (Hidden on Title/Select/Results) -->
+        <div id="z-touch-steer-group" class="touch-group touch-group-left">
+          <button id="z-btn-left" class="z-btn z-steer" aria-label="Steer Left">◀</button>
+          <button id="z-btn-right" class="z-btn z-steer" aria-label="Steer Right">▶</button>
+        </div>
+
+        <!-- Utility Bar (Always Accessible) -->
+        <div class="touch-group touch-group-top">
+          <button id="z-btn-multiplayer" class="z-mini" style="background: rgba(118, 255, 240, 0.28); border-color: #76fff0; color: #ffffff; font-weight: 800;" aria-label="Multiplayer">🌐 MULTIPLAYER</button>
+          <button id="z-btn-menu" class="z-mini" aria-label="Menu Pausa">⏸️ MENU</button>
+          <button id="z-btn-track" class="z-mini" aria-label="Cambia Pista">🗺️ PISTA</button>
+          <button id="z-btn-fullscreen" class="z-mini" aria-label="Schermo Intero">⛶ SCHERMO</button>
+          <button id="z-btn-reset" class="z-mini" aria-label="Reset Kart">↻ RESET</button>
+          <button id="z-btn-audio" class="z-mini" aria-label="Toggle Audio">🔊 AUDIO</button>
+          <button id="z-btn-chat" class="z-mini" aria-label="Quick Chat">💬 CHAT</button>
+          <button id="z-btn-settings" class="z-mini" aria-label="Opzioni">⚙️ OPZIONI</button>
+        </div>
+
+        <!-- Pedals & Action Buttons (Hidden on Title/Select/Results) -->
+        <div id="z-touch-pedals-group" class="touch-group touch-group-right">
+          <div class="z-actions-row">
+            <button id="z-btn-retro" class="z-btn z-retro" aria-label="Retrocamera">👀 RETRO</button>
+            <button id="z-btn-drift" class="z-btn z-drift" aria-label="Drift">⚡ DRIFT</button>
+            <button id="z-btn-item" class="z-btn z-item" aria-label="Use Item">
+              <span id="z-item-ico">🎯</span>
+              <span id="z-item-txt">POTERE</span>
+            </button>
+          </div>
+          <div class="touch-pedals">
+            <button id="z-btn-brake" class="z-btn z-brake" aria-label="Brake">BRAKE</button>
+            <button id="z-btn-gas" class="z-btn z-gas" aria-label="Accelerate">GAS</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- In-race Banners -->
+      <!-- In-race Radar & Threat HUD -->
+      <div id="z-rearview-container" class="hud__rearview hidden">
+        <div class="mirror-bezel">
+          <span class="mirror-label">RETRO</span>
+          <div id="z-mirror-indicator" class="mirror-indicator">CLEAR</div>
+        </div>
+      </div>
+      <div id="z-threat-radar" class="hud__threat-alert hidden">⚠️ ATTACCO IN ARRIVO! ⚠️</div>
+      <div id="z-blind-left" class="hud__blind-spot left hidden">◀ RIVALE</div>
+      <div id="z-blind-right" class="hud__blind-spot right hidden">RIVALE ▶</div>
+      <div id="z-hud-wrong-way" class="z-banner z-banner-wrong hidden">⚠️ WRONG WAY! TURN AROUND! ⚠️</div>
+      <div id="z-hud-final-lap" class="z-banner z-banner-lap hidden">🏁 FINAL LAP! 🏁</div>
+
+      <!-- In-race Pause Menu -->
+      <div id="z-pause-modal" class="z-modal hidden">
+        <div class="z-modal-card" style="max-width: 440px; text-align: center;">
+          <h2 style="font-size: 24px; font-weight: 800; color: #76fff0; margin: 0 0 6px 0;">⏸️ GARA IN PAUSA</h2>
+          <p style="font-size: 13px; color: #94a3b8; margin: 0 0 20px 0;">Zephyr Reef Grand Prix</p>
+          <div style="display: flex; flex-direction: column; gap: 12px; width: 100%;">
+            <button id="z-pause-resume" class="z-mini" style="padding: 14px; font-size: 15px; background: rgba(118, 255, 240, 0.35); border-color: #76fff0;">RIPRENDI GARA</button>
+            <button id="z-pause-mp" class="z-mini" style="padding: 14px; font-size: 15px; border-color: #76fff0; color: #76fff0; font-weight: 800;">🌐 MULTIPLAYER PRIVATO</button>
+            <button id="z-pause-opt" class="z-mini" style="padding: 14px; font-size: 15px;">⚙️ OPZIONI GIOCO</button>
+            <button id="z-pause-restart" class="z-mini" style="padding: 14px; font-size: 15px;">RICOMINCIA GARA</button>
+            <button id="z-pause-change-track" class="z-mini" style="padding: 14px; font-size: 15px;">SCEGLI CIRCUITO</button>
+            <button id="z-pause-title" class="z-mini" style="padding: 14px; font-size: 15px; border-color: rgba(255,255,255,0.2);">TORNA AL TITOLO</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Chat Modal -->
+      <div id="z-chat-modal" class="z-modal hidden">
+        <div class="z-modal-card" style="max-width: 380px; text-align: center;">
+          <h2 style="font-size: 20px; font-weight: 800; color: #76fff0; margin: 0 0 12px 0;">💬 CHAT RAPIDA</h2>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%;">
+            <button class="z-chat-btn" data-msg="GG! 🏁">GG! 🏁</button>
+            <button class="z-chat-btn" data-msg="Attento! 💣">Attento! 💣</button>
+            <button class="z-chat-btn" data-msg="Bella gara! 🏎️">Bella gara! 🏎️</button>
+            <button class="z-chat-btn" data-msg="Rivincita! 🔄">Rivincita! 🔄</button>
+            <button class="z-chat-btn" data-msg="Grande sorpasso! ⚡">Sorpasso! ⚡</button>
+            <button class="z-chat-btn" data-msg="Al traguardo! 😎">Traguardo! 😎</button>
+          </div>
+          <button id="z-chat-close" class="z-mini" style="margin-top: 14px; width: 100%; padding: 10px; border-color: rgba(255,255,255,0.2);">CHIUDI</button>
+        </div>
+      </div>
+
+      <!-- Settings Modal -->
+      <div id="z-settings-modal" class="z-modal hidden">
+        <div class="z-modal-card" style="max-width: 440px; text-align: left;">
+          <h2 style="font-size: 22px; font-weight: 800; color: #76fff0; margin: 0 0 14px 0; text-align: center;">⚙️ OPZIONI GIOCO</h2>
+          <div style="display: flex; flex-direction: column; gap: 14px; width: 100%;">
+            <label style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #e2e8f0; cursor: pointer;">
+              <span>Acceleratore Automatico (Auto-Gas)</span>
+              <input type="checkbox" id="z-opt-autogas" style="width: 20px; height: 20px; accent-color: #76fff0;">
+            </label>
+            <label style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #e2e8f0; cursor: pointer;">
+              <span>Sterzo Giroscopico (Tilt Gyro)</span>
+              <input type="checkbox" id="z-opt-gyro" style="width: 20px; height: 20px; accent-color: #76fff0;">
+            </label>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #e2e8f0;">
+              <span>Dimensione Tasti Touch</span>
+              <select id="z-opt-btnsize" style="background: #0d1e30; color: #76fff0; border: 1px solid #76fff0; border-radius: 6px; padding: 4px 8px; font-family: inherit;">
+                <option value="standard">Standard</option>
+                <option value="large">Grande</option>
+                <option value="compact">Compatto</option>
+              </select>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #e2e8f0;">
+              <span>Classe Velocità</span>
+              <select id="z-opt-speedclass" style="background: #0d1e30; color: #76fff0; border: 1px solid #76fff0; border-radius: 6px; padding: 4px 8px; font-family: inherit;">
+                <option value="150cc">150cc (Esperto)</option>
+                <option value="100cc">100cc (Normale)</option>
+                <option value="50cc">50cc (Principiante)</option>
+              </select>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #e2e8f0;">
+              <span>Risparmio Batteria (Target FPS)</span>
+              <select id="z-opt-fps" style="background: #0d1e30; color: #76fff0; border: 1px solid #76fff0; border-radius: 6px; padding: 4px 8px; font-family: inherit;">
+                <option value="60">60 FPS (Massima Fluidità)</option>
+                <option value="45">45 FPS (Bilanciato)</option>
+                <option value="30">30 FPS (Eco Batteria)</option>
+              </select>
+            </div>
+          </div>
+          <button id="z-settings-close" class="z-mini" style="margin-top: 18px; width: 100%; padding: 12px; font-weight: 800; background: rgba(118, 255, 240, 0.3); border-color: #76fff0; color: #ffffff;">SALVA & CHIUDI</button>
+        </div>
+      </div>
+
+      <!-- Track Selector Modal -->
+      <div id="z-track-modal" class="z-modal hidden">
+        <div class="z-modal-card">
+          <h2 style="font-size: 22px; font-weight: 800; color: #76fff0; margin: 0 0 6px 0;">SCEGLI CIRCUITO ZEPHYR REEF</h2>
+          <p style="font-size: 13px; color: #94a3b8; margin: 0 0 16px 0;">Seleziona il tracciato con guardrail protettivo continuo (Zero cadute nel vuoto):</p>
+          <div class="z-track-list">
+  <div class="z-cup-header">
+    <span class="z-cup-title">🏆 COPPA BREZZA</span>
+    <span class="z-cup-diff">Difficoltà: ★☆☆☆☆☆</span>
+  </div>
+  <div class="z-track-item" data-index="0">
+    <span style="font-size: 26px;">🏛️</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Sunken Atlantis Citadel</div>
+      <div style="font-size: 11px; color: #76fff0;">Cittadella Sommersa di Atlantide</div>
+      <div id="z-record-0" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="1">
+    <span style="font-size: 26px;">✈️</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Zephyr Terminal Runway</div>
+      <div style="font-size: 11px; color: #76fff0;">Aeroporto Transatlantico</div>
+      <div id="z-record-1" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="2">
+    <span style="font-size: 26px;">🌲</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Ancient Redwood Forest</div>
+      <div style="font-size: 11px; color: #76fff0;">Foresta dei Giganti</div>
+      <div id="z-record-2" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="3">
+    <span style="font-size: 26px;">🦘</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Apex Big-Air Stadium</div>
+      <div style="font-size: 11px; color: #76fff0;">Circuito dei Megasalti</div>
+      <div id="z-record-3" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-cup-header">
+    <span class="z-cup-title">🏆 COPPA CANYON</span>
+    <span class="z-cup-diff">Difficoltà: ★★☆☆☆☆</span>
+  </div>
+  <div class="z-track-item" data-index="4">
+    <span style="font-size: 26px;">🏜️</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Redrock Canyon & Mines</div>
+      <div style="font-size: 11px; color: #76fff0;">Gola dei Minatori & Canyon</div>
+      <div id="z-record-4" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="5">
+    <span style="font-size: 26px;">❄️</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Glacier Frostbite Peaks</div>
+      <div style="font-size: 11px; color: #76fff0;">Vette di Ghiaccio & Ghiacciai</div>
+      <div id="z-record-5" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="6">
+    <span style="font-size: 26px;">🏙️</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Neo Zephyr Cybercity</div>
+      <div style="font-size: 11px; color: #76fff0;">Metropoli Neon Cyberpunk</div>
+      <div id="z-record-6" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="7">
+    <span style="font-size: 26px;">🌋</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Magma Caldera</div>
+      <div style="font-size: 11px; color: #76fff0;">Caldera del Vulcano Magmatico</div>
+      <div id="z-record-7" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-cup-header">
+    <span class="z-cup-title">🏆 COPPA ABISSI</span>
+    <span class="z-cup-diff">Difficoltà: ★★★☆☆☆</span>
+  </div>
+  <div class="z-track-item" data-index="8">
+    <span style="font-size: 26px;">🔥</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Nether Inferno Abyss</div>
+      <div style="font-size: 11px; color: #76fff0;">Fauci dell'Inferno</div>
+      <div id="z-record-8" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="9">
+    <span style="font-size: 26px;">🌌</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Cosmic Rainbow Orbit</div>
+      <div style="font-size: 11px; color: #76fff0;">Nastro Spaziale Iperuranio</div>
+      <div id="z-record-9" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="10">
+    <span style="font-size: 26px;">🦑</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Kraken Spine</div>
+      <div style="font-size: 11px; color: #76fff0;">Dorso del Kraken</div>
+      <div id="z-record-10" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="11">
+    <span style="font-size: 26px;">💎</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Bioluminescent Caves</div>
+      <div style="font-size: 11px; color: #76fff0;">Grotte Luminescenti</div>
+      <div id="z-record-11" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-cup-header">
+    <span class="z-cup-title">🏆 COPPA CIELO</span>
+    <span class="z-cup-diff">Difficoltà: ★★★★☆☆</span>
+  </div>
+  <div class="z-track-item" data-index="12">
+    <span style="font-size: 26px;">☁️</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Sky Reef</div>
+      <div style="font-size: 11px; color: #76fff0;">Arcipelago Celeste</div>
+      <div id="z-record-12" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="13">
+    <span style="font-size: 26px;">🌩️</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Nimbus Overpass</div>
+      <div style="font-size: 11px; color: #76fff0;">Cavalcavia dei Nembi</div>
+      <div id="z-record-13" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="14">
+    <span style="font-size: 26px;">🦅</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Stratos Hairpins</div>
+      <div style="font-size: 11px; color: #76fff0;">Tornanti della Stratosfera</div>
+      <div id="z-record-14" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="15">
+    <span style="font-size: 26px;">🌪️</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Vortex Zenith</div>
+      <div style="font-size: 11px; color: #76fff0;">Zenith del Vortice</div>
+      <div id="z-record-15" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-cup-header">
+    <span class="z-cup-title">🏆 COPPA ANTICA</span>
+    <span class="z-cup-diff">Difficoltà: ★★★★★☆</span>
+  </div>
+  <div class="z-track-item" data-index="16">
+    <span style="font-size: 26px;">🏛️</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Temple of Nix</div>
+      <div style="font-size: 11px; color: #76fff0;">Il Tempio Sommerso</div>
+      <div id="z-record-16" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="17">
+    <span style="font-size: 26px;">🏺</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Sunken Acropolis</div>
+      <div style="font-size: 11px; color: #76fff0;">Acropoli Sommersa</div>
+      <div id="z-record-17" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="18">
+    <span style="font-size: 26px;">🐉</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Leviathan's Roar</div>
+      <div style="font-size: 11px; color: #76fff0;">Ruggito del Leviatano</div>
+      <div id="z-record-18" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="19">
+    <span style="font-size: 26px;">🔮</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Prism Citadel</div>
+      <div style="font-size: 11px; color: #76fff0;">Cittadella dei Prismi</div>
+      <div id="z-record-19" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-cup-header">
+    <span class="z-cup-title">🏆 COPPA NOVA</span>
+    <span class="z-cup-diff">Difficoltà: ★★★★★★</span>
+  </div>
+  <div class="z-track-item" data-index="20">
+    <span style="font-size: 26px;">🔥</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Solar Forge Caldera</div>
+      <div style="font-size: 11px; color: #76fff0;">Caldera della Forgia Solare</div>
+      <div id="z-record-20" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="21">
+    <span style="font-size: 26px;">🌌</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Cosmic Warpway</div>
+      <div style="font-size: 11px; color: #76fff0;">Autostrada Iperspaziale</div>
+      <div id="z-record-21" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="22">
+    <span style="font-size: 26px;">⚛️</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Quantum Singularity</div>
+      <div style="font-size: 11px; color: #76fff0;">Singolarità Quantistica</div>
+      <div id="z-record-22" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+  <div class="z-track-item" data-index="23">
+    <span style="font-size: 26px;">👑</span>
+    <div style="flex: 1; min-width: 0; text-align: left;">
+      <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Zephyr Omega Finale</div>
+      <div style="font-size: 11px; color: #76fff0;">Gran Finale Zephyr Omega</div>
+      <div id="z-record-23" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
+    </div>
+  </div>
+</div>
+          <button id="z-modal-close" class="z-mini" style="width: 100%; padding: 12px; font-size: 14px; cursor: pointer;">CHIUDI</button>
+        </div>
+      </div>
+
+      <!-- Multiplayer Private Room Modal -->
+      <div id="z-multiplayer-modal" class="z-modal hidden">
+        <div class="z-modal-card" style="max-width: 580px; text-align: center;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h2 style="font-size: 22px; font-weight: 800; color: #76fff0; margin: 0; display: flex; align-items: center; gap: 8px;">
+              <span>🌐</span> MULTIPLAYER PRIVATO P2P
+            </h2>
+            <button id="z-mp-close" class="z-mini" style="padding: 4px 10px; font-size: 14px;">✕</button>
+          </div>
+          <p style="font-size: 12px; color: #94a3b8; margin: 0 0 16px 0;">Gioca online in tempo reale con i tuoi amici in sessioni private senza server!</p>
+
+          <!-- Tab Selector -->
+          <div style="display: flex; gap: 10px; margin-bottom: 18px; border-bottom: 1px solid rgba(118, 255, 240, 0.25); padding-bottom: 12px;">
+            <button id="z-tab-host" class="z-mp-tab active" style="flex: 1; padding: 10px; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer;">👑 CREA STANZA (HOST)</button>
+            <button id="z-tab-guest" class="z-mp-tab" style="flex: 1; padding: 10px; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer;">🔗 ENTRA IN STANZA (OSPITE)</button>
+          </div>
+
+          <!-- HOST TAB CONTENT -->
+          <div id="z-mp-host-view">
+            <div style="background: rgba(8, 26, 36, 0.85); border: 2px dashed #76fff0; border-radius: 16px; padding: 16px; margin-bottom: 16px;">
+              <div style="font-size: 11px; color: #94a3b8; letter-spacing: 0.1em; text-transform: uppercase;">Codice Stanza Privata</div>
+              <div id="z-mp-room-code" style="font-size: 32px; font-weight: 900; letter-spacing: 0.15em; color: #ffc857; margin: 6px 0; font-family: monospace;">ZEPH-....</div>
+              <div style="display: flex; gap: 8px; justify-content: center; margin-top: 10px;">
+                <button id="z-mp-copy-code" class="z-mini" style="font-size: 11px; padding: 6px 14px;">📋 COPIA CODICE</button>
+                <button id="z-mp-copy-link" class="z-mini" style="font-size: 11px; padding: 6px 14px; background: rgba(118, 255, 240, 0.35); border-color: #76fff0;">🔗 COPIA LINK INVITO</button>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 130px; text-align: left;">
+                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">IL TUO NICKNAME</label>
+                <input id="z-mp-host-name" type="text" maxlength="16" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 8px 12px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
+              </div>
+              <div style="flex: 1; min-width: 140px; text-align: left;">
+                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">IL TUO KART</label>
+                <select id="z-mp-host-kart" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 8px 12px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
+                  <option value="nix">🦦 Nix (Wave-Runner)</option>
+                  <option value="bruno">🪨 Bruno (Landslide)</option>
+                  <option value="sable">🦋 Sable (Nightflyer)</option>
+                  <option value="zuzu">⚡ Zuzu (Drifter)</option>
+                  <option value="rustam">⚙️ Rustam (Tinkerer)</option>
+                  <option value="marlow">🐸 Marlow (Corsair)</option>
+                </select>
+              </div>
+              <div style="flex: 1; min-width: 150px; text-align: left;">
+                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">NUMERO DI PISTE (TORNEO)</label>
+                <select id="z-mp-playlist-count" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #ffc857; padding: 8px 12px; border-radius: 10px; font-weight: 800; margin-top: 4px;">
+                  <option value="1">1 Pista (Gara Singola)</option>
+                  <option value="2">2 Piste (Mini Torneo)</option>
+                  <option value="3" selected>3 Piste (Gran Premio)</option>
+                  <option value="4">4 Piste (Campionato)</option>
+                  <option value="5">5 Piste (Maratona GP)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Dynamic Track Selectors for Host Playlist -->
+            <div style="text-align: left; margin-bottom: 14px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">SELEZIONE PISTE SPECIFICHE:</label>
+                <span id="z-mp-playlist-badge" style="font-size: 10px; color: #ffc857; font-weight: 800; background: rgba(255,200,87,0.15); padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(255,200,87,0.4);">3 Piste Configurate</span>
+              </div>
+              <div id="z-mp-playlist-tracks-container" style="display: flex; flex-direction: column; gap: 8px; background: rgba(6, 20, 28, 0.6); padding: 10px; border-radius: 12px; border: 1px solid rgba(118,255,240,0.25); max-height: 180px; overflow-y: auto;">
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;">
+              <div style="width: 75px; text-align: left;">
+                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">GIRI</label>
+                <select id="z-mp-laps-select" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 8px 12px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
+                  <option value="1">1 Giro</option>
+                  <option value="2">2 Giri</option>
+                  <option value="3" selected>3 Giri</option>
+                  <option value="5">5 Giri</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Connected Lobby List -->
+            <div style="text-align: left; margin-bottom: 16px;">
+              <div style="font-size: 11px; color: #94a3b8; font-weight: 700; margin-bottom: 6px;">AMICI IN STANZA (<span id="z-mp-player-count">1</span>/6):</div>
+              <div id="z-mp-lobby-players" style="display: flex; flex-direction: column; gap: 6px; max-height: 140px; overflow-y: auto; background: rgba(6, 20, 28, 0.6); padding: 8px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+              </div>
+            </div>
+
+            <button id="z-mp-start-race" class="z-mini" style="width: 100%; padding: 14px; font-size: 16px; font-weight: 900; background: linear-gradient(135deg, #059669, #10b981); border: 2px solid #34d399; color: #ffffff; border-radius: 14px; box-shadow: 0 0 25px rgba(16, 185, 129, 0.5); cursor: pointer;">
+              🚀 AVVIA GARA MULTIPLAYER
+            </button>
+          </div>
+
+          <!-- GUEST TAB CONTENT -->
+          <div id="z-mp-guest-view" class="hidden">
+            <div id="z-mp-guest-form">
+              <div style="text-align: left; margin-bottom: 14px;">
+                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">CODICE STANZA PRIVATA</label>
+                <input id="z-mp-join-code" type="text" maxlength="12" placeholder="Es. ZEPH-7429" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #ffc857; font-family: monospace; font-size: 20px; text-transform: uppercase; padding: 10px 14px; border-radius: 10px; font-weight: 800; margin-top: 4px;">
+              </div>
+
+              <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 140px; text-align: left;">
+                  <label style="font-size: 11px; color: #76fff0; font-weight: 700;">IL TUO NICKNAME</label>
+                  <input id="z-mp-guest-name" type="text" maxlength="16" placeholder="Il tuo nome" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 10px 14px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
+                </div>
+                <div style="flex: 1; min-width: 140px; text-align: left;">
+                  <label style="font-size: 11px; color: #76fff0; font-weight: 700;">IL TUO KART</label>
+                  <select id="z-mp-guest-kart" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 10px 14px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
+                    <option value="nix">🦦 Nix (Wave-Runner)</option>
+                    <option value="bruno">🪨 Bruno (Landslide)</option>
+                    <option value="sable">🦋 Sable (Nightflyer)</option>
+                    <option value="zuzu">⚡ Zuzu (Drifter)</option>
+                    <option value="rustam">⚙️ Rustam (Tinkerer)</option>
+                    <option value="marlow">🐸 Marlow (Corsair)</option>
+                  </select>
+                </div>
+              </div>
+
+              <button id="z-mp-join-btn" class="z-mini" style="width: 100%; padding: 14px; font-size: 16px; font-weight: 900; background: linear-gradient(135deg, #0284c7, #0ea5e9); border: 2px solid #38bdf8; color: #ffffff; border-radius: 14px; box-shadow: 0 0 25px rgba(14, 165, 233, 0.5); cursor: pointer; margin-bottom: 12px;">
+                🔗 ENTRA NELLA STANZA
+              </button>
+            </div>
+
+            <div id="z-mp-guest-waiting" class="hidden" style="background: rgba(8, 26, 36, 0.8); border: 1px solid #76fff0; border-radius: 12px; padding: 14px; margin-top: 10px; text-align: left;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <div style="font-size: 14px; font-weight: 800; color: #34d399;">✓ Connesso alla Stanza!</div>
+                <button id="z-mp-guest-leave-btn" style="padding: 4px 10px; font-size: 11px; font-weight: 700; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.5); color: #fca5a5; border-radius: 6px; cursor: pointer;">🚪 Esci</button>
+              </div>
+              <div id="z-mp-guest-info" style="font-size: 12px; color: #94a3b8; margin-bottom: 10px;">In attesa che l'Host avvii la gara...</div>
+
+              <!-- Tournament Info for Guest -->
+              <div id="z-mp-guest-tournament-info" style="margin-bottom: 10px; background: rgba(118,255,240,0.08); border: 1px solid rgba(118,255,240,0.3); border-radius: 10px; padding: 10px; font-size: 12px; color: #e2e8f0;">
+                <div style="font-weight: 800; color: #76fff0; font-size: 11px; text-transform: uppercase; margin-bottom: 4px;">🏆 Programma Piste del Torneo:</div>
+                <div id="z-mp-guest-tracks-list" style="color: #ffc857; font-weight: 700; line-height: 1.4;">Caricamento piste...</div>
+              </div>
+
+              <!-- In-Room Character Selector for Guests -->
+              <div style="margin-bottom: 10px; background: rgba(0,0,0,0.3); padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(118,255,240,0.25);">
+                <label style="font-size: 11px; color: #76fff0; font-weight: 700; display: block; margin-bottom: 4px;">CAMBIA PERSONAGGIO / KART:</label>
+                <select id="z-mp-guest-lobby-kart" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.95); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 8px 10px; border-radius: 8px; font-weight: 700;">
+                  <option value="nix">🦦 Nix (Wave-Runner)</option>
+                  <option value="bruno">🪨 Bruno (Landslide)</option>
+                  <option value="sable">🦋 Sable (Nightflyer)</option>
+                  <option value="zuzu">⚡ Zuzu (Drifter)</option>
+                  <option value="rustam">⚙️ Rustam (Tinkerer)</option>
+                  <option value="marlow">🐸 Marlow (Corsair)</option>
+                </select>
+              </div>
+
+              <!-- Ready Check Button for Guest -->
+              <button id="z-mp-guest-ready-btn" class="z-mini" style="width: 100%; padding: 12px; font-size: 15px; font-weight: 900; background: linear-gradient(135deg, #f59e0b, #d97706); border: 2px solid #fbbf24; color: #ffffff; border-radius: 12px; cursor: pointer; margin-bottom: 12px; box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); transition: all 0.2s ease;">
+                ✋ CONFERMA: SONO PRONTO!
+              </button>
+
+              <div style="font-size: 11px; color: #94a3b8; font-weight: 700; margin-bottom: 6px;">AMICI IN STANZA:</div>
+              <div id="z-mp-guest-players" style="display: flex; flex-direction: column; gap: 6px; max-height: 140px; overflow-y: auto; background: rgba(6, 20, 28, 0.6); padding: 8px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5-Second Synchronized Pre-Race Countdown / Loading Overlay -->
+      <div id="z-mp-countdown-overlay" class="hidden" style="position: fixed; inset: 0; background: radial-gradient(circle at center, rgba(8, 26, 36, 0.97) 0%, rgba(2, 8, 14, 0.99) 100%); z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); text-align: center; padding: 20px;">
+        <div style="font-size: 13px; font-weight: 900; letter-spacing: 0.2em; color: #76fff0; text-transform: uppercase; margin-bottom: 6px;">
+          TUTTI I PILOTI CONFERMATI!
+        </div>
+        <div id="z-mp-countdown-track" style="font-size: 24px; font-weight: 900; color: #ffc857; margin-bottom: 20px; text-shadow: 0 0 20px rgba(255,200,87,0.6);">
+          🪸 Coral Sanctuary (3 Giri)
+        </div>
+        
+        <div id="z-mp-countdown-num" style="font-size: 120px; font-weight: 950; font-family: monospace, sans-serif; color: #ffffff; text-shadow: 0 0 35px #76fff0, 0 0 70px #38bdf8; line-height: 1; transform: scale(1); transition: transform 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+          5
+        </div>
+        
+        <div id="z-mp-countdown-status" style="margin-top: 24px; font-size: 14px; font-weight: 700; color: #cbd5e1; letter-spacing: 0.05em;">
+          Sincronizzazione piloti e griglia di partenza...
+        </div>
+        <div style="width: 280px; height: 6px; background: rgba(255,255,255,0.12); border-radius: 3px; overflow: hidden; margin-top: 14px;">
+          <div id="z-mp-countdown-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #38bdf8, #76fff0); transition: width 1s linear;"></div>
+        </div>
+      </div>
+
+      <!-- Tournament GP Standings & Championship Modal -->
+      <div id="z-mp-tournament-modal" class="hidden" style="position: fixed; inset: 0; background: rgba(2, 6, 12, 0.94); z-index: 9998; display: none; align-items: center; justify-content: center; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); padding: 16px; box-sizing: border-box;">
+        <div style="background: linear-gradient(135deg, rgba(8, 26, 36, 0.96), rgba(4, 15, 22, 0.98)); border: 2px solid #76fff0; border-radius: 20px; max-width: 540px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 22px; box-shadow: 0 0 50px rgba(118, 255, 240, 0.35); text-align: center; color: #fff; box-sizing: border-box;">
+          
+          <div id="z-mp-tourney-badge" style="display: inline-block; padding: 4px 14px; background: rgba(118,255,240,0.15); border: 1px solid #76fff0; border-radius: 20px; font-size: 11px; font-weight: 800; color: #76fff0; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 8px;">
+            🏁 CLASSIFICA TORNEO GP
+          </div>
+          
+          <h2 id="z-mp-tourney-title" style="font-size: 22px; font-weight: 900; margin: 0 0 4px 0; color: #ffc857; text-shadow: 0 0 20px rgba(255,200,87,0.5);">
+            GARA 1 DI 3 COMPLETATA
+          </h2>
+          
+          <p id="z-mp-tourney-sub" style="font-size: 12px; color: #94a3b8; margin: 0 0 16px 0;">
+            Classifica generale a punti sincronizzata in tempo reale
+          </p>
+
+          <!-- Standings Table -->
+          <div style="background: rgba(6, 20, 28, 0.7); border: 1px solid rgba(118,255,240,0.25); border-radius: 14px; overflow: hidden; margin-bottom: 18px;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left;">
+              <thead>
+                <tr style="background: rgba(118, 255, 240, 0.12); color: #76fff0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;">
+                  <th style="padding: 10px 12px;">POS</th>
+                  <th style="padding: 10px 12px;">PILOTA</th>
+                  <th style="padding: 10px 12px; text-align: center;">GARA</th>
+                  <th style="padding: 10px 12px; text-align: right;">PUNTI TOTALI</th>
+                </tr>
+              </thead>
+              <tbody id="z-mp-tourney-tbody">
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Tournament Action Buttons -->
+          <div id="z-mp-tourney-actions" style="display: flex; flex-direction: column; gap: 10px;">
+            <button id="z-mp-tourney-next-btn" class="z-mini" style="width: 100%; padding: 14px; font-size: 15px; font-weight: 900; background: linear-gradient(135deg, #059669, #10b981); border: 2px solid #34d399; color: #ffffff; border-radius: 12px; box-shadow: 0 0 25px rgba(16, 185, 129, 0.5); cursor: pointer;">
+              🚀 AVVIA PROSSIMA PISTA
+            </button>
+            <div id="z-mp-tourney-guest-msg" class="hidden" style="font-size: 13px; font-weight: 700; color: #38bdf8; padding: 10px; background: rgba(56,189,248,0.12); border-radius: 10px; border: 1px dashed #38bdf8;">
+              ⏳ In attesa che l'Host avvii la prossima gara...
+            </div>
+            <button id="z-mp-tourney-exit-btn" class="z-mini" style="width: 100%; padding: 10px; font-size: 13px; font-weight: 700; background: rgba(239,68,68,0.2); border: 1px solid rgba(239,68,68,0.5); color: #fca5a5; border-radius: 10px; cursor: pointer;">
+              🚪 Ritorna alla Lobby Multiplayer
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- In-Race Quick Emote Bar -->
+      <div id="z-emote-bar" class="touch-group z-emote-bar hidden">
+        <button class="z-emote-btn" data-emote="GG! 🏆" title="GG!">🏆</button>
+        <button class="z-emote-btn" data-emote="Ops! 😂" title="Ops!">😂</button>
+        <button class="z-emote-btn" data-emote="Turbo! 🚀" title="Turbo!">🚀</button>
+        <button class="z-emote-btn" data-emote="Boom! 💣" title="Boom!">💣</button>
+      </div>
+    </div>
+
+    <script>
+      (function() {
+        // Haptic Feedback API
+        const haptic = (ms = 18) => {
+          if (window.AndroidHaptics && window.AndroidHaptics.vibrate) {
+            try { window.AndroidHaptics.vibrate(ms); } catch (e) {}
+          } else if (navigator.vibrate) {
+            try { navigator.vibrate(ms); } catch (e) {}
+          }
+        };
+
+        // Multi-touch & Anti-sticky button management
+        const activeKeys = new Set();
+        const sendKey = (code, isDown) => {
+          if (isDown) {
+            if (!activeKeys.has(code)) {
+              activeKeys.add(code);
+              window.dispatchEvent(new KeyboardEvent('keydown', { code, key: code, bubbles: true }));
+            }
+          } else {
+            if (activeKeys.has(code)) {
+              activeKeys.delete(code);
+              window.dispatchEvent(new KeyboardEvent('keyup', { code, key: code, bubbles: true }));
+            }
+          }
+        };
+
+        const clearAllInputs = () => {
+          for (const code of activeKeys) {
+            window.dispatchEvent(new KeyboardEvent('keyup', { code, key: code, bubbles: true }));
+          }
+          activeKeys.clear();
+          document.querySelectorAll('.z-btn.active').forEach(b => b.classList.remove('active'));
+        };
+
+        window.addEventListener('touchend', (e) => {
+          if (e.touches.length === 0) clearAllInputs();
+        });
+        window.addEventListener('touchcancel', clearAllInputs);
+        window.addEventListener('blur', clearAllInputs);
+
+        const bindBtn = (id, code, durationMs = 18) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          const press = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            el.classList.add('active');
+            sendKey(code, true);
+            haptic(durationMs);
+          };
+          const release = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            el.classList.remove('active');
+            sendKey(code, false);
+          };
+          el.addEventListener('touchstart', press, { passive: false });
+          el.addEventListener('touchend', release, { passive: false });
+          el.addEventListener('touchcancel', release, { passive: false });
+          el.addEventListener('mousedown', press);
+          el.addEventListener('mouseup', release);
+          el.addEventListener('mouseleave', release);
+        };
+
+        bindBtn('z-btn-left', 'KeyA', 15);
+        bindBtn('z-btn-right', 'KeyD', 15);
+        bindBtn('z-btn-gas', 'KeyW', 20);
+        bindBtn('z-btn-brake', 'KeyS', 20);
+        bindBtn('z-btn-drift', 'ShiftLeft', 25);
+        bindBtn('z-btn-item', 'Space', 35);
+        bindBtn('z-btn-retro', 'KeyQ', 20);
+
+        // Fullscreen Toggle (Item 7)
+        const fsBtn = document.getElementById('z-btn-fullscreen');
+        if (fsBtn) {
+          const toggleFs = (e) => {
+            e.preventDefault();
+            if (!document.fullscreenElement) {
+              if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen().catch(() => {});
+              } else if (document.documentElement.webkitRequestFullscreen) {
+                document.documentElement.webkitRequestFullscreen();
+              }
+              fsBtn.textContent = '⛶ RIDUCI';
+            } else {
+              if (document.exitFullscreen) {
+                document.exitFullscreen().catch(() => {});
+              } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+              }
+              fsBtn.textContent = '⛶ SCHERMO';
+            }
+            haptic(20);
+          };
+          fsBtn.addEventListener('click', toggleFs);
+          fsBtn.addEventListener('touchstart', toggleFs, { passive: false });
+        }
+
+        // HUD, Auto-Recovery, Adaptive Touch Layer & Lap Monitor
+        let stuckTime = 0;
+        let lastLap = 1;
+        const steerGroup = document.getElementById('z-touch-steer-group');
+        const pedalsGroup = document.getElementById('z-touch-pedals-group');
+        const wrongWayEl = document.getElementById('z-hud-wrong-way');
+        const finalLapEl = document.getElementById('z-hud-final-lap');
+        const itemBtn = document.getElementById('z-btn-item');
+        const audioBtn = document.getElementById('z-btn-audio');
+
+        // Initial audio sync
+        setTimeout(() => {
+          if (window.__zephyr && audioBtn) {
+            audioBtn.textContent = window.__zephyr.userSettings?.muted ? '🔇 MUTED' : '🔊 AUDIO';
+          }
+        }, 600);
+
+        setInterval(() => {
+          if (!window.__zephyr) return;
+          const z = window.__zephyr;
+          const director = z.director;
+          const isRacing = z.mode === 'race' && director;
+
+          // Toggle touch controls visibility depending on game mode
+          if (steerGroup && pedalsGroup) {
+            if (isRacing) {
+              steerGroup.style.display = 'flex';
+              pedalsGroup.style.display = 'flex';
+            } else {
+              steerGroup.style.display = 'none';
+              pedalsGroup.style.display = 'none';
+            }
+          }
+
+          const emoteBarEl = document.getElementById('z-emote-bar');
+          if (emoteBarEl) {
+            if (isRacing && window.__multiplayerManager && window.__multiplayerManager.state === 'RACING') {
+              emoteBarEl.classList.remove('hidden');
+            } else {
+              emoteBarEl.classList.add('hidden');
+            }
+          }
+
+          if (isRacing && director.player) {
+            const player = director.player;
+            const kmh = Math.round(Math.abs(player.speed || 0) * 3.6);
+
+            // Item Icon Animation & Status
+            const item = player.item;
+            const ico = document.getElementById('z-item-ico');
+            const txt = document.getElementById('z-item-txt');
+            if (itemBtn && ico && txt) {
+              if (player.itemRoll > 0) {
+                itemBtn.classList.add('rolling');
+                const rollIcons = ['⚡', '🎯', '🛰️', '💣', '🚀', '⭐', '📢', '🌐', '📦'];
+                ico.textContent = rollIcons[Math.floor(Math.random() * rollIcons.length)];
+                txt.textContent = 'ROULETTE';
+              } else if (item) {
+                itemBtn.classList.remove('rolling');
+                itemBtn.classList.add('ready');
+                const icons = {
+                  photon: '⚡',
+                  drone: '🎯',
+                  orbital: '🛰️',
+                  mine: '💣',
+                  turbo: '🚀',
+                  triple_turbo: '🚀',
+                  matrix: '⭐',
+                  shockwave: '📢',
+                  glitch: '🌐',
+                  decoy: '📦',
+                  bolt: '⚡',
+                  blast: '📢',
+                  shield: '🛡️',
+                  vortex: '🌪️',
+                  horn: '📯',
+                  triple_shield: '🫧'
+                };
+                const names = {
+                  photon: 'PHOTON',
+                  drone: 'DRONE',
+                  orbital: 'ION STRIKE',
+                  mine: 'EMP MINE',
+                  turbo: 'NITRO',
+                  triple_turbo: (player.turboCharges || 3) + 'x NITRO',
+                  matrix: 'MATRIX',
+                  shockwave: 'SHOCKWAVE',
+                  glitch: 'GLITCH',
+                  decoy: 'DECOY',
+                  bolt: 'PHOTON',
+                  blast: 'SHOCKWAVE',
+                  shield: 'SHIELD',
+                  vortex: 'VORTEX',
+                  horn: 'SUPER HORN',
+                  triple_shield: '3x WARD'
+                };
+                ico.textContent = icons[item] || '🎯';
+                txt.textContent = names[item] || item.toUpperCase();
+              } else {
+                itemBtn.classList.remove('rolling', 'ready');
+                ico.textContent = '🎯';
+                txt.textContent = 'POTERE';
+              }
+            }
+
+            // 50 Improvements: Radar, Blind Spot & Threat Alert monitoring
+            if (director && director.racers && player) {
+              const pPos = player.pos;
+              const pYaw = (player.state && player.state.yaw) || 0;
+              const fwdX = -Math.sin(pYaw);
+              const fwdZ = -Math.cos(pYaw);
+              const rightX = -fwdZ;
+              const rightZ = fwdX;
+
+              let leftBlind = false;
+              let rightBlind = false;
+              let closestRearDist = 999;
+
+              for (const other of director.racers) {
+                if (other === player || (other.progress && other.progress.finished)) continue;
+                const dx = other.pos.x - pPos.x;
+                const dz = other.pos.z - pPos.z;
+                const fwdDist = dx * fwdX + dz * fwdZ;
+                const latDist = dx * rightX + dz * rightZ;
+                const dist = Math.hypot(dx, dz);
+
+                if (fwdDist < -0.5 && fwdDist > -30) {
+                  if (dist < closestRearDist) closestRearDist = dist;
+                }
+                if (fwdDist > -3.5 && fwdDist < 1.8) {
+                  if (latDist < -1.4 && latDist > -4.5) leftBlind = true;
+                  if (latDist > 1.4 && latDist < 4.5) rightBlind = true;
+                }
+              }
+
+              const blindLeftEl = document.getElementById('z-blind-left');
+              const blindRightEl = document.getElementById('z-blind-right');
+              if (blindLeftEl) blindLeftEl.classList.toggle('hidden', !leftBlind);
+              if (blindRightEl) blindRightEl.classList.toggle('hidden', !rightBlind);
+
+              const rearIndicatorEl = document.getElementById('z-mirror-indicator');
+              const rearContainerEl = document.getElementById('z-rearview-container');
+              if (rearContainerEl && rearIndicatorEl) {
+                rearContainerEl.classList.remove('hidden');
+                if (closestRearDist < 30) {
+                  rearIndicatorEl.textContent = `${closestRearDist.toFixed(1)}m`;
+                  rearIndicatorEl.classList.toggle('warning', closestRearDist < 6.0);
+                } else {
+                  rearIndicatorEl.textContent = 'CLEAR';
+                  rearIndicatorEl.classList.remove('warning');
+                }
+              }
+
+              const threatRadarEl = document.getElementById('z-threat-radar');
+              let hasThreat = false;
+              if (director.items && director.items.bolts) {
+                for (const b of director.items.bolts) {
+                  if (b.active && b.owner !== player) {
+                    const bx = b.object.position.x - pPos.x;
+                    const bz = b.object.position.z - pPos.z;
+                    const fwdDot = bx * fwdX + bz * fwdZ;
+                    if (fwdDot < 0 && Math.hypot(bx, bz) < 26) {
+                      hasThreat = true;
+                      break;
+                    }
+                  }
+                }
+              }
+              if (threatRadarEl) threatRadarEl.classList.toggle('hidden', !hasThreat);
+            }
+
+            // Auto-recovery: if stuck < 2.5 km/h for > 2.8 seconds during race
+            if (director.raceState === 'racing' && kmh < 2.5) {
+              stuckTime += 0.12;
+              if (stuckTime > 2.8) {
+                director.manualReset();
+                stuckTime = 0;
+                haptic(35);
+              }
+            } else {
+              stuckTime = 0;
+            }
+
+            // Wrong Way banner
+            if (wrongWayEl) {
+              if (player.wrongWay && kmh > 6) {
+                wrongWayEl.classList.remove('hidden');
+              } else {
+                wrongWayEl.classList.add('hidden');
+              }
+            }
+
+            // Final Lap banner
+            if (player.lap === 3 && lastLap === 2) {
+              lastLap = 3;
+              if (finalLapEl) {
+                finalLapEl.classList.remove('hidden');
+                haptic(50);
+                setTimeout(() => finalLapEl.classList.add('hidden'), 2800);
+              }
+            }
+
+            // Save track record if player finishes
+            if (player.progress && player.progress.finished && player.progress.finishTime > 0) {
+              const curTrack = localStorage.getItem('zephyr_track') || '0';
+              const oldRecord = parseFloat(localStorage.getItem('zephyr_record_' + curTrack) || '9999');
+              if (player.progress.finishTime < oldRecord) {
+                localStorage.setItem('zephyr_record_' + curTrack, player.progress.finishTime.toFixed(2));
+              }
+            }
+          }
+        }, 120);
+
+        // Track Selector Modal & Records
+        const trackModal = document.getElementById('z-track-modal');
+        const trackBtn = document.getElementById('z-btn-track');
+        const closeBtn = document.getElementById('z-modal-close');
+
+        const updateRecordDisplays = () => {
+          for (let i = 0; i < 24; i++) {
+            const el = document.getElementById('z-record-' + i);
+            if (el) {
+              const rec = localStorage.getItem('zephyr_record_' + i);
+              if (rec) {
+                const sec = parseFloat(rec);
+                const m = Math.floor(sec / 60);
+                const s = (sec % 60).toFixed(2).padStart(5, '0');
+                el.textContent = `Record: ${m}:${s}`;
+              } else {
+                el.textContent = 'Record: --:--';
+              }
+            }
+          }
+        };
+
+        if (trackBtn && trackModal) {
+          const openTrack = (e) => {
+            e.preventDefault();
+            updateRecordDisplays();
+            trackModal.classList.remove('hidden');
+            haptic(15);
+          };
+          trackBtn.addEventListener('click', openTrack);
+          trackBtn.addEventListener('touchstart', openTrack);
+        }
+        if (closeBtn && trackModal) {
+          closeBtn.addEventListener('click', () => {
+            trackModal.classList.add('hidden');
+            haptic(15);
+          });
+        }
+
+        const curTrack = localStorage.getItem('zephyr_track') || '0';
+        document.querySelectorAll('.z-track-item').forEach(item => {
+          if (item.dataset.index === curTrack) item.classList.add('active');
+          item.addEventListener('click', () => {
+            haptic(25);
+            localStorage.setItem('zephyr_track', item.dataset.index);
+            if (window.__zephyr && typeof window.__zephyr.loadTrack === 'function') {
+              window.__zephyr.loadTrack(parseInt(item.dataset.index, 10));
+              document.querySelectorAll('.z-track-item').forEach(el => el.classList.toggle('active', el.dataset.index === item.dataset.index));
+              if (trackModal) trackModal.classList.add('hidden');
+            } else {
+              // Smooth reload
+              document.body.style.opacity = '0';
+              setTimeout(() => window.location.reload(), 180);
+            }
+          });
+        });
+
+        // Pause Menu Logic with True Engine Freeze
+        const pauseModal = document.getElementById('z-pause-modal');
+        const menuBtn = document.getElementById('z-btn-menu');
+        if (menuBtn && pauseModal) {
+          const openPause = (e) => {
+            e.preventDefault();
+            if (window.__zephyr) {
+              window.__zephyr.setPaused(true);
+            }
+            pauseModal.classList.remove('hidden');
+            haptic(20);
+          };
+          menuBtn.addEventListener('click', openPause);
+          menuBtn.addEventListener('touchstart', openPause);
+        }
+
+        document.getElementById('z-pause-resume')?.addEventListener('click', () => {
+          if (window.__zephyr) window.__zephyr.setPaused(false);
+          pauseModal?.classList.add('hidden');
+          haptic(15);
+        });
+
+        document.getElementById('z-pause-restart')?.addEventListener('click', () => {
+          pauseModal?.classList.add('hidden');
+          if (window.__zephyr) {
+            window.__zephyr.restartRace();
+            window.__zephyr.setPaused(false);
+          } else {
+            window.location.reload();
+          }
+          haptic(20);
+        });
+
+        document.getElementById('z-pause-change-track')?.addEventListener('click', () => {
+          pauseModal?.classList.add('hidden');
+          updateRecordDisplays();
+          trackModal?.classList.remove('hidden');
+          haptic(15);
+        });
+
+        document.getElementById('z-pause-title')?.addEventListener('click', () => {
+          pauseModal?.classList.add('hidden');
+          if (window.__zephyr) {
+            window.__zephyr.quitToTitle();
+            window.__zephyr.setPaused(false);
+          } else {
+            window.location.reload();
+          }
+          haptic(20);
+        });
+
+        // 50 Improvements: Quick Chat & Options Event Handlers
+        const chatModal = document.getElementById('z-chat-modal');
+        const chatBtn = document.getElementById('z-btn-chat');
+        const chatClose = document.getElementById('z-chat-close');
+        if (chatBtn && chatModal) {
+          chatBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            chatModal.classList.remove('hidden');
+            haptic(15);
+          });
+        }
+        if (chatClose && chatModal) {
+          chatClose.addEventListener('click', () => {
+            chatModal.classList.add('hidden');
+            haptic(15);
+          });
+        }
+        document.querySelectorAll('.z-chat-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const msg = btn.dataset.msg;
+            if (window.__multiplayerManager && typeof window.__multiplayerManager.sendEmote === 'function') {
+              window.__multiplayerManager.sendEmote(msg);
+            }
+            if (window.__zephyr?.ui?.toast) {
+              window.__zephyr.ui.toast(msg, 2.0);
+            }
+            haptic(25);
+            if (chatModal) chatModal.classList.add('hidden');
+          });
+        });
+
+        const settingsModal = document.getElementById('z-settings-modal');
+        const settingsBtn = document.getElementById('z-btn-settings');
+        const pauseOptBtn = document.getElementById('z-pause-opt');
+        const settingsClose = document.getElementById('z-settings-close');
+        const optAutogas = document.getElementById('z-opt-autogas');
+        const optGyro = document.getElementById('z-opt-gyro');
+        const optBtnSize = document.getElementById('z-opt-btnsize');
+        const optSpeedClass = document.getElementById('z-opt-speedclass');
+        const optFps = document.getElementById('z-opt-fps');
+
+        if (optAutogas) {
+          optAutogas.checked = localStorage.getItem('zephyr_opt_autogas') === '1';
+          window.__ZEPHYR_AUTOGAS = optAutogas.checked;
+          optAutogas.addEventListener('change', () => {
+            window.__ZEPHYR_AUTOGAS = optAutogas.checked;
+            localStorage.setItem('zephyr_opt_autogas', optAutogas.checked ? '1' : '0');
+          });
+        }
+
+        if (optGyro) {
+          optGyro.checked = localStorage.getItem('zephyr_opt_gyro') === '1';
+          window.__ZEPHYR_GYRO = optGyro.checked;
+          optGyro.addEventListener('change', () => {
+            window.__ZEPHYR_GYRO = optGyro.checked;
+            localStorage.setItem('zephyr_opt_gyro', optGyro.checked ? '1' : '0');
+            if (optGyro.checked && typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+              DeviceOrientationEvent.requestPermission().catch(() => {});
+            }
+          });
+        }
+
+        if (optBtnSize) {
+          const savedSize = localStorage.getItem('zephyr_opt_btnsize') || 'standard';
+          optBtnSize.value = savedSize;
+          const touchLayer = document.getElementById('zephyr-touch');
+          if (touchLayer) {
+            touchLayer.classList.toggle('touch-large', savedSize === 'large');
+            touchLayer.classList.toggle('touch-compact', savedSize === 'compact');
+          }
+          optBtnSize.addEventListener('change', () => {
+            localStorage.setItem('zephyr_opt_btnsize', optBtnSize.value);
+            if (touchLayer) {
+              touchLayer.classList.toggle('touch-large', optBtnSize.value === 'large');
+              touchLayer.classList.toggle('touch-compact', optBtnSize.value === 'compact');
+            }
+          });
+        }
+
+        if (optSpeedClass) {
+          const savedSpeed = localStorage.getItem('zephyr_opt_speedclass') || '150cc';
+          optSpeedClass.value = savedSpeed;
+          optSpeedClass.addEventListener('change', () => {
+            localStorage.setItem('zephyr_opt_speedclass', optSpeedClass.value);
+          });
+        }
+
+        if (optFps) {
+          const savedFps = localStorage.getItem('zephyr_opt_fps') || '60';
+          optFps.value = savedFps;
+          window.__ZEPHYR_TARGET_FPS = parseInt(savedFps, 10);
+          optFps.addEventListener('change', () => {
+            localStorage.setItem('zephyr_opt_fps', optFps.value);
+            window.__ZEPHYR_TARGET_FPS = parseInt(optFps.value, 10);
+          });
+        }
+
+        const openSettings = (e) => {
+          e.preventDefault();
+          if (settingsModal) settingsModal.classList.remove('hidden');
+          haptic(15);
+        };
+        if (settingsBtn) settingsBtn.addEventListener('click', openSettings);
+        if (pauseOptBtn) pauseOptBtn.addEventListener('click', openSettings);
+        if (settingsClose && settingsModal) {
+          settingsClose.addEventListener('click', () => {
+            settingsModal.classList.add('hidden');
+            haptic(15);
+          });
+        }
+
+        if (typeof window !== 'undefined' && window.DeviceOrientationEvent) {
+          window.addEventListener('deviceorientation', (e) => {
+            if (!window.__ZEPHYR_GYRO) return;
+            const gamma = e.gamma || 0;
+            if (Math.abs(gamma) > 4) {
+              const steer = Math.max(-1, Math.min(1, gamma / 25));
+              if (window.__zephyr && window.__zephyr.director && window.__zephyr.director.player) {
+                window.__zephyr.director.player.controls.steer = steer;
+              }
+            }
+          });
+        }
+
+        // Reset button
+        const resetBtn = document.getElementById('z-btn-reset');
+        if (resetBtn) {
+          const doReset = (e) => {
+            e.preventDefault();
+            if (window.__zephyr && window.__zephyr.director) {
+              window.__zephyr.director.manualReset();
+            }
+            haptic(25);
+          };
+          resetBtn.addEventListener('touchstart', doReset, { passive: false });
+          resetBtn.addEventListener('click', doReset);
+        }
+
+        // Audio toggle
+        if (audioBtn) {
+          const toggleAudio = (e) => {
+            e.preventDefault();
+            if (window.__zephyr) {
+              window.__zephyr.toggleMute();
+              audioBtn.textContent = window.__zephyr.userSettings?.muted ? '🔇 MUTED' : '🔊 AUDIO';
+            }
+            haptic(15);
+          };
+          audioBtn.addEventListener('touchstart', toggleAudio, { passive: false });
+          audioBtn.addEventListener('click', toggleAudio);
+        }
+
+        // ==========================================
+        // MULTIPLAYER CONTROLLER & NETWORKING ENGINE
+        // ==========================================
+        const mpModal = document.getElementById('z-multiplayer-modal');
+        const mpBtn = document.getElementById('z-btn-multiplayer');
+        const pauseMpBtn = document.getElementById('z-pause-mp');
+        const mpCloseBtn = document.getElementById('z-mp-close');
+        const tabHost = document.getElementById('z-tab-host');
+        const tabGuest = document.getElementById('z-tab-guest');
+        const hostView = document.getElementById('z-mp-host-view');
+        const guestView = document.getElementById('z-mp-guest-view');
+        const roomCodeEl = document.getElementById('z-mp-room-code');
+        const copyCodeBtn = document.getElementById('z-mp-copy-code');
+        const copyLinkBtn = document.getElementById('z-mp-copy-link');
+        const hostNameInput = document.getElementById('z-mp-host-name');
+        const hostKartSelect = document.getElementById('z-mp-host-kart');
+        const guestNameInput = document.getElementById('z-mp-guest-name');
+        const guestKartSelect = document.getElementById('z-mp-guest-kart');
+        const joinCodeInput = document.getElementById('z-mp-join-code');
+        const joinBtn = document.getElementById('z-mp-join-btn');
+        const startRaceBtn = document.getElementById('z-mp-start-race');
+        const playlistCountSelect = document.getElementById('z-mp-playlist-count');
+        const playlistTracksContainer = document.getElementById('z-mp-playlist-tracks-container');
+        const playlistBadge = document.getElementById('z-mp-playlist-badge');
+        const lapsSelect = document.getElementById('z-mp-laps-select');
+        const guestTourneyInfoEl = document.getElementById('z-mp-guest-tournament-info');
+        const guestTracksListEl = document.getElementById('z-mp-guest-tracks-list');
+        const tourneyModal = document.getElementById('z-mp-tournament-modal');
+        const tourneyTitle = document.getElementById('z-mp-tourney-title');
+        const tourneySub = document.getElementById('z-mp-tourney-sub');
+        const tourneyTbody = document.getElementById('z-mp-tourney-tbody');
+        const tourneyNextBtn = document.getElementById('z-mp-tourney-next-btn');
+        const tourneyGuestMsg = document.getElementById('z-mp-tourney-guest-msg');
+        const tourneyExitBtn = document.getElementById('z-mp-tourney-exit-btn');
+        const playerCountEl = document.getElementById('z-mp-player-count');
+        const lobbyPlayersEl = document.getElementById('z-mp-lobby-players');
+        const guestForm = document.getElementById('z-mp-guest-form');
+        const guestWaitingBox = document.getElementById('z-mp-guest-waiting');
+        const guestInfoEl = document.getElementById('z-mp-guest-info');
+        const guestPlayersEl = document.getElementById('z-mp-guest-players');
+        const guestReadyBtn = document.getElementById('z-mp-guest-ready-btn');
+        const guestLobbyKartSelect = document.getElementById('z-mp-guest-lobby-kart');
+        const guestLeaveBtn = document.getElementById('z-mp-guest-leave-btn');
+        const mpCountdownOverlay = document.getElementById('z-mp-countdown-overlay');
+        const mpCountdownNum = document.getElementById('z-mp-countdown-num');
+        const mpCountdownTrack = document.getElementById('z-mp-countdown-track');
+        const mpCountdownStatus = document.getElementById('z-mp-countdown-status');
+        const mpCountdownBar = document.getElementById('z-mp-countdown-bar');
+        const emoteBar = document.getElementById('z-emote-bar');
+
+        let mp = null;
+
+        const isGuestInRoom = () => mp && !mp.isHost && (
+          mp.state === 'CONNECTING' || 
+          mp.state === 'GUEST_LOBBY' || 
+          mp.state === 'COUNTDOWN' || 
+          mp.state === 'RACING' || 
+          mp.state === 'RESULTS'
+        );
+
+        const initMultiplayer = () => {
+          if (window.MultiplayerManager && !mp) {
+            mp = new window.MultiplayerManager();
+            window.__multiplayerManager = mp;
+
+            // Wire callbacks
+            mp.onToast = (msg) => {
+              if (window.__zephyr?.ui?.toast) window.__zephyr.ui.toast(msg, 2.8);
+            };
+
+            const KART_INFO = {
+              nix: { icon: '🦦', label: 'Nix' },
+              bruno: { icon: '🪨', label: 'Bruno' },
+              sable: { icon: '🦋', label: 'Sable' },
+              zuzu: { icon: '⚡', label: 'Zuzu' },
+              rustam: { icon: '⚙️', label: 'Rustam' },
+              marlow: { icon: '🐸', label: 'Marlow' }
+            };
+
+            const ALL_TRACKS = [
+              { id: 0, cup: 'Coppa Brezza', name: 'Coral Sanctuary', sub: 'Laguna Corallina', ico: '🪸' },
+              { id: 1, cup: 'Coppa Brezza', name: 'Sunken Shallows', sub: 'Bassi Fondali Sabbiosi', ico: '🏖️' },
+              { id: 2, cup: 'Coppa Brezza', name: 'Palm Grove Way', sub: 'Viale delle Palme', ico: '🌴' },
+              { id: 3, cup: 'Coppa Brezza', name: 'Pearl Atoll', sub: 'Atollo delle Perle', ico: '⚪' },
+              { id: 4, cup: 'Coppa Canyon', name: 'Amber Reef Gulch', sub: 'Gola dell\'Ambra', ico: '🪨' },
+              { id: 5, cup: 'Coppa Canyon', name: 'Nautilus Spiral', sub: 'Spirale del Nautilus', ico: '🐚' },
+              { id: 6, cup: 'Coppa Canyon', name: 'Seafoam Viaduct', sub: 'Viadotto della Spuma', ico: '🌉' },
+              { id: 7, cup: 'Coppa Canyon', name: 'Tidal Drift Arena', sub: 'Arena del Flusso', ico: '🌀' },
+              { id: 8, cup: 'Coppa Abissi', name: 'Abyssal Trench', sub: 'Fossa degli Abissi', ico: '🌊' },
+              { id: 9, cup: 'Coppa Abissi', name: 'Obsidian Gorge', sub: 'Gola di Ossidiana', ico: '🌋' },
+              { id: 10, cup: 'Coppa Abissi', name: 'Kraken Spine', sub: 'Dorso del Kraken', ico: '🦑' },
+              { id: 11, cup: 'Coppa Abissi', name: 'Bioluminescent Caves', sub: 'Grotte Luminescenti', ico: '💎' },
+              { id: 12, cup: 'Coppa Cielo', name: 'Sky Reef', sub: 'Arcipelago Celeste', ico: '☁️' },
+              { id: 13, cup: 'Coppa Cielo', name: 'Nimbus Overpass', sub: 'Cavalcavia dei Nembi', ico: '🌩️' },
+              { id: 14, cup: 'Coppa Cielo', name: 'Stratos Hairpins', sub: 'Tornanti della Stratosfera', ico: '🦅' },
+              { id: 15, cup: 'Coppa Cielo', name: 'Vortex Zenith', sub: 'Zenith del Vortice', ico: '🌪️' },
+              { id: 16, cup: 'Coppa Antica', name: 'Temple of Nix', sub: 'Il Tempio Sommerso', ico: '🏛️' },
+              { id: 17, cup: 'Coppa Antica', name: 'Sunken Acropolis', sub: 'Acropoli Sommersa', ico: '🏺' },
+              { id: 18, cup: 'Coppa Antica', name: 'Leviathan\'s Roar', sub: 'Ruggito del Leviatano', ico: '🐉' },
+              { id: 19, cup: 'Coppa Antica', name: 'Prism Citadel', sub: 'Cittadella dei Prismi', ico: '🔮' },
+              { id: 20, cup: 'Coppa Nova', name: 'Solar Forge Caldera', sub: 'Caldera della Forgia Solare', ico: '🔥' },
+              { id: 21, cup: 'Coppa Nova', name: 'Cosmic Warpway', sub: 'Autostrada Iperspaziale', ico: '🌌' },
+              { id: 22, cup: 'Coppa Nova', name: 'Quantum Singularity', sub: 'Singolarità Quantistica', ico: '⚛️' },
+              { id: 23, cup: 'Coppa Nova', name: 'Zephyr Omega Finale', sub: 'Gran Finale Zephyr Omega', ico: '👑' }
+            ];
+
+            const getTrackName = (idx) => {
+              const t = ALL_TRACKS[idx] || (window.__ZEPHYR_TRACKS && window.__ZEPHYR_TRACKS[idx]);
+              return t ? `${t.ico || '🏁'} ${t.name}` : `Pista ${idx + 1}`;
+            };
+
+            const buildTrackOptionsHtml = (selectedId) => {
+              let html = '';
+              const cups = ['Coppa Brezza', 'Coppa Canyon', 'Coppa Abissi', 'Coppa Cielo', 'Coppa Antica', 'Coppa Nova'];
+              for (const cup of cups) {
+                html += `<optgroup label="🏆 ${cup}">`;
+                for (const trk of ALL_TRACKS.filter(t => t.cup === cup)) {
+                  const isSel = trk.id === selectedId ? 'selected' : '';
+                  html += `<option value="${trk.id}" ${isSel}>${trk.ico} ${trk.name}</option>`;
+                }
+                html += `</optgroup>`;
+              }
+              return html;
+            };
+
+            const renderPlaylistSelects = () => {
+              if (!playlistTracksContainer || !playlistCountSelect) return;
+              const count = Math.max(1, Math.min(5, parseInt(playlistCountSelect.value || '3', 10)));
+              if (playlistBadge) playlistBadge.textContent = `${count} ${count === 1 ? 'Pista' : 'Piste'} Configurate`;
+
+              if (mp) {
+                while (mp.playlistTracks.length < count) {
+                  const nextIdx = (mp.playlistTracks[mp.playlistTracks.length - 1] + 1) % 24;
+                  mp.playlistTracks.push(nextIdx);
+                }
+                mp.playlistTracks = mp.playlistTracks.slice(0, count);
+              }
+
+              playlistTracksContainer.innerHTML = '';
+              for (let i = 0; i < count; i++) {
+                const curTrk = mp ? (mp.playlistTracks[i] ?? i) : i;
+                const row = document.createElement('div');
+                row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px;';
+                row.innerHTML = `
+                  <span style="font-weight: 800; color: #76fff0; min-width: 65px;">Pista ${i + 1}:</span>
+                  <select class="z-mp-playlist-slot-select" data-slot-index="${i}" style="flex: 1; background: rgba(8, 26, 36, 0.95); border: 1px solid rgba(118,255,240,0.4); color: #fff; padding: 6px 10px; border-radius: 8px; font-weight: 700; font-size: 12px;">
+                    ${buildTrackOptionsHtml(curTrk)}
+                  </select>
+                `;
+                playlistTracksContainer.appendChild(row);
+              }
+
+              playlistTracksContainer.querySelectorAll('.z-mp-playlist-slot-select').forEach(sel => {
+                sel.addEventListener('change', (e) => {
+                  const slotIdx = parseInt(e.target.dataset.slotIndex, 10);
+                  const val = parseInt(e.target.value, 10);
+                  if (mp) {
+                    mp.setPlaylistTrackAt(slotIdx, val);
+                  }
+                });
+              });
+
+              if (mp && mp.isHost) {
+                mp.setPlaylist(mp.playlistTracks, parseInt(lapsSelect?.value || '3', 10));
+              }
+            };
+
+            mp.onLobbyUpdate = (lobby) => {
+              if (roomCodeEl) roomCodeEl.textContent = lobby.roomCode || 'ZEPH-....';
+              if (playerCountEl) playerCountEl.textContent = lobby.players.length;
+
+              const renderPlayerRow = (p, idx) => {
+                const isMe = idx === lobby.mySlot;
+                const pingColor = (p.ping || 0) < 60 ? '#10b981' : (p.ping || 0) < 120 ? '#f59e0b' : '#ef4444';
+                const kInfo = KART_INFO[p.kartId] || { icon: '🏎️', label: p.kartId || 'Kart' };
+                const isReady = p.isReady !== false;
+                const readyBadge = isReady
+                  ? `<span style="font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 6px; background: rgba(16, 185, 129, 0.25); color: #34d399; border: 1px solid #10b981;">✅ PRONTO</span>`
+                  : `<span style="font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 6px; background: rgba(245, 158, 11, 0.25); color: #fbbf24; border: 1px solid #f59e0b;">⏳ IN ATTESA</span>`;
+                return `
+                  <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${isMe ? 'rgba(118, 255, 240, 0.12)' : 'rgba(255,255,255,0.03)'}; border-radius: 8px; border: 1px solid ${isMe ? '#76fff0' : 'rgba(255,255,255,0.06)'};">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span style="font-size: 14px;">${p.isHost ? '👑' : '🏎️'}</span>
+                      <span style="font-size: 13px; font-weight: 800; color: ${isMe ? '#ffc857' : '#ffffff'};">${p.name} ${isMe ? '(Tu)' : ''}</span>
+                      <span style="font-size: 11px; padding: 2px 6px; border-radius: 6px; background: rgba(255,255,255,0.08); color: #76fff0;">${kInfo.icon} ${kInfo.label}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      ${readyBadge}
+                      <div style="display: flex; align-items: center; gap: 4px;">
+                        <span style="display:inline-block; width: 6px; height: 6px; border-radius: 50%; background: ${pingColor};"></span>
+                        <span style="font-size: 11px; font-family: monospace; color: #94a3b8;">${p.ping || 30}ms</span>
+                      </div>
+                    </div>
+                  </div>
+                `;
+              };
+
+              if (lobbyPlayersEl) lobbyPlayersEl.innerHTML = lobby.players.map(renderPlayerRow).join('');
+              if (guestPlayersEl) guestPlayersEl.innerHTML = lobby.players.map(renderPlayerRow).join('');
+
+              if (guestInfoEl) {
+                const curRoom = lobby.roomCode || mp.roomCode || '';
+                const tName = (window.__ZEPHYR_TRACKS && window.__ZEPHYR_TRACKS[lobby.trackIndex]?.name) || 'Circuito';
+                guestInfoEl.innerHTML = `Stanza: <b style="color: #ffc857; font-family: monospace;">${curRoom}</b> • Circuito: <b>${tName}</b> (${lobby.laps} giri)<br>In attesa che l'Host avvii la gara...`;
+              if (guestTracksListEl) {
+                const tracks = (lobby.playlistTracks && lobby.playlistTracks.length > 0) ? lobby.playlistTracks : (mp.playlistTracks || [lobby.trackIndex]);
+                guestTracksListEl.innerHTML = tracks.map((tId, idx) => {
+                  return `<div><span style="opacity: 0.8;">Gara ${idx + 1}:</span> <b>${getTrackName(tId)}</b></div>`;
+                }).join('');
+              }
+
+              // Manage Guest UI: hide join button and join form when connecting or connected to room
+              const isGuestConnected = isGuestInRoom();
+              if (joinBtn) {
+                if (isGuestConnected) {
+                  joinBtn.style.display = 'none';
+                  joinBtn.classList.add('hidden');
+                } else if (mp.state === 'IDLE') {
+                  joinBtn.style.display = 'block';
+                  joinBtn.classList.remove('hidden');
+                  joinBtn.disabled = false;
+                  joinBtn.textContent = '🔗 ENTRA NELLA STANZA';
+                }
+              }
+              if (guestForm) {
+                if (isGuestConnected) {
+                  guestForm.style.display = 'none';
+                  guestForm.classList.add('hidden');
+                } else if (mp.state === 'IDLE') {
+                  guestForm.style.display = 'block';
+                  guestForm.classList.remove('hidden');
+                }
+              }
+              if (guestWaitingBox) {
+                if (isGuestConnected) {
+                  guestWaitingBox.style.display = 'block';
+                  guestWaitingBox.classList.remove('hidden');
+                } else if (mp.state === 'IDLE') {
+                  guestWaitingBox.style.display = 'none';
+                  guestWaitingBox.classList.add('hidden');
+                }
+              }
+
+              // Update guest ready button and lobby kart selector
+              const myPlayer = lobby.players.find(p => p.slot === lobby.mySlot);
+              if (guestReadyBtn) {
+                if (myPlayer && myPlayer.isReady) {
+                  guestReadyBtn.style.background = 'linear-gradient(135deg, #059669, #10b981)';
+                  guestReadyBtn.style.borderColor = '#34d399';
+                  guestReadyBtn.style.boxShadow = '0 0 15px rgba(16, 185, 129, 0.4)';
+                  guestReadyBtn.textContent = '✅ SEI PRONTO! (CLICCA PER ANNULLARE)';
+                } else {
+                  guestReadyBtn.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
+                  guestReadyBtn.style.borderColor = '#fbbf24';
+                  guestReadyBtn.style.boxShadow = '0 0 15px rgba(245, 158, 11, 0.4)';
+                  guestReadyBtn.textContent = '✋ CONFERMA: SONO PRONTO!';
+                }
+              }
+              if (guestLobbyKartSelect && myPlayer && myPlayer.kartId) {
+                guestLobbyKartSelect.value = myPlayer.kartId;
+              }
+
+              // Update host start button ready state
+              if (startRaceBtn && mp.isHost) {
+                const humanPlayers = lobby.players.filter(p => !p.isAI);
+                const readyCount = humanPlayers.filter(p => p.isReady !== false).length;
+                const totalCount = humanPlayers.length;
+                const allReady = readyCount === totalCount && totalCount > 0;
+
+                if (allReady) {
+                  startRaceBtn.disabled = false;
+                  startRaceBtn.style.opacity = '1';
+                  startRaceBtn.style.cursor = 'pointer';
+                  startRaceBtn.style.background = 'linear-gradient(135deg, #059669, #10b981)';
+                  startRaceBtn.style.borderColor = '#34d399';
+                  startRaceBtn.style.boxShadow = '0 0 25px rgba(16, 185, 129, 0.5)';
+                  startRaceBtn.textContent = '🚀 AVVIA GARA (TUTTI PRONTI!)';
+                } else {
+                  startRaceBtn.disabled = true;
+                  startRaceBtn.style.opacity = '0.55';
+                  startRaceBtn.style.cursor = 'not-allowed';
+                  startRaceBtn.style.background = '#334155';
+                  startRaceBtn.style.borderColor = '#64748b';
+                  startRaceBtn.style.boxShadow = 'none';
+                  startRaceBtn.textContent = `⏳ IN ATTESA DEI GIOCATORI (${readyCount}/${totalCount} PRONTI)`;
+                }
+              }
+            };
+
+            mp.onCountdownTick = (remaining, data) => {
+              if (tourneyModal) {
+                tourneyModal.style.display = 'none';
+                tourneyModal.classList.add('hidden');
+              }
+              if (mpCountdownOverlay) {
+                mpCountdownOverlay.style.display = 'flex';
+                mpCountdownOverlay.classList.remove('hidden');
+              }
+              mpModal?.classList.add('hidden');
+              if (mpCountdownNum) {
+                if (remaining > 0) {
+                  mpCountdownNum.textContent = String(remaining);
+                  mpCountdownNum.style.color = '#ffffff';
+                } else {
+                  mpCountdownNum.textContent = 'PRONTI!';
+                  mpCountdownNum.style.color = '#34d399';
+                }
+                mpCountdownNum.style.transform = 'scale(1.35)';
+                setTimeout(() => { if (mpCountdownNum) mpCountdownNum.style.transform = 'scale(1)'; }, 150);
+              }
+              if (mpCountdownStatus) {
+                const STATUS_PREP = {
+                  5: "Sincronizzazione piloti e caricamento circuito... (5 sec)",
+                  4: "Controllo griglia e posizionamento kart... (4 sec)",
+                  3: "Riscaldamento motori e assetto gomme... (3 sec)",
+                  2: "Posizionamento sulla linea di partenza... (2 sec)",
+                  1: "Semaforo in arrivo: prepararsi al via! (1 sec)",
+                  0: "Tutti in griglia! Inizio partenza classica..."
+                };
+                mpCountdownStatus.textContent = STATUS_PREP[remaining] || "Preparazione partenza...";
+              }
+              if (mpCountdownTrack) {
+                const tName = (window.__ZEPHYR_TRACKS && window.__ZEPHYR_TRACKS[data.trackIndex]?.name) || 'Circuito';
+                mpCountdownTrack.textContent = `${tName} (${data.laps} Giri)`;
+              }
+              if (mpCountdownBar) {
+                const pct = Math.round(((5 - Math.max(0, remaining)) / 5) * 100);
+                mpCountdownBar.style.width = `${pct}%`;
+              }
+              if (window.__zephyr?.audio?.play) {
+                window.__zephyr.audio.play('ui_move', { volume: 0.4 });
+              }
+            };
+
+            mp.onCountdownCancel = (reason) => {
+              if (mpCountdownOverlay) {
+                mpCountdownOverlay.style.display = 'none';
+                mpCountdownOverlay.classList.add('hidden');
+              }
+              mpModal?.classList.remove('hidden');
+              if (startRaceBtn) {
+                startRaceBtn.disabled = true;
+              }
+              if (window.__zephyr?.ui?.toast) {
+                window.__zephyr.ui.toast(reason || 'Partenza annullata', 3.0);
+              }
+            };
+
+            mp.onRaceStart = (data) => {
+              if (tourneyModal) {
+                tourneyModal.style.display = 'none';
+                tourneyModal.classList.add('hidden');
+              }
+              if (mpCountdownOverlay) {
+                mpCountdownOverlay.style.display = 'none';
+                mpCountdownOverlay.classList.add('hidden');
+              }
+              const curTrack = parseInt(localStorage.getItem('zephyr_track') || '0', 10);
+              if (curTrack !== data.trackIndex) {
+                if (window.__zephyr?.loadTrack) {
+                  window.__zephyr.loadTrack(data.trackIndex);
+                } else {
+                  // Fallback: reload with correct track spline & theme
+                  localStorage.setItem('zephyr_track', String(data.trackIndex));
+                  sessionStorage.setItem('zephyr_mp_autojoin', JSON.stringify({
+                    roomCode: mp.roomCode,
+                    isHost: mp.isHost,
+                    playerName: mp.playerName,
+                    laps: data.laps,
+                    trackIndex: data.trackIndex,
+                    action: 'start_race',
+                    players: data.players,
+                    mySlot: mp.mySlot
+                  }));
+                  window.location.reload();
+                  return;
+                }
+              }
+
+              // Track loaded! Launch immediately into starting grid (classic 3-second countdown 3... 2... 1... VIA!)
+              mpModal?.classList.add('hidden');
+              if (window.__zephyr) {
+                window.__zephyr.startMultiplayerRace(data.trackIndex, data.laps, data.players, mp.mySlot);
+              }
+              if (emoteBar) emoteBar.classList.remove('hidden');
+            };
+
+            mp.onItemUse = (data) => {
+              if (!window.__zephyr?.director) return;
+              const director = window.__zephyr.director;
+              const racer = director.racers[data.slot];
+              if (!racer) return;
+              switch (data.itemType) {
+                case 'photon':
+                case 'drone':
+                  director.items?.fireBolt(racer, director.racers);
+                  director.events?.sfx?.('fire_bolt', { volume: 0.6 });
+                  break;
+                case 'orbital':
+                case 'shockwave':
+                  director.items?.detonateBlast(racer, director.racers);
+                  director.events?.sfx?.('blast', { volume: 0.7 });
+                  break;
+                case 'mine':
+                case 'decoy':
+                  director.items?.dropMine(racer);
+                  director.events?.sfx?.('drop_mine', { volume: 0.6 });
+                  break;
+                case 'turbo':
+                case 'triple_turbo':
+                  director.applyTurbo(racer);
+                  break;
+                case 'matrix':
+                  racer.matrixTimer = 6.5;
+                  racer.invuln = 6.5;
+                  director.applyTurbo(racer);
+                  break;
+                case 'shield':
+                  director.items?.raiseShield(racer);
+                  director.events?.sfx?.('shield_up', { volume: 0.6 });
+                  break;
+              }
+            };
+
+            mp.onRacerHit = (data) => {
+              if (!window.__zephyr?.director) return;
+              const racer = window.__zephyr.director.racers[data.slot];
+              if (racer) {
+                racer.hit(data.duration || 1.2);
+                racer.dropCoins();
+              }
+            };
+
+            mp.onPlayerFinish = (data) => {
+              const p = mp.players.find(pl => pl.slot === data.slot);
+              const pName = p ? p.name : `Pilota ${data.slot + 1}`;
+              if (window.__zephyr?.ui?.toast) {
+                window.__zephyr.ui.toast(`🏁 ${pName} ha tagliato il traguardo! (#${data.rank})`, 3.5);
+              }
+              if (window.__zephyr?.director?.racers?.[data.slot]) {
+                const r = window.__zephyr.director.racers[data.slot];
+                r.progress.finished = true;
+                r.progress.finishTime = data.finishTime;
+                r.progress.finishRank = data.rank;
+                r.progress.lap = window.__zephyr.director.config.laps;
+              }
+            };
+
+            mp.onRematch = (data) => {
+              mp.state = 'RACING';
+              mpModal?.classList.add('hidden');
+              if (window.__zephyr) {
+                window.__zephyr.startMultiplayerRace(data.trackIndex ?? mp.trackIndex, mp.laps, mp.players, mp.mySlot);
+              }
+              if (emoteBar) emoteBar.classList.remove('hidden');
+            };
+
+            mp.onTournamentStandings = (data) => {
+              if (tourneyModal) {
+                tourneyModal.style.display = 'flex';
+                tourneyModal.classList.remove('hidden');
+              }
+              const currentRaceNum = (data.playlistIndex ?? 0) + 1;
+              const totalRaces = data.totalTracks || (mp.playlistTracks ? mp.playlistTracks.length : 1);
+
+              if (tourneyTitle) {
+                if (data.isFinalRace) {
+                  tourneyTitle.textContent = '🏆 CAMPIONATO GP CONCLUSO!';
+                  tourneyTitle.style.color = '#ffc857';
+                } else {
+                  tourneyTitle.textContent = `GARA ${currentRaceNum} DI ${totalRaces} COMPLETATA`;
+                  tourneyTitle.style.color = '#76fff0';
+                }
+              }
+
+              if (tourneySub) {
+                if (data.isFinalRace) {
+                  tourneySub.textContent = 'Podio finale del Torneo Grand Prix Live!';
+                } else {
+                  tourneySub.textContent = 'Classifica generale a punti sincronizzata in tempo reale';
+                }
+              }
+
+              if (tourneyTbody && Array.isArray(data.standings)) {
+                const MEDALS = ['🥇 1°', '🥈 2°', '🥉 3°', '4°', '5°', '6°'];
+                tourneyTbody.innerHTML = data.standings.map((st, i) => {
+                  const isMe = st.slot === mp.mySlot;
+                  const medal = MEDALS[i] || `${i + 1}°`;
+                  const kartIcon = KART_INFO[st.kartId]?.icon || '🏎️';
+                  const racePts = st.lastRacePoints !== undefined ? `+${st.lastRacePoints} pts` : '--';
+                  const rowBg = isMe ? 'rgba(118, 255, 240, 0.18)' : (i % 2 === 0 ? 'rgba(255, 255, 255, 0.03)' : 'transparent');
+                  const borderStyle = isMe ? 'border-left: 4px solid #76fff0;' : '';
+                  return `
+                    <tr style="background: ${rowBg}; ${borderStyle} border-bottom: 1px solid rgba(255,255,255,0.06);">
+                      <td style="padding: 10px 12px; font-weight: 800; font-size: 14px; color: ${i === 0 ? '#ffc857' : i === 1 ? '#e2e8f0' : i === 2 ? '#fb923c' : '#94a3b8'};">${medal}</td>
+                      <td style="padding: 10px 12px; font-weight: 700; color: #ffffff;">
+                        <span style="margin-right: 6px;">${kartIcon}</span>${st.name} ${isMe ? '<span style="font-size: 10px; color: #76fff0; font-weight: 800;">(TU)</span>' : ''}
+                      </td>
+                      <td style="padding: 10px 12px; text-align: center; color: #34d399; font-weight: 800;">${racePts}</td>
+                      <td style="padding: 10px 12px; text-align: right; font-weight: 900; font-size: 15px; color: #ffc857;">${st.totalPoints} PTS</td>
+                    </tr>
+                  `;
+                }).join('');
+              }
+
+              if (!data.isFinalRace) {
+                if (mp.isHost) {
+                  if (tourneyNextBtn) {
+                    tourneyNextBtn.style.display = 'block';
+                    tourneyNextBtn.classList.remove('hidden');
+                    tourneyNextBtn.textContent = `🚀 AVVIA PROSSIMA PISTA (GARA ${currentRaceNum + 1} DI ${totalRaces})`;
+                  }
+                  if (tourneyGuestMsg) {
+                    tourneyGuestMsg.style.display = 'none';
+                    tourneyGuestMsg.classList.add('hidden');
+                  }
+                } else {
+                  if (tourneyNextBtn) {
+                    tourneyNextBtn.style.display = 'none';
+                    tourneyNextBtn.classList.add('hidden');
+                  }
+                  if (tourneyGuestMsg) {
+                    tourneyGuestMsg.style.display = 'block';
+                    tourneyGuestMsg.classList.remove('hidden');
+                    tourneyGuestMsg.textContent = `⏳ In attesa che l'Host avvii la prossima gara (${currentRaceNum + 1}/${totalRaces})...`;
+                  }
+                }
+              } else {
+                if (tourneyNextBtn) {
+                  tourneyNextBtn.style.display = 'none';
+                  tourneyNextBtn.classList.add('hidden');
+                }
+                if (tourneyGuestMsg) {
+                  tourneyGuestMsg.style.display = 'none';
+                  tourneyGuestMsg.classList.add('hidden');
+                }
+                if (window.__zephyr?.vfx?.fireworks) {
+                  window.__zephyr.vfx.fireworks(0, 5, 0);
+                }
+              }
+            };
+
+            mp.onTournamentComplete = (data) => {
+              if (window.__zephyr?.ui?.toast) {
+                const winner = data.standings?.[0]?.name || 'Campione';
+                window.__zephyr.ui.toast(`🏆 Torneo completato! Vincitore: ${winner}!`, 4.5);
+              }
+            };
+
+            // Sync initial inputs
+            if (hostNameInput) hostNameInput.value = mp.playerName;
+            if (guestNameInput) guestNameInput.value = mp.playerName;
+            if (hostKartSelect) hostKartSelect.value = mp.selectedKart;
+            if (guestKartSelect) guestKartSelect.value = mp.selectedKart;
+            if (playlistCountSelect) playlistCountSelect.value = String(mp.playlistTracks.length || 3);
+            renderPlaylistSelects();
+            if (lapsSelect) lapsSelect.value = String(mp.laps);
+          }
+        };
+
+        // Open/Close MP Modal
+        const openMpModal = (e) => {
+          if (e) { e.preventDefault(); e.stopPropagation(); }
+          initMultiplayer();
+          if (window.__zephyr && window.__zephyr.mode === 'race') {
+            window.__zephyr.setPaused(true);
+          }
+          pauseModal?.classList.add('hidden');
+          mpModal?.classList.remove('hidden');
+          haptic(20);
+
+          // Auto-create room only if host tab is active and not already connected
+          const isHostTab = tabHost && tabHost.classList.contains('active');
+          if (mp && mp.state === 'IDLE' && isHostTab) {
+            mp.createRoom();
+          }
+          if (isHostTab) {
+            renderPlaylistSelects();
+          }
+
+          // Sync guest UI if guest tab is active
+          const isGuestTab = tabGuest && tabGuest.classList.contains('active');
+          if (isGuestTab && mp) {
+            const isGuestConnected = isGuestInRoom();
+            if (isGuestConnected) {
+              if (joinBtn) { joinBtn.style.display = 'none'; joinBtn.classList.add('hidden'); }
+              if (guestForm) { guestForm.style.display = 'none'; guestForm.classList.add('hidden'); }
+              if (guestWaitingBox) { guestWaitingBox.style.display = 'block'; guestWaitingBox.classList.remove('hidden'); }
+            } else if (mp.state === 'IDLE') {
+              if (joinBtn) { joinBtn.style.display = 'block'; joinBtn.classList.remove('hidden'); joinBtn.disabled = false; joinBtn.textContent = '🔗 ENTRA NELLA STANZA'; }
+              if (guestForm) { guestForm.style.display = 'block'; guestForm.classList.remove('hidden'); }
+              if (guestWaitingBox) { guestWaitingBox.style.display = 'none'; guestWaitingBox.classList.add('hidden'); }
+            }
+          }
+        };
+
+        if (mpBtn) {
+          mpBtn.addEventListener('click', openMpModal);
+          mpBtn.addEventListener('touchstart', openMpModal, { passive: false });
+        }
+        if (pauseMpBtn) {
+          pauseMpBtn.addEventListener('click', openMpModal);
+          pauseMpBtn.addEventListener('touchstart', openMpModal, { passive: false });
+        }
+        if (mpCloseBtn) {
+          mpCloseBtn.addEventListener('click', () => {
+            mpModal?.classList.add('hidden');
+            if (window.__zephyr && window.__zephyr.mode === 'race') {
+              window.__zephyr.setPaused(false);
+            }
+            haptic(15);
+          });
+        }
+
+        // Tab switches
+        if (tabHost && tabGuest) {
+          tabHost.addEventListener('click', () => {
+            tabHost.classList.add('active');
+            tabGuest.classList.remove('active');
+            hostView?.classList.remove('hidden');
+            guestView?.classList.add('hidden');
+            haptic(15);
+            if (mp && mp.state !== 'HOST_LOBBY') {
+              mp.createRoom();
+            }
+          });
+
+          tabGuest.addEventListener('click', () => {
+            tabGuest.classList.add('active');
+            tabHost.classList.remove('active');
+            guestView?.classList.remove('hidden');
+            hostView?.classList.add('hidden');
+            haptic(15);
+            const isGuestConnected = isGuestInRoom();
+            if (isGuestConnected) {
+              if (joinBtn) { joinBtn.style.display = 'none'; joinBtn.classList.add('hidden'); }
+              if (guestForm) { guestForm.style.display = 'none'; guestForm.classList.add('hidden'); }
+              if (guestWaitingBox) { guestWaitingBox.style.display = 'block'; guestWaitingBox.classList.remove('hidden'); }
+            } else if (mp && mp.state === 'IDLE') {
+              if (joinBtn) { joinBtn.style.display = 'block'; joinBtn.classList.remove('hidden'); joinBtn.disabled = false; joinBtn.textContent = '🔗 ENTRA NELLA STANZA'; }
+              if (guestForm) { guestForm.style.display = 'block'; guestForm.classList.remove('hidden'); }
+              if (guestWaitingBox) { guestWaitingBox.style.display = 'none'; guestWaitingBox.classList.add('hidden'); }
+            }
+          });
+        }
+
+        // Host and guest settings events
+        hostNameInput?.addEventListener('input', (e) => {
+          if (mp) mp.setPlayerName(e.target.value);
+        });
+        hostKartSelect?.addEventListener('change', (e) => {
+          if (mp) mp.setSelectedKart(e.target.value);
+          if (window.__zephyr?.selectKart) window.__zephyr.selectKart(e.target.value);
+        });
+        guestNameInput?.addEventListener('input', (e) => {
+          if (mp) mp.setPlayerName(e.target.value);
+        });
+        guestKartSelect?.addEventListener('change', (e) => {
+          if (mp) mp.setSelectedKart(e.target.value);
+          if (window.__zephyr?.selectKart) window.__zephyr.selectKart(e.target.value);
+        });
+        playlistCountSelect?.addEventListener('change', () => {
+          renderPlaylistSelects();
+        });
+        tourneyNextBtn?.addEventListener('click', () => {
+          if (!mp || !mp.isHost) return;
+          if (tourneyModal) {
+            tourneyModal.style.display = 'none';
+            tourneyModal.classList.add('hidden');
+          }
+          mp.advanceToNextRace(5);
+          haptic(30);
+        });
+        tourneyExitBtn?.addEventListener('click', () => {
+          if (tourneyModal) {
+            tourneyModal.style.display = 'none';
+            tourneyModal.classList.add('hidden');
+          }
+          if (mp) mp.resetTournament();
+          openMpModal();
+          haptic(20);
+        });
+        lapsSelect?.addEventListener('change', (e) => {
+          if (mp) mp.setLaps(parseInt(e.target.value, 10));
+        });
+
+        // Copy Code & Link buttons
+        copyCodeBtn?.addEventListener('click', () => {
+          if (!mp || !mp.roomCode) return;
+          navigator.clipboard?.writeText(mp.roomCode).then(() => {
+            if (window.__zephyr?.ui?.toast) window.__zephyr.ui.toast(`Codice copiato: ${mp.roomCode}`, 2.0);
+            haptic(25);
+          }).catch(() => {
+            prompt('Copia il codice della stanza:', mp.roomCode);
+          });
+        });
+
+        copyLinkBtn?.addEventListener('click', () => {
+          if (!mp) return;
+          const link = mp.getInviteLink();
+          navigator.clipboard?.writeText(link).then(() => {
+            if (window.__zephyr?.ui?.toast) window.__zephyr.ui.toast(`Link invito copiato negli appunti! 🔗`, 2.5);
+            haptic(25);
+          }).catch(() => {
+            prompt('Copia il link d\'invito per i tuoi amici:', link);
+          });
+        });
+
+        // Start Race (Host)
+        startRaceBtn?.addEventListener('click', () => {
+          if (!mp) return;
+          if (hostKartSelect) mp.setSelectedKart(hostKartSelect.value);
+          haptic(35);
+          startRaceBtn.disabled = true;
+          startRaceBtn.textContent = '⏳ AVVIO CONTO ALLA ROVESCIA...';
+          const started = mp.startCountdown(5);
+          if (!started) {
+            setTimeout(() => {
+              if (mp) mp.notifyLobbyUpdate();
+            }, 600);
+          }
+        });
+
+        // Guest Ready Button & In-Room Kart Change
+        guestReadyBtn?.addEventListener('click', () => {
+          if (!mp) return;
+          haptic(25);
+          mp.toggleReady();
+        });
+
+        guestLobbyKartSelect?.addEventListener('change', (e) => {
+          if (!mp) return;
+          mp.setSelectedKart(e.target.value);
+          if (guestKartSelect) guestKartSelect.value = e.target.value;
+          if (window.__zephyr?.selectKart) window.__zephyr.selectKart(e.target.value);
+        });
+
+        // Join Room (Guest)
+        joinBtn?.addEventListener('click', () => {
+          if (!joinCodeInput) return;
+          const code = joinCodeInput.value.trim().toUpperCase();
+          if (!code) {
+            if (window.__zephyr?.ui?.toast) window.__zephyr.ui.toast('Inserisci un codice stanza valido!', 2.0);
+            return;
+          }
+          initMultiplayer();
+          if (guestKartSelect) mp.setSelectedKart(guestKartSelect.value);
+          haptic(25);
+
+          // IMMEDIATELY hide join button and guest form!
+          if (joinBtn) {
+            joinBtn.style.display = 'none';
+            joinBtn.classList.add('hidden');
+          }
+          if (guestForm) {
+            guestForm.style.display = 'none';
+            guestForm.classList.add('hidden');
+          }
+          // IMMEDIATELY show waiting box with connecting status!
+          if (guestWaitingBox) {
+            guestWaitingBox.style.display = 'block';
+            guestWaitingBox.classList.remove('hidden');
+          }
+          if (guestInfoEl) {
+            guestInfoEl.innerHTML = `⏳ Connessione alla stanza <b style="color: #ffc857; font-family: monospace;">${code}</b> in corso...`;
+          }
+
+          mp.joinRoom(code, guestNameInput?.value);
+
+          setTimeout(() => {
+            // Re-enable join button ONLY if still connecting and not connected
+            if (mp && mp.state === 'CONNECTING') {
+              if (window.__zephyr?.ui?.toast) window.__zephyr.ui.toast('Tempo di connessione scaduto. Riprova.', 2.5);
+              mp.leaveRoom();
+            }
+          }, 8000);
+        });
+
+        // Leave Room (Guest)
+        guestLeaveBtn?.addEventListener('click', () => {
+          if (mp) mp.leaveRoom();
+          haptic(15);
+          if (joinBtn) {
+            joinBtn.disabled = false;
+            joinBtn.textContent = '🔗 ENTRA NELLA STANZA';
+            joinBtn.style.display = 'block';
+            joinBtn.classList.remove('hidden');
+          }
+          if (guestForm) {
+            guestForm.style.display = 'block';
+            guestForm.classList.remove('hidden');
+          }
+          if (guestWaitingBox) {
+            guestWaitingBox.style.display = 'none';
+            guestWaitingBox.classList.add('hidden');
+          }
+        });
+
+        // Emote quick buttons
+        document.querySelectorAll('.z-emote-btn').forEach(btn => {
+          const doEmote = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (mp) mp.sendEmote(btn.dataset.emote);
+            haptic(20);
+          };
+          btn.addEventListener('click', doEmote);
+          btn.addEventListener('touchstart', doEmote, { passive: false });
+        });
+
+        // URL Hash & Session Storage Auto-Join
+        const checkAutoJoin = () => {
+          // Check hash #room=ZEPH-XXXX
+          const hash = window.location.hash;
+          let roomParam = null;
+          if (hash.includes('room=')) {
+            const match = hash.match(/room=([A-Za-z0-9_-]+)/);
+            if (match) roomParam = match[1];
+          }
+
+          // Check session storage for reload continuation
+          const savedSession = sessionStorage.getItem('zephyr_mp_autojoin');
+          if (savedSession) {
+            try {
+              sessionStorage.removeItem('zephyr_mp_autojoin');
+              const session = JSON.parse(savedSession);
+              initMultiplayer();
+              if (session.action === 'start_race') {
+                setTimeout(() => {
+                  if (window.__zephyr) {
+                    mp.roomCode = session.roomCode;
+                    mp.isHost = session.isHost;
+                    mp.players = session.players;
+                    mp.mySlot = session.mySlot;
+                    mp.state = 'RACING';
+                    window.__zephyr.startMultiplayerRace(session.trackIndex, session.laps, session.players, session.mySlot);
+                    if (emoteBar) emoteBar.classList.remove('hidden');
+                  }
+                }, 400);
+              }
+              return;
+            } catch (e) {
+              console.error('Failed to restore MP session:', e);
+            }
+          }
+
+          if (roomParam) {
+            initMultiplayer();
+            if (tabGuest) tabGuest.click();
+            if (joinCodeInput) joinCodeInput.value = roomParam.toUpperCase();
+            openMpModal();
+            setTimeout(() => {
+              if (joinBtn) joinBtn.click();
+            }, 500);
+          }
+        };
+
+        window.addEventListener('DOMContentLoaded', checkAutoJoin);
+        setTimeout(checkAutoJoin, 800);
+      }
+      })();
+    </script>
+  </body>
+</html>

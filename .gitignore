@@ -9,3 +9,6 @@ android/*/build/
 android/*/app/build/
 android/*/*.iml
 .idea/
+xcuserdata/
+*.xcuserstate
+
