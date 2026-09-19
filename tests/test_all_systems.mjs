@@ -4148,3 +4148,38 @@ describe('=== UNIT & PROCESS TESTS: 80+ ENHANCEMENTS, 24 BESPOKE LEVEL LANDMARKS
     assert.ok(bundleCode.includes('_isFloatOrWide?22:_.kind==="shell"?18:8'), 'Clearance radius expanded to 22m for large signature landmarks');
   });
 });
+
+describe('=== UNIT & PROCESS TESTS: PERMANENT MAXIMUM HIGH QUALITY GRAPHICS LOCK ===', () => {
+  const bundleCode = fs.readFileSync('assets/index-C9rd31_W.js', 'utf8');
+  const indexHtml = fs.readFileSync('index.html', 'utf8');
+  const zephyrHtml = fs.readFileSync('zephyr.html', 'utf8');
+
+  it('1. yo() profile generator unconditionally returns maximum HIGH quality spec', () => {
+    assert.ok(bundleCode.includes('function yo(s,t){return{level:"high",pixelRatioCap:Math.min(1.5,t),shadows:!0,shadowMapSize:2048,bloom:.5,sceneryDensity:1,particleBudget:2400,fancyWater:!0,antialias:!0,anisotropy:8}}'), 'yo() locked to return high-fidelity profile with 2048 shadows, 0.5 bloom, 2400 particles and 8x anisotropy');
+  });
+
+  it('2. Mg() settings loader strictly defaults and returns quality: "high"', () => {
+    assert.ok(bundleCode.includes('function Mg(){try{const s=localStorage.getItem(dh);if(s){const t=JSON.parse(s);return{...Mo,...t,quality:"high"}}}catch{}return{...Mo,quality:"high"}}'), 'Mg() overrides any persisted setting with quality: "high"');
+  });
+
+  it('3. sr(s) settings persister enforces s.quality = "high"', () => {
+    assert.ok(bundleCode.includes('function sr(s){try{s.quality="high";localStorage.setItem(dh,JSON.stringify(s))}catch{}}'), 'sr() explicitly enforces quality: "high" before saving to localStorage');
+  });
+
+  it('4. cycleQuality() remains permanently locked at HIGH profile', () => {
+    assert.ok(bundleCode.includes('cycleQuality(){this.userSettings.quality="high",sr(this.userSettings),this.quality=yo("high",window.devicePixelRatio),this.renderer.setPixelRatio(Math.min(window.devicePixelRatio,this.quality.pixelRatioCap)),this.renderer.shadowMap.enabled=!0,this.bloom.strength=this.quality.bloom,this.ui.setSettings(this.userSettings),this.ui.toast("Quality: HIGH",1.6),this.audio.play("ui_accept")}'), 'cycleQuality() ensures settings remain HIGH and alerts user');
+  });
+
+  it('5. WebGL renderer requests high-performance power preference and antialiasing', () => {
+    assert.ok(bundleCode.includes('powerPreference:"high-performance"'), 'WebGL initializes with high-performance powerPreference');
+    assert.ok(bundleCode.includes('antialias:this.quality.antialias'), 'WebGL initializes with antialiasing enabled');
+  });
+
+  it('6. HTML boots with APP_VERSION zephyr-6.9.1 and sanitizes localStorage quality to high', () => {
+    assert.ok(indexHtml.includes("var APP_VERSION = 'zephyr-6.9.1';"), 'index.html defines APP_VERSION zephyr-6.9.1');
+    assert.ok(zephyrHtml.includes("var APP_VERSION = 'zephyr-6.9.1';"), 'zephyr.html defines APP_VERSION zephyr-6.9.1');
+    assert.ok(indexHtml.includes("parsed.quality = 'high';"), 'index.html resets any non-high quality setting to high');
+    assert.ok(zephyrHtml.includes("parsed.quality = 'high';"), 'zephyr.html resets any non-high quality setting to high');
+  });
+});
+
