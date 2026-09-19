@@ -35,7 +35,7 @@
     <script>
       // Clean legacy caches and service workers & force fresh load on version change
       (function() {
-        var APP_VERSION = 'zephyr-6.5.0';
+        var APP_VERSION = 'zephyr-6.6.0';
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistrations().then(function(regs) {
             for (var r of regs) r.unregister();
@@ -553,6 +553,48 @@
       }
       .hud__drift {
         bottom: max(28px, calc(env(safe-area-inset-bottom) + 14px)) !important;
+      }
+      .hud__draft {
+        position: absolute;
+        top: -14px;
+        left: 0;
+        width: 100%;
+        height: 5px;
+        background: rgba(3, 10, 20, 0.7);
+        border: 1px solid rgba(118, 255, 240, 0.4);
+        border-radius: 3px;
+        overflow: hidden;
+        opacity: 0;
+        transition: opacity 0.18s ease;
+        pointer-events: none;
+      }
+      .hud__draft.active {
+        opacity: 1;
+      }
+      .hud__draft i {
+        display: block;
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #76fff0, #ffc857);
+        box-shadow: 0 0 8px #76fff0;
+        border-radius: 2px;
+        transition: width 0.08s linear;
+      }
+      .hud__speed.fast .hud__speed-num {
+        text-shadow: 0 0 16px rgba(118, 255, 240, 0.8), 0 0 30px rgba(118, 255, 240, 0.4);
+        color: #a8fff6;
+      }
+      .hud__speed.hyper .hud__speed-num {
+        text-shadow: 0 0 20px rgba(255, 200, 87, 0.9), 0 0 36px rgba(255, 75, 43, 0.6);
+        color: #fff2b2;
+      }
+      .warn.show {
+        box-shadow: 0 0 60px rgba(255, 40, 40, 0.6);
+        animation: warnPulse 0.45s infinite alternate ease-in-out;
+      }
+      @keyframes warnPulse {
+        from { transform: translate(-50%, -50%) scale(1); opacity: 0.88; }
+        to { transform: translate(-50%, -50%) scale(1.06); opacity: 1; }
       }
       @media (max-height: 620px) {
         .title__foot {
