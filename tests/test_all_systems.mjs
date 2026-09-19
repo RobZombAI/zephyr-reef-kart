@@ -3861,3 +3861,126 @@ describe('=== UNIT & PROCESS TESTS: IOS IPHONE NATIVE WRAPPER & IPA PACKAGING ==
   });
 });
 
+describe('=== UNIT & PROCESS TESTS: 24 MASTER OVERHAUL QUALITY, GRAPHICS & GAMEPLAY ===', () => {
+  const bundleCode = fs.readFileSync('assets/index-C9rd31_W.js', 'utf8');
+
+  it('1. Quality: trackPalettes expanded to all 24 tracks with complete geological palettes', () => {
+    assert.ok(bundleCode.includes('trackPalettes=['), 'trackPalettes defined');
+    const tpStart = bundleCode.indexOf('trackPalettes=[');
+    const tpEnd = bundleCode.indexOf('],cupPalettes=', tpStart);
+    const tpBlock = bundleCode.substring(tpStart, tpEnd);
+    const tpCount = tpBlock.split('\n').filter(l => l.includes('sand:')).length;
+    assert.strictEqual(tpCount, 24, 'All 24 track palettes defined with sand/grass/rock/peak');
+  });
+
+  it('2. Quality: trackMatPalettes expanded to all 24 tracks with PBR material palettes', () => {
+    assert.ok(bundleCode.includes('trackMatPalettes=['), 'trackMatPalettes defined');
+    const tmpStart = bundleCode.indexOf('trackMatPalettes=[');
+    const tmpEnd = bundleCode.indexOf('],cupMatPalettes=', tmpStart);
+    const tmpBlock = bundleCode.substring(tmpStart, tmpEnd);
+    const tmpCount = tmpBlock.split('\n').filter(l => l.includes('rock1:')).length;
+    assert.strictEqual(tmpCount, 24, 'All 24 track PBR material palettes defined');
+  });
+
+  it('3. Quality: specificTrackLandmarks defined for all tracks 0 to 23', () => {
+    assert.ok(bundleCode.includes('specificTrackLandmarks=['), 'specificTrackLandmarks defined');
+    const stlStart = bundleCode.indexOf('specificTrackLandmarks=[');
+    const stlEnd = bundleCode.indexOf('];const cupLandmarks', stlStart);
+    const stlBlock = bundleCode.substring(stlStart, stlEnd);
+    const stlCount = stlBlock.split('\n').filter(l => l.trim().startsWith('[{')).length;
+    assert.strictEqual(stlCount, 24, 'All 24 specific track landmark arrays defined');
+  });
+
+  it('4. Graphics: Bottomless Void hides ocean mesh on cosmic tracks 9, 21, and 22', () => {
+    assert.ok(bundleCode.includes('if(curTrackIdx===9){u.visible=!1;}'), 'Track 9 ocean hidden for void');
+    assert.ok(bundleCode.includes('if(curTrackIdx===21||curTrackIdx===22){u.visible=!1;}'), 'Tracks 21 & 22 ocean hidden for void');
+  });
+
+  it('5. Graphics: Lava Shader enabled on volcanic tracks 7, 8, and 20', () => {
+    assert.ok(bundleCode.includes('isLava=curTrackIdx===7||curTrackIdx===8||curTrackIdx===20'), 'Lava shader enabled for tracks 7, 8, 20');
+  });
+
+  it('6. Gameplay: Void Fall Respawn detects out-of-bounds drop and triggers Lakitu rescue', () => {
+    assert.ok(bundleCode.includes('isVoidFall=n.pos.y<-35'), 'Void fall check y < -35');
+    assert.ok(bundleCode.includes('this.rescueRacer(n)'), 'Rescue racer called');
+    assert.ok(bundleCode.includes('n.invuln=Math.max(n.invuln||0,1.5)'), 'Rescue grants 1.5s invulnerability');
+  });
+
+  it('7. Quality: Track Transition resets minimap and world state cleanly', () => {
+    assert.ok(bundleCode.includes('this.cine?.build?.(this.world.spline);'), 'Cinematic spline rebuild on track transition');
+    assert.ok(bundleCode.includes('this.ui.attachMinimap(this.world.spline);'), 'Minimap attached to new spline');
+  });
+
+  it('8. Quality: Real-Time Gap Delta formats live chronometer with s suffix', () => {
+    assert.ok(bundleCode.includes('function Cv(s){if(!Number.isFinite(s))return"--";const t=s>=0?"+":"-",e=Math.abs(s);return`${t}${e.toFixed(2)}s`}'), 'Cv returns gap formatted with s suffix');
+  });
+
+  it('9. Graphics: Minimap Leader Crown renders 👑 icon over rank 1 racer', () => {
+    assert.ok(bundleCode.includes('fillText("👑",ox,oy-mRad-5)'), 'Crown emoji rendered over race leader');
+  });
+
+  it('10. Graphics: Boost Pad Energy Pulse emits directional chevron sparks on contact', () => {
+    assert.ok(bundleCode.includes('a.cooldown=.35,i(r,1);'), 'Boost pad triggers booster callback');
+    assert.ok(bundleCode.includes('bYaw=t.state.yaw'), 'Pad sparks aligned with kart yaw');
+  });
+
+  it('11. Graphics: Slipstream Wind Streaks emit trailing air sparks during drafting', () => {
+    assert.ok(bundleCode.includes('r1.draftTimer>0.3&&Math.random()<0.35'), 'Slipstream wind streaks active when drafting');
+  });
+
+  it('12. Graphics: Dynamic FOV expands with speed and boost gains', () => {
+    assert.ok(bundleCode.includes('fovSpeedGain:13') && bundleCode.includes('fovBoostGain:11'), 'Dynamic FOV tuning constants present');
+  });
+
+  it('13. Graphics: Rail Scrape Spark Hue reflects biome active theme glowColor', () => {
+    assert.ok(bundleCode.includes('window.__ACTIVE_THEME?.glowColor||16773888'), 'Wall scrape sparks use biome theme glow color');
+  });
+
+  it('14. Graphics: Rocket Start Flame Pop emits exhaust sparks during countdown rev', () => {
+    assert.ok(bundleCode.includes('this.countdown<=1.15&&this.countdown>=0.06') && bundleCode.includes('16744448'), 'Countdown rev sweet spot sparks emitted');
+  });
+
+  it('15. Quality: Audio Pitch & Doppler updates engine sounds per racer', () => {
+    assert.ok(bundleCode.includes('this.audio.engine.update(h.id'), 'Engine sound pitch and Doppler updated');
+  });
+
+  it('16. Graphics: Winner Podium Ceremony unleashes fireworks and confetti for top 3', () => {
+    assert.ok(bundleCode.includes('i<=3&&window.__zephyr?.vfx'), 'Podium celebration check present');
+    assert.ok(bundleCode.includes('fireworks?.(') && bundleCode.includes('confetti?.('), 'Fireworks and confetti launched');
+  });
+
+  it('17. Gameplay: Ultra Mini-Turbo Tier 3 features 2.5s boost and magenta burst', () => {
+    assert.ok(bundleCode.includes('sv=[0,.7,1.15,2.5]'), 'Ultra mini turbo boost duration set to 2.5s');
+    assert.ok(bundleCode.includes('12845311') || bundleCode.includes('16711914'), 'Tier 3 magenta spark / burst color defined');
+  });
+
+  it('18. Gameplay: Boost Off-Road Cut negates off-road friction penalty while boosting', () => {
+    assert.ok(bundleCode.includes('(o.boostTime>0||o.padBoostTime>0)'), 'Boost cuts off-road drag');
+  });
+
+  it('19. Gameplay: Jump Landing Suspension absorbs impact with land squash and visual punch', () => {
+    assert.ok(bundleCode.includes('landSquash') && bundleCode.includes('visualSteer'), 'Suspension landing physics present');
+  });
+
+  it('20. Gameplay: AI Multi-Line Avoidance distributes racing line lateral offsets', () => {
+    assert.ok(bundleCode.includes('((this.profile.seed%5)-2)*0.7'), 'AI lines laterally offset based on profile seed');
+  });
+
+  it('21. Gameplay: Spline-Bounded Bolt Homing clamps missile laterally inside track width', () => {
+    assert.ok(bundleCode.includes('bMax=bsmp.halfWidth+1.5'), 'Bolt clamped to track boundary halfWidth + 1.5');
+  });
+
+  it('22. Quality: Curb Rumble Feedback triggers curb_tick audio and haptic feedback', () => {
+    assert.ok(bundleCode.includes('curb_tick'), 'Curb rumble audio trigger present');
+  });
+
+  it('23. Quality: Dynamic Engine Synth responds to throttle, offroad state, and slip', () => {
+    assert.ok(bundleCode.includes('this.audio.setEngineState'), 'Engine state communicates offroad and slip to audio synth');
+  });
+
+  it('24. Gameplay: Tiered Difficulty AI scales difficulty across 6 cups', () => {
+    assert.ok(bundleCode.includes('tierDiff=1+cupIdx*0.03'), 'AI skill scaled by cup index with tierDiff');
+  });
+});
+
+
