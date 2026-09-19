@@ -3011,9 +3011,8 @@ describe('=== UNIT & PROCESS TESTS: 10 GRAPHICAL ENHANCEMENTS & FIDELITY OVERHAU
     assert.ok(bundleCode.includes('l=r(s.kart.tyre,.88,.04)'), 'Kart tyres use deep vulcanized matte rubber');
   });
 
-  it('6. High-Speed Warp Streaks & Dynamic Speed Lines (Item 6)', () => {
-    assert.ok(cssCode.includes('repeating-conic-gradient('), 'Speedlines CSS has dynamic radial streaking pattern');
-    assert.ok(cssCode.includes('@keyframes speedwarp'), 'Speedlines warp animation declared in CSS');
+  it('6. White Speed Lines Elimination & Speedlines Overlay Removal', () => {
+    assert.ok(cssCode.includes('.speedlines{display:none!important;opacity:0!important;pointer-events:none!important;visibility:hidden!important}'), 'Speedlines CSS overlay is completely neutralized');
   });
 
   it('7. Solar Bloom & Lens Glare Flare (Item 7)', () => {
@@ -3925,7 +3924,7 @@ describe('=== UNIT & PROCESS TESTS: 24 MASTER OVERHAUL QUALITY, GRAPHICS & GAMEP
   });
 
   it('11. Graphics: Slipstream Wind Streaks emit trailing air sparks during drafting', () => {
-    assert.ok(bundleCode.includes('r1.draftTimer>0.3&&Math.random()<0.35'), 'Slipstream wind streaks active when drafting');
+    assert.ok(bundleCode.includes('r1.draftTimer>0.4&&Math.random()<0.22'), 'Slipstream wind streaks active when drafting');
   });
 
   it('12. Graphics: Dynamic FOV expands with speed and boost gains', () => {
@@ -4032,8 +4031,8 @@ describe('=== UNIT & PROCESS TESTS: 50 GAMEPLAY, 20 QUALITATIVE GRAPHICS & 100 S
   });
 
   it('10. Visuals: Trailing Slipstream Vortex Streaks emit aerodynamic air trails', () => {
-    assert.ok(bundleCode.includes('this.draftTimer>0.35&&Math.random()<.45'), 'Drafting timer threshold activates wake particles');
-    assert.ok(bundleCode.includes('e.spark(r.center.x+(Math.random()-.5)*1.5'), 'Streamlined air streak sparks emitted along kart hull');
+    assert.ok(bundleCode.includes('this.draftTimer>0.4&&Math.random()<0.2'), 'Drafting timer threshold activates wake particles');
+    assert.ok(bundleCode.includes('e.spark(r.center.x+(Math.random()-.5)*1.2'), 'Streamlined air streak sparks emitted along kart hull');
   });
 
   it('11. Graphics: Volumetric Atmospheric God Rays in Sky Atmosphere Shader', () => {
@@ -4175,11 +4174,26 @@ describe('=== UNIT & PROCESS TESTS: PERMANENT MAXIMUM HIGH QUALITY GRAPHICS LOCK
     assert.ok(bundleCode.includes('antialias:this.quality.antialias'), 'WebGL initializes with antialiasing enabled');
   });
 
-  it('6. HTML boots with APP_VERSION zephyr-6.9.4 and sanitizes localStorage quality to high', () => {
-    assert.ok(indexHtml.includes("var APP_VERSION = 'zephyr-6.9.4';"), 'index.html defines APP_VERSION zephyr-6.9.4');
-    assert.ok(zephyrHtml.includes("var APP_VERSION = 'zephyr-6.9.4';"), 'zephyr.html defines APP_VERSION zephyr-6.9.4');
+  it('6. HTML boots with APP_VERSION zephyr-6.9.5 and sanitizes localStorage quality to high', () => {
+    assert.ok(indexHtml.includes("var APP_VERSION = 'zephyr-6.9.5';"), 'index.html defines APP_VERSION zephyr-6.9.5');
+    assert.ok(zephyrHtml.includes("var APP_VERSION = 'zephyr-6.9.5';"), 'zephyr.html defines APP_VERSION zephyr-6.9.5');
     assert.ok(indexHtml.includes("parsed.quality = 'high';"), 'index.html resets any non-high quality setting to high');
     assert.ok(zephyrHtml.includes("parsed.quality = 'high';"), 'zephyr.html resets any non-high quality setting to high');
+  });
+
+  it('7. Ablation & Fluidity: Speedlines overlay is completely neutralized in CSS and JS', () => {
+    const cssContent = fs.readFileSync('assets/index-DMliwuo_.css', 'utf8');
+    assert.ok(cssContent.includes('.speedlines{display:none!important;opacity:0!important;pointer-events:none!important;visibility:hidden!important}'), 'CSS disables speedlines overlay completely');
+    assert.ok(!bundleCode.includes('this.elSpeedlines.style.opacity='), 'JS no longer sets speedlines opacity in tick');
+  });
+
+  it('8. Multi-racer Broadphase, Zero-GC HUD, Two-Pass Minimap and WebAudio Voice Budgeting', () => {
+    assert.ok(bundleCode.includes('Math.abs(o)>5.5||Math.abs(a)>5.5'), 'Multi-racer collision uses broadphase distance early-out');
+    assert.ok(bundleCode.includes('this._hudPool'), 'HUD standings uses pre-allocated object pool');
+    assert.ok(bundleCode.includes('_lastRk'), 'HUD uses zero-allocation numeric and bitwise dirty checking');
+    assert.ok(bundleCode.includes('renderRacerDot(t[idx])'), 'Minimap array sort() is replaced with zero-allocation two-pass rendering');
+    assert.ok(bundleCode.includes('this._audioDist=new Float32Array(16)'), 'WebAudio uses zero-allocation spatial audio distance buffer');
+    assert.ok(bundleCode.includes('drsScale>0.58'), 'DRS scale floor supports scaling down to 0.58 on low-end GPUs');
   });
 });
 
