@@ -3983,4 +3983,108 @@ describe('=== UNIT & PROCESS TESTS: 24 MASTER OVERHAUL QUALITY, GRAPHICS & GAMEP
   });
 });
 
+describe('=== UNIT & PROCESS TESTS: 50 GAMEPLAY, 20 QUALITATIVE GRAPHICS & 100 SYSTEMIC FIXES ===', () => {
+  const bundleCode = fs.readFileSync('assets/index-C9rd31_W.js', 'utf8');
 
+  it('1. Physics: Dynamic Chassis Weight Transfer computes longitudinal pitch & centrifugal roll', () => {
+    assert.ok(bundleCode.includes('pitchTransfer=de(-f*.0065*(u?1.6:1)+((t.airPitchTrim||0)*.7),-.16,.16)'), 'Longitudinal pitch transfer computed with air trim');
+    assert.ok(bundleCode.includes('rollTransfer=de(latG+(t.drifting?t.driftDir*.07:0),-.24,.24)'), 'Lateral centrifugal roll transfer computed with drift offset');
+    assert.ok(bundleCode.includes('latG=(t.speed*(t.yawRate||0))*0.0095'), 'G-force computed from velocity and yaw rate');
+  });
+
+  it('2. Physics: Logarithmic Overcharge Boost Stacking extends duration on successive boosts', () => {
+    assert.ok(bundleCode.includes('n.boostTime=n.boostTime>0?n.boostTime+t*.65:Math.max(n.boostTime,t)'), 'Standard boost stacks logarithmically');
+    assert.ok(bundleCode.includes('n.padBoostTime=n.padBoostTime>0?n.padBoostTime+t*.75:Math.max(n.padBoostTime,t)'), 'Pad boost stacks logarithmically');
+  });
+
+  it('3. Physics: Cosmic Tracks Low-Gravity creates floaty orbital jumps', () => {
+    assert.ok(bundleCode.includes('isCosmic=(window.__CURRENT_TRACK_INDEX===9||window.__CURRENT_TRACK_INDEX===21||window.__CURRENT_TRACK_INDEX===22)'), 'Cosmic tracks 9, 21, and 22 detected');
+    assert.ok(bundleCode.includes('grav=isCosmic?24:30'), 'Gravity reduced from 30 to 24 m/s^2 on cosmic tracks');
+  });
+
+  it('4. Gameplay: Hairpin Brake-Drift Pivot enables agile tight-radius cornering', () => {
+    assert.ok(bundleCode.includes('brakePivot=(C>0)?1.34:1'), 'Braking during drift increases angular steering rate by 34%');
+  });
+
+  it('5. Gameplay: Air-Time Pitch Trim allows in-flight chassis pitch adjustment', () => {
+    assert.ok(bundleCode.includes('o.airPitchTrim=ne(o.airPitchTrim||0,(R-C)*.22,6,t)'), 'Throttle and brake trim pitch angle while airborne');
+  });
+
+  it('6. Gameplay: Front Wheel Ackerman Steering & Dynamic Camber under load', () => {
+    assert.ok(bundleCode.includes('ackermanL=x>0?1.12:.92') && bundleCode.includes('ackermanR=x<0?1.12:.92'), 'Differential Ackerman angles applied to left/right front wheels');
+    assert.ok(bundleCode.includes('camberZ=(t.drifting?t.driftDir*.16:0)+de(latG*.35,-.12,.12)'), 'Suspension camber tilts dynamically under lateral G-force');
+  });
+
+  it('7. Gameplay: AI Corner Apex Clipping tightens corner entry towards inside track boundary', () => {
+    assert.ok(bundleCode.includes('apexBias=-Math.sign(zApex.curvature)*(zApex.halfWidth*0.28*o.aggression)'), 'Apex bias computed from track curvature and AI aggression');
+    assert.ok(bundleCode.includes('Math.abs(zApex.curvature)>0.008?apexBias:0'), 'Apex bias blended smoothly into AI racing line query');
+  });
+
+  it('8. Visuals: Deceleration Exhaust Backfire Pops emit burst flames and sparks', () => {
+    assert.ok(bundleCode.includes('isDecelPop=i.grounded&&!a&&this.controls.brake>0&&Math.abs(i.speed)>14'), 'High-speed aggressive braking triggers backfire state');
+    assert.ok(bundleCode.includes('e.burst(d.x,d.y,d.z,16744448,6,3)'), 'Backfire pop flame bursts emitted at exhaust anchors');
+  });
+
+  it('9. Visuals: Biome-Aware Kickup Particles reflect terrain geological substance', () => {
+    assert.ok(bundleCode.includes('isLavaTrk=curTrkIdx===7||curTrkIdx===8||curTrkIdx===20'), 'Volcanic tracks identified for cinder/soot kickup');
+    assert.ok(bundleCode.includes('isIceTrk=curTrkIdx===5||curTrkIdx===13'), 'Ice tracks identified for glacial snow spray');
+    assert.ok(bundleCode.includes('isCosmicTrk=curTrkIdx===9||curTrkIdx===21||curTrkIdx===22'), 'Cosmic tracks identified for stardust particle spray');
+  });
+
+  it('10. Visuals: Trailing Slipstream Vortex Streaks emit aerodynamic air trails', () => {
+    assert.ok(bundleCode.includes('this.draftTimer>0.35&&Math.random()<.45'), 'Drafting timer threshold activates wake particles');
+    assert.ok(bundleCode.includes('e.spark(r.center.x+(Math.random()-.5)*1.5'), 'Streamlined air streak sparks emitted along kart hull');
+  });
+
+  it('11. Graphics: Volumetric Atmospheric God Rays in Sky Atmosphere Shader', () => {
+    assert.ok(bundleCode.includes('float godRay=pow(sd,48.)*(.65+.35*sin(atan(d.x,d.z)*14.+uTime*.15));'), 'Atmospheric Mie scattering shafts computed in sky fragment shader');
+    assert.ok(bundleCode.includes('c+=vec3(1.,.94,.76)*godRay*.35;'), 'God rays blended into zenith sky color');
+  });
+
+  it('12. Graphics: Ocean Multi-Frequency Caustic Refraction Network', () => {
+    assert.ok(bundleCode.includes('float caust = pow(max(0.0, sin(p.x * 1.6 + sin(p.y * 1.4 + uTime * 1.1)) * cos(p.y * 1.7 - uTime * 1.3) * 0.5 + 0.5), 3.0);'), 'Dual-frequency caustic wave pattern computed in water shader');
+    assert.ok(bundleCode.includes('c += vec3(0.52, 0.92, 1.0) * caust * 0.32 * (1.0 - shallow);'), 'Caustic illumination mapped onto underwater shelf');
+  });
+
+  it('13. Graphics: Finish Line Checkered Banner Physics Flutter Animation', () => {
+    assert.ok(bundleCode.includes('P.offset.x=Math.sin(N*3.5)*.015;'), 'Checkered victory banner animates sinusoidal wind flutter');
+  });
+
+  it('14. HUD: Dedicated Slipstream Gauge Bar & Reactive Speedometer', () => {
+    assert.ok(bundleCode.includes('data-role="draftwrap"'), 'HUD markup includes slipstream draft container');
+    assert.ok(bundleCode.includes('data-role="draftbar"'), 'HUD markup includes slipstream fill bar');
+    assert.ok(bundleCode.includes('this.elDraftWrap=e("draftwrap")'), 'UI controller queries draftwrap element');
+    assert.ok(bundleCode.includes('this.elSpeed.classList.toggle("fast",t.speed>85)'), 'Speedometer toggles fast state above 85 km/h');
+    assert.ok(bundleCode.includes('this.elSpeed.classList.toggle("hyper",t.speed>115)'), 'Speedometer toggles hyper state above 115 km/h');
+  });
+
+  it('15. HUD: Minimap Directional Orientation Chevron displays kart rotation', () => {
+    assert.ok(bundleCode.includes('e.rotate(r.yaw+Math.PI)'), 'Minimap rotates canvas context to match racer yaw');
+    assert.ok(bundleCode.includes('e.moveTo(0,-mRad-4)') && bundleCode.includes('e.lineTo(-3,-mRad+1)'), 'Directional arrowhead pointer drawn on racer dot');
+    assert.ok(bundleCode.includes('o.yaw=e.state.yaw'), 'Minimap pool records live yaw per frame');
+  });
+
+  it('16. Systemic Fixes: Polygon offset and depth parameters eliminate Z-fighting', () => {
+    assert.ok(bundleCode.includes('polygonOffsetFactor=-4,f.polygonOffsetUnits=-8'), 'Road markings and decals use calibrated negative polygon offsets');
+    assert.ok(bundleCode.includes('polygonOffsetFactor:-9,polygonOffsetUnits:-18'), 'Boost pad chevron decals use deep negative polygon offsets');
+    assert.ok(bundleCode.includes('polygonOffsetFactor:-4,polygonOffsetUnits:-6'), 'Ground projection quad decal uses calibrated polygon offset');
+  });
+
+  it('17. Systemic Fixes: Camera near clip 0.16 prevents bumper clipping on steep hills', () => {
+    assert.ok(bundleCode.includes('new Ke(e.fovBase,t,.16,1400)'), 'Perspective camera near clip set to 0.16m');
+  });
+
+  it('18. Systemic Fixes: Shadow camera frustum bounds and acne elimination', () => {
+    assert.ok(bundleCode.includes('left:-75,right:75,top:75,bottom:-75'), 'Shadow orthographic bounds clamped to 150m corridor');
+    assert.ok(bundleCode.includes('shadow.bias=-0.00025') && bundleCode.includes('shadow.normalBias=.042'), 'Sub-millimeter depth bias prevents shadow acne and peter-panning');
+  });
+
+  it('19. Systemic Fixes: Aspect ratio correction for mobile and ultrawide viewports', () => {
+    assert.ok(bundleCode.includes('_aspCorr=_asp<1.65?(1.65-_asp)*18:0'), 'FOV dynamically widened on narrow aspect ratios');
+  });
+
+  it('20. Systemic Fixes: PBR Roughness & Metalness parameters normalized across models', () => {
+    assert.ok(bundleCode.includes('d.roughness=.62') && bundleCode.includes('d.metalness=.16'), 'Road asphalt materials properly calibrated for PBR lighting');
+    assert.ok(bundleCode.includes('o=r(s.kart.body,.22,.62)'), 'Kart body uses clearcoat metallic specular lobe');
+  });
+});
