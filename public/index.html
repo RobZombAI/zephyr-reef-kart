@@ -35,7 +35,7 @@
     <script>
       // Clean legacy caches and service workers & force fresh load on version change
       (function() {
-        var APP_VERSION = 'zephyr-6.8.0';
+        var APP_VERSION = 'zephyr-6.9.0';
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistrations().then(function(regs) {
             for (var r of regs) r.unregister();
@@ -46,6 +46,17 @@
             for (var n of names) caches.delete(n);
           });
         }
+        try {
+          var storedSettings = localStorage.getItem('zephyr-reef-settings-v1');
+          if (storedSettings) {
+            var parsed = JSON.parse(storedSettings);
+            if (parsed.quality === 'eco' || !parsed.quality) {
+              parsed.quality = 'high';
+              localStorage.setItem('zephyr-reef-settings-v1', JSON.stringify(parsed));
+            }
+          }
+          localStorage.removeItem('zephyr_explicit_quality');
+        } catch (e) {}
         try {
           var storedVersion = localStorage.getItem('zephyr_client_version');
           if (storedVersion !== APP_VERSION) {
@@ -58,9 +69,9 @@
       })();
     </script>
     <script src="./assets/peerjs.min.js"></script>
-    <script type="module" src="./assets/multiplayerManager.js?v=zephyr-6.8.0"></script>
-    <script type="module" crossorigin src="./assets/index-C9rd31_W.js?v=zephyr-6.8.0"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DMliwuo_.css?v=zephyr-6.8.0">
+    <script type="module" src="./assets/multiplayerManager.js?v=zephyr-6.9.0"></script>
+    <script type="module" crossorigin src="./assets/index-C9rd31_W.js?v=zephyr-6.9.0"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DMliwuo_.css?v=zephyr-6.9.0">
     <style>
       /* Mobile Touch Controls Layer */
       .zephyr-touch-layer {

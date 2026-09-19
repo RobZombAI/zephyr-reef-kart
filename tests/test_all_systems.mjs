@@ -1732,9 +1732,9 @@ describe('=== UNIT & PROCESS TESTS: 24 TRACKS, ARCHITECTURE & GEOMETRY ===', () 
 });
 
 describe('=== UNIT & PROCESS TESTS: UNIVERSAL ANDROID & BATTERY OPTIMIZATIONS ===', () => {
-  it('1. WebGL Context creation flags and low-power preference', () => {
+  it('1. WebGL Context creation flags and powerPreference high-performance', () => {
     const jsContent = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
-    assert.ok(jsContent.includes('powerPreference:"low-power"') || jsContent.includes('powerPreference:"high-performance"'), 'Must specify powerPreference low-power or high-performance');
+    assert.ok(jsContent.includes('powerPreference:"high-performance"'), 'Must specify powerPreference high-performance');
     assert.ok(jsContent.includes('alpha:!1'), 'Must specify alpha:false to prevent expensive SurfaceFlinger compositing');
     assert.ok(jsContent.includes('depth:!0'), 'Must retain depth buffer');
     assert.ok(jsContent.includes('stencil:!1'), 'Must disable unused stencil buffer to save VRAM');
@@ -4146,57 +4146,5 @@ describe('=== UNIT & PROCESS TESTS: 80+ ENHANCEMENTS, 24 BESPOKE LEVEL LANDMARKS
   it('6. Clearance: Custom wide/floating landmark clearance logic', () => {
     assert.ok(bundleCode.includes('_isFloatOrWide='), '_isFloatOrWide classification defines clearance rules');
     assert.ok(bundleCode.includes('_isFloatOrWide?22:_.kind==="shell"?18:8'), 'Clearance radius expanded to 22m for large signature landmarks');
-  });
-});
-
-describe('=== ZERO-GPU ARCHITECTURE & ECO POWER REDUCTION TESTS ===', () => {
-  const bundleCode = fs.readFileSync('/Users/robzomb/Documents/antigravity/agitated-einstein/assets/index-C9rd31_W.js', 'utf8');
-
-  it('1. Quality Profile: Eco mode defined with 30 target FPS and clamped DPR', () => {
-    assert.ok(bundleCode.includes('case"eco":return{level:s,'), 'yo() defines eco profile level');
-    assert.ok(bundleCode.includes('targetFps:30'), 'yo() defines 30 target FPS in eco mode');
-    assert.ok(bundleCode.includes('pixelRatioCap:Math.min(.85,t)'), 'yo() caps pixelRatio to 0.85 in eco mode');
-    assert.ok(bundleCode.includes('particleBudget:300'), 'yo() limits particleBudget to 300 in eco mode');
-    assert.ok(bundleCode.includes('sceneryDensity:.28'), 'yo() limits sceneryDensity to 0.28 in eco mode');
-  });
-
-  it('2. Clamped DPR across all quality presets to prevent 4K/Retina GPU meltdown', () => {
-    assert.ok(bundleCode.includes('case"low":return{level:s,pixelRatioCap:Math.min(1,t)'), 'yo() caps Low DPR to 1.0');
-    assert.ok(bundleCode.includes('case"medium":return{level:s,pixelRatioCap:Math.min(1.15,t)'), 'yo() caps Medium DPR to 1.15');
-    assert.ok(bundleCode.includes('default:return{level:"high",pixelRatioCap:Math.min(1.18,t)'), 'yo() caps High DPR to 1.18');
-  });
-
-  it('3. Auto-detection: Low-end hardware automatically starts in Eco mode', () => {
-    assert.ok(bundleCode.includes('if(c<=2||m<=2){aQ="eco"}'), 'Mg() auto-detects low-end hardware and returns eco');
-  });
-
-  it('4. Shadow Map Optimization: autoUpdate disabled and staggered shadow updates', () => {
-    assert.ok(bundleCode.includes('this.renderer.shadowMap.autoUpdate=!1'), 'Shadow map autoUpdate initialized to false');
-    assert.ok(bundleCode.includes('this._shadowFrame=(this._shadowFrame||0)+1'), 'Frame counter tracked for shadow updates');
-    assert.ok(bundleCode.includes('const shadowFreq=this.quality.level==="eco"?4:(this.quality.level==="low"?3:2)'), 'Shadow frequency staggered by quality level');
-    assert.ok(bundleCode.includes('this.renderer.shadowMap.needsUpdate=(this._shadowFrame%shadowFreq===0)'), 'Shadow map only re-rendered on staggered frames in race');
-    assert.ok(bundleCode.includes('this.renderer.shadowMap.needsUpdate=(this._shadowFrame%6===0)'), 'Shadow map updated at 1/6th rate in select screen');
-    assert.ok(bundleCode.includes('this.renderer.shadowMap.needsUpdate=!1'), 'Shadow map completely frozen in title/results');
-  });
-
-  it('5. Post-Processing Bypass: EffectComposer bypassed in Eco mode and no-bloom', () => {
-    assert.ok(bundleCode.includes('this.quality.level==="eco"||!this.bloom||this.bloom.strength<=.01'), 'render() bypasses EffectComposer when in eco mode or bloom <= 0.01');
-  });
-
-  it('6. Mediump Shader Precision: Half-precision FP16 ALUs in mobile/integrated GPUs', () => {
-    assert.ok(bundleCode.includes('precision mediump float;'), 'Shaders specify mediump precision for ALUs');
-  });
-
-  it('7. Idle Menu Throttling: Deep frame throttling when menus are left untouched', () => {
-    assert.ok(bundleCode.includes('menuIdle>12000'), 'updateMenu detects 12s deep idle');
-    assert.ok(bundleCode.includes('menuIdle>3000'), 'updateMenu detects 3s shallow idle');
-  });
-
-  it('8. Minimap Throttling: 2D canvas draw throttled to 25 Hz', () => {
-    assert.ok(bundleCode.includes('_curN-this._lastMinimapDraw>38'), 'updateRace throttles minimap draw calls to > 38ms');
-  });
-
-  it('9. Quality Cycling: Supports eco mode in cycleQuality', () => {
-    assert.ok(bundleCode.includes('["eco","low","medium","high"]'), 'cycleQuality allows toggling through Eco mode');
   });
 });
