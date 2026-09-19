@@ -35,7 +35,7 @@
     <script>
       // Clean legacy caches and service workers & force fresh load on version change
       (function() {
-        var APP_VERSION = 'zephyr-6.3.0';
+        var APP_VERSION = 'zephyr-6.4.0';
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistrations().then(function(regs) {
             for (var r of regs) r.unregister();
@@ -58,9 +58,9 @@
       })();
     </script>
     <script src="./assets/peerjs.min.js"></script>
-    <script type="module" src="./assets/multiplayerManager.js?v=zephyr-6.3.0"></script>
-    <script type="module" crossorigin src="./assets/index-C9rd31_W.js?v=zephyr-6.3.0"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DMliwuo_.css?v=zephyr-6.3.0">
+    <script type="module" src="./assets/multiplayerManager.js?v=zephyr-6.4.0"></script>
+    <script type="module" crossorigin src="./assets/index-C9rd31_W.js?v=zephyr-6.4.0"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DMliwuo_.css?v=zephyr-6.4.0">
     <style>
       /* Mobile Touch Controls Layer */
       .zephyr-touch-layer {
@@ -73,7 +73,7 @@
         align-items: flex-end;
         padding-left: max(16px, env(safe-area-inset-left));
         padding-right: max(16px, env(safe-area-inset-right));
-        padding-bottom: max(16px, env(safe-area-inset-bottom));
+        padding-bottom: max(18px, calc(env(safe-area-inset-bottom) + 8px));
         padding-top: max(14px, env(safe-area-inset-top));
         box-sizing: border-box;
       }
@@ -544,6 +544,24 @@
           left: max(22px, env(safe-area-inset-left)) !important;
           transform: scale(0.92);
           transform-origin: bottom left;
+        }
+      }
+    
+      /* Clean Bottom Screen Presentation */
+      .hud__quality {
+        display: none !important;
+      }
+      .hud__drift {
+        bottom: max(28px, calc(env(safe-area-inset-bottom) + 14px)) !important;
+      }
+      @media (max-height: 620px) {
+        .title__foot {
+          display: none !important;
+        }
+      }
+      @media (pointer: coarse) {
+        .title__foot {
+          display: none !important;
         }
       }
     </style>
@@ -1264,9 +1282,20 @@
           const director = z.director;
           const isRacing = z.mode === 'race' && director;
 
-          // Toggle touch controls visibility depending on game mode
+          // Smart Touch Detection: hide virtual pedals on desktop / mouse-keyboard setups
+          const isTouchCapable = () => {
+            return ('ontouchstart' in window) || 
+                   (navigator.maxTouchPoints > 0) || 
+                   /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+          };
+          if (typeof window.__touchActive === 'undefined') {
+            window.__touchActive = isTouchCapable();
+            window.addEventListener('touchstart', () => { window.__touchActive = true; }, { passive: true });
+          }
+
+          // Toggle touch controls visibility depending on game mode AND touch device capability
           if (steerGroup && pedalsGroup) {
-            if (isRacing) {
+            if (isRacing && window.__touchActive) {
               steerGroup.style.display = 'flex';
               pedalsGroup.style.display = 'flex';
             } else {
