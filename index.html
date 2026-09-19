@@ -35,7 +35,7 @@
     <script>
       // Clean legacy caches and service workers & force fresh load on version change
       (function() {
-        var APP_VERSION = 'zephyr-6.9.1';
+        var APP_VERSION = 'zephyr-6.9.2';
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistrations().then(function(regs) {
             for (var r of regs) r.unregister();
@@ -69,9 +69,9 @@
       })();
     </script>
     <script src="./assets/peerjs.min.js"></script>
-    <script type="module" src="./assets/multiplayerManager.js?v=zephyr-6.9.1"></script>
-    <script type="module" crossorigin src="./assets/index-C9rd31_W.js?v=zephyr-6.9.1"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DMliwuo_.css?v=zephyr-6.9.1">
+    <script type="module" src="./assets/multiplayerManager.js?v=zephyr-6.9.2"></script>
+    <script type="module" crossorigin src="./assets/index-C9rd31_W.js?v=zephyr-6.9.2"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DMliwuo_.css?v=zephyr-6.9.2">
     <style>
       /* Mobile Touch Controls Layer */
       .zephyr-touch-layer {
@@ -331,6 +331,55 @@
         background: rgba(20, 60, 80, 0.92);
         box-shadow: 0 0 24px rgba(118, 255, 240, 0.45);
         transform: translateY(-2px);
+      }
+      .z-track-item.locked {
+        opacity: 0.44;
+        filter: grayscale(80%);
+        border: 2px dashed rgba(255, 255, 255, 0.2);
+        cursor: not-allowed;
+      }
+      .z-track-item.locked:hover {
+        border-color: rgba(255, 107, 107, 0.6);
+        background: rgba(36, 12, 16, 0.9);
+        box-shadow: 0 0 16px rgba(255, 80, 80, 0.35);
+        transform: none;
+      }
+      .z-track-item.won {
+        border-color: rgba(255, 200, 87, 0.5);
+      }
+      .z-track-lock-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 10px;
+        font-weight: 800;
+        color: #ff8080;
+        background: rgba(255, 80, 80, 0.18);
+        padding: 2px 7px;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 80, 80, 0.35);
+        margin-top: 3px;
+      }
+      .z-track-won-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 10px;
+        font-weight: 800;
+        color: #ffd700;
+        background: rgba(255, 215, 0, 0.18);
+        padding: 2px 7px;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 215, 0, 0.45);
+        margin-top: 3px;
+      }
+      @keyframes z-shake {
+        0%, 100% { transform: translateX(0); }
+        20%, 60% { transform: translateX(-6px); }
+        40%, 80% { transform: translateX(6px); }
+      }
+      .z-track-item.shake {
+        animation: z-shake 0.35s ease;
       }
 
       /* In-race Banners */
@@ -1525,25 +1574,71 @@
               }
             }
 
-            // Save track record if player finishes
+            // Save track record & progression if player finishes
             if (player.progress && player.progress.finished && player.progress.finishTime > 0) {
               const curTrack = localStorage.getItem('zephyr_track') || '0';
+              const curIdx = parseInt(curTrack, 10);
               const oldRecord = parseFloat(localStorage.getItem('zephyr_record_' + curTrack) || '9999');
               if (player.progress.finishTime < oldRecord) {
                 localStorage.setItem('zephyr_record_' + curTrack, player.progress.finishTime.toFixed(2));
+              }
+              const rank = player.progress.finishRank || player.rank || 1;
+              if (rank === 1) {
+                localStorage.setItem('zephyr_won_track_' + curIdx, '1');
+                const curMax = parseInt(localStorage.getItem('zephyr_max_unlocked_track') || '0', 10);
+                if (curIdx >= curMax && curIdx < 23) {
+                  localStorage.setItem('zephyr_max_unlocked_track', String(curIdx + 1));
+                  if (window.__zephyr?.ui?.toast) {
+                    window.__zephyr.ui.toast(`🎉 VITTORIA 1° POSTO! Pista ${curIdx + 2} Sbloccata!`, 4.0);
+                  }
+                }
               }
             }
           }
         }, 120);
 
-        // Track Selector Modal & Records
+        // Track Selector Modal & Progression Records
         const trackModal = document.getElementById('z-track-modal');
         const trackBtn = document.getElementById('z-btn-track');
         const closeBtn = document.getElementById('z-modal-close');
 
+        const getUnlockedMax = () => {
+          const v = parseInt(localStorage.getItem('zephyr_max_unlocked_track') || '0', 10);
+          return isNaN(v) ? 0 : Math.max(0, Math.min(23, v));
+        };
+
         const updateRecordDisplays = () => {
+          const maxUnlocked = getUnlockedMax();
           for (let i = 0; i < 24; i++) {
+            const item = document.querySelector(`.z-track-item[data-index="${i}"]`);
             const el = document.getElementById('z-record-' + i);
+            const isUnlocked = i <= maxUnlocked;
+            const isWon = localStorage.getItem('zephyr_won_track_' + i) === '1';
+
+            if (item) {
+              item.classList.toggle('locked', !isUnlocked);
+              item.classList.toggle('won', isWon);
+
+              let badge = item.querySelector('.z-track-status-badge');
+              if (!badge) {
+                badge = document.createElement('div');
+                badge.className = 'z-track-status-badge';
+                const textContainer = item.querySelector('div');
+                if (textContainer) textContainer.appendChild(badge);
+              }
+
+              if (!isUnlocked) {
+                badge.className = 'z-track-status-badge z-track-lock-badge';
+                badge.innerHTML = `🔒 BLOCCATA · <span style="font-weight:600;opacity:0.9;">Arriva 1° nella Pista ${i}</span>`;
+              } else if (isWon) {
+                badge.className = 'z-track-status-badge z-track-won-badge';
+                badge.innerHTML = `🏆 1° POSTO · VINTA`;
+              } else {
+                badge.className = 'z-track-status-badge';
+                badge.innerHTML = '';
+              }
+            }
+
             if (el) {
               const rec = localStorage.getItem('zephyr_record_' + i);
               if (rec) {
@@ -1552,7 +1647,7 @@
                 const s = (sec % 60).toFixed(2).padStart(5, '0');
                 el.textContent = `Record: ${m}:${s}`;
               } else {
-                el.textContent = 'Record: --:--';
+                el.textContent = isUnlocked ? 'Record: --:--' : 'Non sbloccata';
               }
             }
           }
@@ -1575,14 +1670,37 @@
           });
         }
 
-        const curTrack = localStorage.getItem('zephyr_track') || '0';
+        const maxInit = getUnlockedMax();
+        let curTrack = localStorage.getItem('zephyr_track') || '0';
+        if (parseInt(curTrack, 10) > maxInit) {
+          curTrack = '0';
+          localStorage.setItem('zephyr_track', '0');
+        }
+
         document.querySelectorAll('.z-track-item').forEach(item => {
           if (item.dataset.index === curTrack) item.classList.add('active');
           item.addEventListener('click', () => {
+            const trackIdx = parseInt(item.dataset.index, 10);
+            const maxUnlocked = getUnlockedMax();
+            if (trackIdx > maxUnlocked) {
+              haptic(45);
+              item.classList.add('shake');
+              setTimeout(() => item.classList.remove('shake'), 400);
+              const toastEl = document.getElementById('z-toast-msg');
+              const msg = `🔒 Pista bloccata! Devi arrivare 1° nella Pista ${trackIdx} per sbloccarla!`;
+              if (toastEl) {
+                toastEl.textContent = msg;
+                toastEl.classList.add('show');
+                setTimeout(() => toastEl.classList.remove('show'), 2800);
+              } else if (window.__zephyr?.ui?.toast) {
+                window.__zephyr.ui.toast(msg, 2.8);
+              }
+              return;
+            }
             haptic(25);
             localStorage.setItem('zephyr_track', item.dataset.index);
             if (window.__zephyr && typeof window.__zephyr.loadTrack === 'function') {
-              window.__zephyr.loadTrack(parseInt(item.dataset.index, 10));
+              window.__zephyr.loadTrack(trackIdx);
               document.querySelectorAll('.z-track-item').forEach(el => el.classList.toggle('active', el.dataset.index === item.dataset.index));
               if (trackModal) trackModal.classList.add('hidden');
             } else {
