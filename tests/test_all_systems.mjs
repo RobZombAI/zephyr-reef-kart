@@ -3802,3 +3802,62 @@ describe('=== UNIT & PROCESS TESTS: GRAPHICS & FLUIDITY 60FPS MASTER OVERHAUL ==
     assert.ok(!bundle.includes('isRace?(this.quality.level==="low"?13.5:7):31'), '31ms menu throttle removed in favor of 60 FPS refresh');
   });
 });
+
+describe('=== UNIT & PROCESS TESTS: IOS IPHONE NATIVE WRAPPER & IPA PACKAGING ===', () => {
+  it('1. Xcode project structure & PBXProject validity', () => {
+    const pbxprojPath = 'ios/ZephyrReefKart/ZephyrReefKart.xcodeproj/project.pbxproj';
+    assert.ok(fs.existsSync(pbxprojPath), 'project.pbxproj must exist');
+    const pbxContent = fs.readFileSync(pbxprojPath, 'utf8');
+    assert.ok(pbxContent.includes('ZephyrReefKart'), 'project.pbxproj references target ZephyrReefKart');
+    assert.ok(pbxContent.includes('IPHONEOS_DEPLOYMENT_TARGET = 15.0'), 'Deployment target iOS 15.0+ configured');
+    assert.ok(pbxContent.includes('SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"'), 'Supported platforms set to iphoneos and iphonesimulator');
+    assert.ok(pbxContent.includes('SWIFT_VERSION = 5.0'), 'Swift 5.0 version specified');
+  });
+
+  it('2. Swift native source files & architecture exist', () => {
+    const files = [
+      'ios/ZephyrReefKart/ZephyrReefKart/App/AppDelegate.swift',
+      'ios/ZephyrReefKart/ZephyrReefKart/App/SceneDelegate.swift',
+      'ios/ZephyrReefKart/ZephyrReefKart/App/ViewController.swift',
+      'ios/ZephyrReefKart/ZephyrReefKart/WebView/GameWebView.swift',
+      'ios/ZephyrReefKart/ZephyrReefKart/WebView/NativeHapticsBridge.swift',
+      'ios/ZephyrReefKart/ZephyrReefKart/WebView/LocalSchemeHandler.swift'
+    ];
+    for (const f of files) {
+      assert.ok(fs.existsSync(f), `Swift source file ${f} must exist`);
+    }
+  });
+
+  it('3. Taptic Engine bridge & haptics polyfill implementation', () => {
+    const bridge = fs.readFileSync('ios/ZephyrReefKart/ZephyrReefKart/WebView/NativeHapticsBridge.swift', 'utf8');
+    assert.ok(bridge.includes('UIImpactFeedbackGenerator(style: .light)'), 'Light impact generator for cord curbs and drifts');
+    assert.ok(bridge.includes('UIImpactFeedbackGenerator(style: .heavy)'), 'Heavy impact generator for wall collisions');
+    assert.ok(bridge.includes('window.AndroidHaptics'), 'Polyfills window.AndroidHaptics for seamless cross-platform parity');
+    assert.ok(bridge.includes('navigator.vibrate'), 'Polyfills navigator.vibrate for Web API parity');
+  });
+
+  it('4. Info.plist configuration: landscape lock, fullscreen and UILaunchScreen', () => {
+    const plist = fs.readFileSync('ios/ZephyrReefKart/ZephyrReefKart/Info.plist', 'utf8');
+    assert.ok(plist.includes('<string>UIInterfaceOrientationLandscapeLeft</string>'), 'LandscapeLeft supported');
+    assert.ok(plist.includes('<string>UIInterfaceOrientationLandscapeRight</string>'), 'LandscapeRight supported');
+    assert.ok(plist.includes('<key>UIRequiresFullScreen</key>'), 'Full screen required');
+    assert.ok(plist.includes('<key>UILaunchScreen</key>'), 'UILaunchScreen dictionary configured for smooth launch');
+  });
+
+  it('5. WebAssets bundle contains all required offline resources', () => {
+    const webAssetsDir = 'ios/ZephyrReefKart/ZephyrReefKart/Resources/WebAssets';
+    assert.ok(fs.existsSync(`${webAssetsDir}/index.html`), 'index.html present in WebAssets');
+    assert.ok(fs.existsSync(`${webAssetsDir}/zephyr.html`), 'zephyr.html present in WebAssets');
+    assert.ok(fs.existsSync(`${webAssetsDir}/assets/index-C9rd31_W.js`), 'JavaScript bundle present in WebAssets');
+    assert.ok(fs.existsSync(`${webAssetsDir}/assets/index-DMliwuo_.css`), 'CSS stylesheet present in WebAssets');
+    assert.ok(fs.existsSync(`${webAssetsDir}/audio/japanese_shrine_garden_bgm.mp3`), 'BGM audio track present in WebAssets');
+  });
+
+  it('6. Packaging script & ZephyrReefKart.ipa binary output', () => {
+    assert.ok(fs.existsSync('scripts/build_ios.sh'), 'scripts/build_ios.sh packaging script must exist');
+    assert.ok(fs.existsSync('ZephyrReefKart.ipa'), 'ZephyrReefKart.ipa binary archive must exist');
+    const ipaStats = fs.statSync('ZephyrReefKart.ipa');
+    assert.ok(ipaStats.size > 1000000, `ZephyrReefKart.ipa should be a complete archive (>1MB), got ${(ipaStats.size / 1024 / 1024).toFixed(2)}MB`);
+  });
+});
+
