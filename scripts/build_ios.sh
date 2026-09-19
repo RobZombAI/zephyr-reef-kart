@@ -23,12 +23,17 @@ cp assets/* ios/ZephyrReefKart/ZephyrReefKart/Resources/WebAssets/assets/
 cp -r android/ZephyrReefKart/app/src/main/assets/audio/* ios/ZephyrReefKart/ZephyrReefKart/Resources/WebAssets/audio/
 
 # 3. Locate iPhoneOS SDK
-SDK_PATH="$(xcrun --sdk iphoneos --show-sdk-path)"
+SDK_PATH="$(xcrun --sdk iphoneos --show-sdk-path 2>/dev/null || echo '/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk')"
 echo "--> Using SDK: $SDK_PATH"
+
+SWIFTC_BIN="$(which swiftc 2>/dev/null || echo '/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc')"
+if [ ! -x "$SWIFTC_BIN" ]; then
+  SWIFTC_BIN="/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+fi
 
 # 4. Compile Swift sources
 echo "--> Compiling Swift sources with swiftc..."
-swiftc -sdk "$SDK_PATH" \
+"$SWIFTC_BIN" -sdk "$SDK_PATH" \
   -target arm64-apple-ios15.0 \
   -parse-as-library \
   -O \

@@ -17,3 +17,11 @@
 .z-chat-btn{padding:12px 10px;font-size:13px;font-weight:700;background:rgba(6,22,38,.85);border:1px solid rgba(124,249,255,.35);color:#e9f6ff;border-radius:8px;cursor:pointer;transition:background .15s}
 .z-chat-btn:hover,.z-chat-btn:active{background:rgba(46,230,214,.35);border-color:#7cf9ff}
 .gold-trophy{color:#ffd77a;text-shadow:0 0 20px rgba(255,215,122,.7);font-weight:900}
+
+/* Bottom Viewport & Clean Display Enhancements */
+.hud__quality{display:none !important}
+.hud__drift{bottom:max(28px,calc(env(safe-area-inset-bottom) + 14px)) !important}
+.title__foot{display:none}
+@media (min-height: 620px) and (pointer: fine){
+  .title__foot{display:block;position:absolute;bottom:26px;left:0;right:0;text-align:center;color:var(--muted);font-size:12.5px;letter-spacing:.12em;text-transform:uppercase}
+}
