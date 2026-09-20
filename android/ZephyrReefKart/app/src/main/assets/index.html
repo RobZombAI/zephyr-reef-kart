@@ -414,41 +414,491 @@
         font-size: 22px;
       }
 
-      /* Track Selection and Pause Modal Overlays */
+      /* ======================================================================
+         RESPONSIVE FULL-SCREEN MODALS & ERGONOMIC SMARTPHONE VISIBILITY
+         ====================================================================== */
       .z-modal {
         position: fixed;
         inset: 0;
-        background: rgba(3, 10, 20, 0.92);
+        background: rgba(3, 10, 20, 0.94);
         backdrop-filter: blur(14px);
         -webkit-backdrop-filter: blur(14px);
         z-index: 100000;
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
-        padding: 20px;
+        justify-content: flex-start; /* CRITICAL: always align to top so header is never clipped */
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        padding: max(10px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+        box-sizing: border-box;
         transition: opacity 0.25s ease;
       }
       .hidden, .z-modal.hidden {
         display: none !important;
       }
       .z-modal-card {
-        background: rgba(16, 44, 56, 0.95);
+        margin: auto; /* Vertically centers when room permits, allows full top-to-bottom scroll when tall */
+        background: rgba(16, 44, 56, 0.96);
         border: 2px solid rgba(118, 255, 240, 0.6);
-        border-radius: 20px;
-        padding: 24px 32px;
+        border-radius: 18px;
+        padding: 16px 22px;
         max-width: 650px;
         width: 100%;
+        box-sizing: border-box;
+        position: relative;
         box-shadow: 0 10px 45px rgba(0, 0, 0, 0.85);
+      }
+
+      /* Multiplayer Modal Widescreen & Landscape Adaptation */
+      .z-mp-card {
+        max-width: min(940px, 98vw);
+        width: 100%;
+        padding: 14px 20px;
+      }
+      .z-mp-host-grid {
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        gap: 14px;
+        align-items: stretch;
+      }
+      .z-mp-guest-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        align-items: start;
+      }
+      .z-mp-room-box {
+        background: rgba(8, 26, 36, 0.85);
+        border: 2px dashed #76fff0;
+        border-radius: 14px;
+        padding: 10px 12px;
+        margin-bottom: 8px;
+        text-align: center;
+      }
+      .z-mp-room-label {
+        font-size: 10.5px;
+        color: #94a3b8;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      .z-mp-room-code-txt {
+        font-size: 26px;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        color: #ffc857;
+        margin: 3px 0;
+        font-family: monospace;
+      }
+      .z-mp-copy-row {
+        display: flex;
+        gap: 6px;
+        justify-content: center;
+        margin-top: 6px;
+      }
+      .z-mp-copy-btn {
+        font-size: 10.5px;
+        padding: 5px 10px;
+      }
+      .z-copy-link-btn {
+        background: rgba(118, 255, 240, 0.35);
+        border-color: #76fff0;
+      }
+      .z-mp-players-section {
+        text-align: left;
+        margin-bottom: 8px;
+      }
+      .z-mp-players-label {
+        font-size: 10.5px;
+        color: #94a3b8;
+        font-weight: 700;
+        margin-bottom: 4px;
+      }
+      .z-mp-players-box {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        max-height: 95px;
+        overflow-y: auto;
+        background: rgba(6, 20, 28, 0.6);
+        padding: 6px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .z-mp-start-race-btn {
+        width: 100%;
+        padding: 11px;
+        font-size: 14px;
+        font-weight: 900;
+        background: linear-gradient(135deg, #059669, #10b981);
+        border: 2px solid #34d399;
+        color: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 0 25px rgba(16, 185, 129, 0.5);
+        cursor: pointer;
+      }
+      .z-mp-inputs-row {
+        display: grid;
+        grid-template-columns: 1.1fr 1.2fr 1.3fr 0.8fr;
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+      .z-mp-input-group {
+        text-align: left;
+      }
+      .z-mp-input-group label {
+        font-size: 10px;
+        color: #76fff0;
+        font-weight: 700;
+        display: block;
+      }
+      .z-mp-input-group input, .z-mp-input-group select {
+        width: 100%;
+        box-sizing: border-box;
+        background: rgba(8, 26, 36, 0.9);
+        border: 1px solid rgba(118, 255, 240, 0.5);
+        color: #fff;
+        padding: 6px 8px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 12px;
+        margin-top: 2px;
+      }
+      .z-mp-playlist-box {
+        text-align: left;
+      }
+      .z-mp-playlist-title-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 4px;
+      }
+      .z-mp-playlist-title-row label {
+        font-size: 10.5px;
+        color: #76fff0;
+        font-weight: 700;
+      }
+      .z-mp-playlist-title-row span {
+        font-size: 9.5px;
+        color: #ffc857;
+        font-weight: 800;
+        background: rgba(255, 200, 87, 0.15);
+        padding: 2px 7px;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 200, 87, 0.4);
+      }
+      .z-mp-tracks-box {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        background: rgba(6, 20, 28, 0.6);
+        padding: 8px;
+        border-radius: 10px;
+        border: 1px solid rgba(118, 255, 240, 0.25);
+        max-height: 145px;
+        overflow-y: auto;
+      }
+      .z-mp-join-btn {
+        width: 100%;
+        padding: 11px;
+        font-size: 14px;
+        font-weight: 900;
+        background: linear-gradient(135deg, #0284c7, #0ea5e9);
+        border: 2px solid #38bdf8;
+        color: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 0 25px rgba(14, 165, 233, 0.5);
+        cursor: pointer;
+      }
+      .z-mp-guest-waiting-box {
+        background: rgba(8, 26, 36, 0.8);
+        border: 1px solid #76fff0;
+        border-radius: 10px;
+        padding: 10px;
+        text-align: left;
+      }
+      .z-mp-leave-btn {
+        padding: 3px 8px;
+        font-size: 10.5px;
+        font-weight: 700;
+        background: rgba(239, 68, 68, 0.2);
+        border: 1px solid rgba(239, 68, 68, 0.5);
+        color: #fca5a5;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      .z-mp-tourney-info-box {
+        margin-bottom: 6px;
+        background: rgba(118, 255, 240, 0.08);
+        border: 1px solid rgba(118, 255, 240, 0.3);
+        border-radius: 8px;
+        padding: 6px 8px;
+        font-size: 11px;
+        color: #e2e8f0;
+      }
+      .z-mp-ready-btn {
+        width: 100%;
+        padding: 10px;
+        font-size: 13px;
+        font-weight: 900;
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        border: 2px solid #fbbf24;
+        color: #ffffff;
+        border-radius: 10px;
+        cursor: pointer;
+        margin-bottom: 6px;
+      }
+
+      /* Tournament Modal Card */
+      .z-mp-tourney-card {
+        background: linear-gradient(135deg, rgba(8, 26, 36, 0.96), rgba(4, 15, 22, 0.98));
+        border: 2px solid #76fff0;
+        border-radius: 18px;
+        max-width: min(720px, 96vw);
+        width: 100%;
+        padding: 14px 18px;
+        box-shadow: 0 0 50px rgba(118, 255, 240, 0.35);
+        text-align: center;
+        color: #fff;
+        box-sizing: border-box;
+      }
+      .z-mp-tourney-table-wrap {
+        background: rgba(6, 20, 28, 0.7);
+        border: 1px solid rgba(118, 255, 240, 0.25);
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 10px;
+        max-height: 140px;
+        overflow-y: auto;
+      }
+      .z-mp-tourney-next {
+        flex: 1.5;
+        padding: 10px;
+        font-size: 13px;
+        font-weight: 900;
+        background: linear-gradient(135deg, #059669, #10b981);
+        border: 2px solid #34d399;
+        color: #ffffff;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+      .z-mp-tourney-exit {
+        flex: 1;
+        padding: 10px;
+        font-size: 12px;
+        font-weight: 700;
+        background: rgba(239, 68, 68, 0.2);
+        border: 1px solid rgba(239, 68, 68, 0.5);
+        color: #fca5a5;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+
+      /* In-Race Pause Modal Grid */
+      .z-pause-card {
+        max-width: 480px;
+        text-align: center;
+        padding: 16px 20px;
+      }
+      .z-pause-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        width: 100%;
+      }
+      .z-pause-grid button {
+        padding: 10px 12px;
+        font-size: 13px;
+      }
+
+      /* Settings Modal Card & Grid */
+      .z-settings-card {
+        max-width: 580px;
+        text-align: left;
+        padding: 16px 22px;
+      }
+      .z-settings-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px 18px;
+        width: 100%;
+      }
+      .z-settings-close-btn {
+        margin-top: 12px;
+        width: 100%;
+        padding: 10px;
+        font-weight: 800;
+        background: rgba(118, 255, 240, 0.3);
+        border-color: #76fff0;
+        color: #ffffff;
+      }
+
+      /* Quick Chat Modal Card & Grid */
+      .z-chat-card {
+        max-width: 440px;
+        text-align: center;
+        padding: 14px 18px;
+      }
+      .z-chat-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        width: 100%;
+      }
+      .z-chat-grid .z-chat-btn {
+        padding: 8px 6px;
+        font-size: 12px;
+      }
+
+      /* Track Selection Modal Card & List */
+      .z-track-card {
+        max-width: min(920px, 98vw);
+        width: 100%;
+        padding: 14px 20px;
+      }
+      .z-track-card h2 {
+        font-size: 18px;
+        font-weight: 800;
+        color: #76fff0;
+        margin: 0 0 3px 0;
+      }
+      .z-track-card p {
+        font-size: 11px;
+        color: #94a3b8;
+        margin: 0 0 8px 0;
       }
       .z-track-list {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 10px;
-        margin: 14px 0;
-        max-height: 64vh;
+        gap: 8px;
+        margin: 8px 0;
+        max-height: 54vh;
         overflow-y: auto;
         padding-right: 6px;
+      }
+      .z-track-close-btn {
+        width: 100%;
+        padding: 9px;
+        font-size: 13px;
+        cursor: pointer;
+        margin-top: 6px;
+      }
+
+      /* Mobile Portrait Fallbacks */
+      @media (max-width: 680px) {
+        .z-mp-host-grid, .z-mp-guest-grid {
+          grid-template-columns: 1fr !important;
+          gap: 10px !important;
+        }
+        .z-mp-inputs-row {
+          grid-template-columns: 1fr 1fr !important;
+        }
+        .z-settings-grid, .z-pause-grid {
+          grid-template-columns: 1fr !important;
+        }
+        .z-track-list {
+          grid-template-columns: 1fr !important;
+        }
+      }
+
+      /* Mobile Landscape Responsive Adaptation for All In-Game Screens (height <= 520px) */
+      @media (max-height: 520px) {
+        .screen {
+          padding: max(8px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)) !important;
+          gap: 8px !important;
+          overflow-y: auto !important;
+          -webkit-overflow-scrolling: touch;
+        }
+        .title__logo {
+          font-size: clamp(28px, 6vw, 54px) !important;
+        }
+        .title__tag {
+          font-size: 11px !important;
+          padding: 4px 14px !important;
+          line-height: 1.3 !important;
+        }
+        .title__actions, .select__actions, .overlay__actions {
+          gap: 8px !important;
+        }
+        .title__settings {
+          padding: 4px 10px !important;
+          gap: 6px 12px !important;
+        }
+        .screen--select {
+          padding: max(6px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)) !important;
+          gap: 6px !important;
+        }
+        .screen--select .select__head {
+          font-size: 18px !important;
+        }
+        .screen--select .select__grid {
+          gap: 6px !important;
+        }
+        .screen--select .card {
+          padding: 4px 6px 6px !important;
+          gap: 3px !important;
+        }
+        .screen--select .card__name {
+          font-size: 10px !important;
+        }
+        .screen--select .select__detail {
+          padding: 8px 12px !important;
+          gap: 6px !important;
+        }
+        .results__head {
+          font-size: clamp(24px, 4vw, 36px) !important;
+        }
+        .results__table {
+          padding: 4px !important;
+        }
+        .results__row {
+          padding: 5px 8px !important;
+          font-size: 11.5px !important;
+        }
+      }
+
+      /* Extreme Smartphone Landscape Screen Height (height <= 440px) */
+      @media (max-height: 440px) {
+        .z-modal {
+          padding: max(4px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)) !important;
+        }
+        .z-modal-card {
+          padding: 8px 14px !important;
+          border-radius: 12px !important;
+        }
+        .z-modal-card h2 {
+          font-size: 16px !important;
+        }
+        .z-mp-card {
+          padding: 8px 12px !important;
+        }
+        .z-mp-room-box {
+          padding: 6px 8px !important;
+          margin-bottom: 4px !important;
+        }
+        .z-mp-room-code-txt {
+          font-size: 20px !important;
+          margin: 1px 0 !important;
+        }
+        .z-mp-copy-btn {
+          font-size: 9.5px !important;
+          padding: 3px 6px !important;
+        }
+        .z-mp-tracks-box {
+          max-height: 90px !important;
+        }
+        .z-mp-players-box {
+          max-height: 60px !important;
+        }
+        .z-mp-start-race-btn {
+          padding: 8px 10px !important;
+          font-size: 12px !important;
+        }
+        .z-track-list {
+          max-height: 46vh !important;
+        }
       }
       .z-cup-header {
         grid-column: 1 / -1;
@@ -897,25 +1347,25 @@
 
       <!-- In-race Pause Menu -->
       <div id="z-pause-modal" class="z-modal hidden">
-        <div class="z-modal-card" style="max-width: 440px; text-align: center;">
-          <h2 style="font-size: 24px; font-weight: 800; color: #76fff0; margin: 0 0 6px 0;">⏸️ GARA IN PAUSA</h2>
-          <p style="font-size: 13px; color: #94a3b8; margin: 0 0 20px 0;">Zephyr Reef Grand Prix</p>
-          <div style="display: flex; flex-direction: column; gap: 12px; width: 100%;">
-            <button id="z-pause-resume" class="z-mini" style="padding: 14px; font-size: 15px; background: rgba(118, 255, 240, 0.35); border-color: #76fff0;">RIPRENDI GARA</button>
-            <button id="z-pause-mp" class="z-mini" style="padding: 14px; font-size: 15px; border-color: #76fff0; color: #76fff0; font-weight: 800;">🌐 MULTIPLAYER PRIVATO</button>
-            <button id="z-pause-opt" class="z-mini" style="padding: 14px; font-size: 15px;">⚙️ OPZIONI GIOCO</button>
-            <button id="z-pause-restart" class="z-mini" style="padding: 14px; font-size: 15px;">RICOMINCIA GARA</button>
-            <button id="z-pause-change-track" class="z-mini" style="padding: 14px; font-size: 15px;">SCEGLI CIRCUITO</button>
-            <button id="z-pause-title" class="z-mini" style="padding: 14px; font-size: 15px; border-color: rgba(255,255,255,0.2);">TORNA AL TITOLO</button>
+        <div class="z-modal-card z-pause-card">
+          <h2 style="font-size: 20px; font-weight: 800; color: #76fff0; margin: 0 0 4px 0;">⏸️ GARA IN PAUSA</h2>
+          <p style="font-size: 12px; color: #94a3b8; margin: 0 0 12px 0;">Zephyr Reef Grand Prix</p>
+          <div class="z-pause-grid">
+            <button id="z-pause-resume" class="z-mini" style="background: rgba(118, 255, 240, 0.35); border-color: #76fff0;">RIPRENDI GARA</button>
+            <button id="z-pause-mp" class="z-mini" style="border-color: #76fff0; color: #76fff0; font-weight: 800;">🌐 MULTIPLAYER</button>
+            <button id="z-pause-opt" class="z-mini">⚙️ OPZIONI GIOCO</button>
+            <button id="z-pause-restart" class="z-mini">RICOMINCIA GARA</button>
+            <button id="z-pause-change-track" class="z-mini">SCEGLI CIRCUITO</button>
+            <button id="z-pause-title" class="z-mini" style="border-color: rgba(255,255,255,0.2);">TORNA AL TITOLO</button>
           </div>
         </div>
       </div>
 
       <!-- Quick Chat Modal -->
       <div id="z-chat-modal" class="z-modal hidden">
-        <div class="z-modal-card" style="max-width: 380px; text-align: center;">
-          <h2 style="font-size: 20px; font-weight: 800; color: #76fff0; margin: 0 0 12px 0;">💬 CHAT RAPIDA</h2>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%;">
+        <div class="z-modal-card z-chat-card">
+          <h2 style="font-size: 18px; font-weight: 800; color: #76fff0; margin: 0 0 8px 0;">💬 CHAT RAPIDA</h2>
+          <div class="z-chat-grid">
             <button class="z-chat-btn" data-msg="GG! 🏁">GG! 🏁</button>
             <button class="z-chat-btn" data-msg="Attento! 💣">Attento! 💣</button>
             <button class="z-chat-btn" data-msg="Bella gara! 🏎️">Bella gara! 🏎️</button>
@@ -923,60 +1373,60 @@
             <button class="z-chat-btn" data-msg="Grande sorpasso! ⚡">Sorpasso! ⚡</button>
             <button class="z-chat-btn" data-msg="Al traguardo! 😎">Traguardo! 😎</button>
           </div>
-          <button id="z-chat-close" class="z-mini" style="margin-top: 14px; width: 100%; padding: 10px; border-color: rgba(255,255,255,0.2);">CHIUDI</button>
+          <button id="z-chat-close" class="z-mini" style="margin-top: 10px; width: 100%; padding: 8px; border-color: rgba(255,255,255,0.2);">CHIUDI</button>
         </div>
       </div>
 
       <!-- Settings Modal -->
       <div id="z-settings-modal" class="z-modal hidden">
-        <div class="z-modal-card" style="max-width: 440px; text-align: left;">
-          <h2 style="font-size: 22px; font-weight: 800; color: #76fff0; margin: 0 0 14px 0; text-align: center;">⚙️ OPZIONI GIOCO</h2>
-          <div style="display: flex; flex-direction: column; gap: 14px; width: 100%;">
-            <label style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #e2e8f0; cursor: pointer;">
-              <span>Acceleratore Automatico (Auto-Gas)</span>
+        <div class="z-modal-card z-settings-card">
+          <h2 style="font-size: 20px; font-weight: 800; color: #76fff0; margin: 0 0 10px 0; text-align: center;">⚙️ OPZIONI GIOCO</h2>
+          <div class="z-settings-grid">
+            <label style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #e2e8f0; cursor: pointer;">
+              <span>Auto-Gas (Acceleratore)</span>
               <input type="checkbox" id="z-opt-autogas" style="width: 20px; height: 20px; accent-color: #76fff0;">
             </label>
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-              <span style="font-size: 14px; color: #e2e8f0; font-weight: 700;">Modalità di Guida Smartphone</span>
-              <div id="z-control-mode-group" style="display: flex; gap: 8px; width: 100%;">
-                <button type="button" class="z-mode-pill active" data-mode="buttons" style="flex: 1;">🕹️ TASTI</button>
-                <button type="button" class="z-mode-pill" id="z-opt-gyro" data-mode="gyro" style="flex: 1;">📱 GIRO</button>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <span style="font-size: 12px; color: #e2e8f0; font-weight: 700;">Guida Smartphone</span>
+              <div id="z-control-mode-group" style="display: flex; gap: 6px; width: 100%;">
+                <button type="button" class="z-mode-pill active" data-mode="buttons" style="flex: 1; padding: 6px 4px; font-size: 11px;">🕹️ TASTI</button>
+                <button type="button" class="z-mode-pill" id="z-opt-gyro" data-mode="gyro" style="flex: 1; padding: 6px 4px; font-size: 11px;">📱 GIRO</button>
               </div>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #e2e8f0;">
-              <span>Dimensione Tasti Touch</span>
-              <select id="z-opt-btnsize" style="background: #0d1e30; color: #76fff0; border: 1px solid #76fff0; border-radius: 6px; padding: 4px 8px; font-family: inherit;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #e2e8f0;">
+              <span>Dimensione Tasti</span>
+              <select id="z-opt-btnsize" style="background: #0d1e30; color: #76fff0; border: 1px solid #76fff0; border-radius: 6px; padding: 4px 6px; font-family: inherit; font-size: 12px;">
                 <option value="standard">Standard</option>
                 <option value="large">Grande</option>
                 <option value="compact">Compatto</option>
               </select>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #e2e8f0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #e2e8f0;">
               <span>Classe Velocità</span>
-              <select id="z-opt-speedclass" style="background: #0d1e30; color: #76fff0; border: 1px solid #76fff0; border-radius: 6px; padding: 4px 8px; font-family: inherit;">
+              <select id="z-opt-speedclass" style="background: #0d1e30; color: #76fff0; border: 1px solid #76fff0; border-radius: 6px; padding: 4px 6px; font-family: inherit; font-size: 12px;">
                 <option value="150cc">150cc (Esperto)</option>
                 <option value="100cc">100cc (Normale)</option>
                 <option value="50cc">50cc (Principiante)</option>
               </select>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #e2e8f0;">
-              <span>Risparmio Batteria (Target FPS)</span>
-              <select id="z-opt-fps" style="background: #0d1e30; color: #76fff0; border: 1px solid #76fff0; border-radius: 6px; padding: 4px 8px; font-family: inherit;">
-                <option value="60">60 FPS (Massima Fluidità)</option>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #e2e8f0;">
+              <span>FPS / Batteria</span>
+              <select id="z-opt-fps" style="background: #0d1e30; color: #76fff0; border: 1px solid #76fff0; border-radius: 6px; padding: 4px 6px; font-family: inherit; font-size: 12px;">
+                <option value="60">60 FPS (Fluido)</option>
                 <option value="45">45 FPS (Bilanciato)</option>
-                <option value="30">30 FPS (Eco Batteria)</option>
+                <option value="30">30 FPS (Eco)</option>
               </select>
             </div>
           </div>
-          <button id="z-settings-close" class="z-mini" style="margin-top: 18px; width: 100%; padding: 12px; font-weight: 800; background: rgba(118, 255, 240, 0.3); border-color: #76fff0; color: #ffffff;">SALVA & CHIUDI</button>
+          <button id="z-settings-close" class="z-mini z-settings-close-btn">SALVA & CHIUDI</button>
         </div>
       </div>
 
       <!-- Track Selector Modal -->
       <div id="z-track-modal" class="z-modal hidden">
-        <div class="z-modal-card">
-          <h2 style="font-size: 22px; font-weight: 800; color: #76fff0; margin: 0 0 6px 0;">SCEGLI CIRCUITO ZEPHYR REEF</h2>
-          <p style="font-size: 13px; color: #94a3b8; margin: 0 0 16px 0;">Seleziona il tracciato con guardrail protettivo continuo (Zero cadute nel vuoto):</p>
+        <div class="z-modal-card z-track-card">
+          <h2>SCEGLI CIRCUITO ZEPHYR REEF</h2>
+          <p>Seleziona il tracciato con guardrail protettivo continuo (Zero cadute nel vuoto):</p>
           <div class="z-track-list">
   <div class="z-cup-header">
     <span class="z-cup-title">🏆 COPPA BREZZA</span>
@@ -1195,170 +1645,178 @@
     </div>
   </div>
 </div>
-          <button id="z-modal-close" class="z-mini" style="width: 100%; padding: 12px; font-size: 14px; cursor: pointer;">CHIUDI</button>
+          <button id="z-modal-close" class="z-mini z-track-close-btn">CHIUDI</button>
         </div>
       </div>
 
       <!-- Multiplayer Private Room Modal -->
       <div id="z-multiplayer-modal" class="z-modal hidden">
-        <div class="z-modal-card" style="max-width: 580px; text-align: center;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <h2 style="font-size: 22px; font-weight: 800; color: #76fff0; margin: 0; display: flex; align-items: center; gap: 8px;">
+        <div class="z-modal-card z-mp-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <h2 style="font-size: 18px; font-weight: 800; color: #76fff0; margin: 0; display: flex; align-items: center; gap: 8px;">
               <span>🌐</span> MULTIPLAYER PRIVATO P2P
             </h2>
             <button id="z-mp-close" class="z-mini" style="padding: 4px 10px; font-size: 14px;">✕</button>
           </div>
-          <p style="font-size: 12px; color: #94a3b8; margin: 0 0 16px 0;">Gioca online in tempo reale con i tuoi amici in sessioni private senza server!</p>
+          <p style="font-size: 11px; color: #94a3b8; margin: 0 0 10px 0;">Gioca online in tempo reale con i tuoi amici in sessioni private senza server!</p>
 
           <!-- Tab Selector -->
-          <div style="display: flex; gap: 10px; margin-bottom: 18px; border-bottom: 1px solid rgba(118, 255, 240, 0.25); padding-bottom: 12px;">
-            <button id="z-tab-host" class="z-mp-tab active" style="flex: 1; padding: 10px; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer;">👑 CREA STANZA (HOST)</button>
-            <button id="z-tab-guest" class="z-mp-tab" style="flex: 1; padding: 10px; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer;">🔗 ENTRA IN STANZA (OSPITE)</button>
+          <div style="display: flex; gap: 8px; margin-bottom: 12px; border-bottom: 1px solid rgba(118, 255, 240, 0.25); padding-bottom: 8px;">
+            <button id="z-tab-host" class="z-mp-tab active" style="flex: 1; padding: 7px; border-radius: 10px; font-weight: 800; font-size: 12px; cursor: pointer;">👑 CREA STANZA (HOST)</button>
+            <button id="z-tab-guest" class="z-mp-tab" style="flex: 1; padding: 7px; border-radius: 10px; font-weight: 800; font-size: 12px; cursor: pointer;">🔗 ENTRA IN STANZA (OSPITE)</button>
           </div>
 
           <!-- HOST TAB CONTENT -->
           <div id="z-mp-host-view">
-            <div style="background: rgba(8, 26, 36, 0.85); border: 2px dashed #76fff0; border-radius: 16px; padding: 16px; margin-bottom: 16px;">
-              <div style="font-size: 11px; color: #94a3b8; letter-spacing: 0.1em; text-transform: uppercase;">Codice Stanza Privata</div>
-              <div id="z-mp-room-code" style="font-size: 32px; font-weight: 900; letter-spacing: 0.15em; color: #ffc857; margin: 6px 0; font-family: monospace;">ZEPH-....</div>
-              <div style="display: flex; gap: 8px; justify-content: center; margin-top: 10px;">
-                <button id="z-mp-copy-code" class="z-mini" style="font-size: 11px; padding: 6px 14px;">📋 COPIA CODICE</button>
-                <button id="z-mp-copy-link" class="z-mini" style="font-size: 11px; padding: 6px 14px; background: rgba(118, 255, 240, 0.35); border-color: #76fff0;">🔗 COPIA LINK INVITO</button>
+            <div class="z-mp-host-grid">
+              <!-- Left Column: Room Code, Players, Start Button -->
+              <div style="display: flex; flex-direction: column; justify-content: space-between;">
+                <div class="z-mp-room-box">
+                  <div class="z-mp-room-label">Codice Stanza Privata</div>
+                  <div id="z-mp-room-code" class="z-mp-room-code-txt">ZEPH-....</div>
+                  <div class="z-mp-copy-row">
+                    <button id="z-mp-copy-code" class="z-mini z-mp-copy-btn">📋 CODICE</button>
+                    <button id="z-mp-copy-link" class="z-mini z-mp-copy-btn z-copy-link-btn">🔗 INVITO</button>
+                  </div>
+                </div>
+
+                <div class="z-mp-players-section">
+                  <div class="z-mp-players-label">AMICI IN STANZA (<span id="z-mp-player-count">1</span>/6):</div>
+                  <div id="z-mp-lobby-players" class="z-mp-players-box"></div>
+                </div>
+
+                <button id="z-mp-start-race" class="z-mini z-mp-start-race-btn">
+                  🚀 AVVIA GARA MULTIPLAYER
+                </button>
+              </div>
+
+              <!-- Right Column: Host Nickname, Kart, Laps, Tourney Playlist, Specific Tracks -->
+              <div style="display: flex; flex-direction: column;">
+                <div class="z-mp-inputs-row">
+                  <div class="z-mp-input-group">
+                    <label>NICKNAME</label>
+                    <input id="z-mp-host-name" type="text" maxlength="16">
+                  </div>
+                  <div class="z-mp-input-group">
+                    <label>KART</label>
+                    <select id="z-mp-host-kart">
+                      <option value="nix">🦦 Nix (Wave-Runner)</option>
+                      <option value="bruno">🪨 Bruno (Landslide)</option>
+                      <option value="sable">🦋 Sable (Nightflyer)</option>
+                      <option value="zuzu">⚡ Zuzu (Drifter)</option>
+                      <option value="rustam">⚙️ Rustam (Tinkerer)</option>
+                      <option value="marlow">🐸 Marlow (Corsair)</option>
+                      <option value="princess">👑 Principessa Aurelia (Regale)</option>
+                      <option value="pirate">🏴‍☠️ Capitan Barbanera (Corsaro)</option>
+                    </select>
+                  </div>
+                  <div class="z-mp-input-group">
+                    <label>PISTE (TORNEO)</label>
+                    <select id="z-mp-playlist-count" style="color: #ffc857;">
+                      <option value="1">1 Pista</option>
+                      <option value="2">2 Piste</option>
+                      <option value="3" selected>3 Piste</option>
+                      <option value="4">4 Piste</option>
+                      <option value="5">5 Piste</option>
+                    </select>
+                  </div>
+                  <div class="z-mp-input-group">
+                    <label>GIRI</label>
+                    <select id="z-mp-laps-select">
+                      <option value="1">1 Giro</option>
+                      <option value="2">2 Giri</option>
+                      <option value="3" selected>3 Giri</option>
+                      <option value="5">5 Giri</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Dynamic Track Selectors for Host Playlist -->
+                <div class="z-mp-playlist-box">
+                  <div class="z-mp-playlist-title-row">
+                    <label>SELEZIONE PISTE SPECIFICHE:</label>
+                    <span id="z-mp-playlist-badge">3 Piste Configurate</span>
+                  </div>
+                  <div id="z-mp-playlist-tracks-container" class="z-mp-tracks-box"></div>
+                </div>
               </div>
             </div>
-
-            <div style="display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;">
-              <div style="flex: 1; min-width: 130px; text-align: left;">
-                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">IL TUO NICKNAME</label>
-                <input id="z-mp-host-name" type="text" maxlength="16" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 8px 12px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
-              </div>
-              <div style="flex: 1; min-width: 140px; text-align: left;">
-                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">IL TUO KART</label>
-                <select id="z-mp-host-kart" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 8px 12px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
-                  <option value="nix">🦦 Nix (Wave-Runner)</option>
-                  <option value="bruno">🪨 Bruno (Landslide)</option>
-                  <option value="sable">🦋 Sable (Nightflyer)</option>
-                  <option value="zuzu">⚡ Zuzu (Drifter)</option>
-                  <option value="rustam">⚙️ Rustam (Tinkerer)</option>
-                  <option value="marlow">🐸 Marlow (Corsair)</option>
-                  <option value="princess">👑 Principessa Aurelia (Regale)</option>
-                  <option value="pirate">🏴‍☠️ Capitan Barbanera (Corsaro)</option>
-                </select>
-              </div>
-              <div style="flex: 1; min-width: 150px; text-align: left;">
-                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">NUMERO DI PISTE (TORNEO)</label>
-                <select id="z-mp-playlist-count" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #ffc857; padding: 8px 12px; border-radius: 10px; font-weight: 800; margin-top: 4px;">
-                  <option value="1">1 Pista (Gara Singola)</option>
-                  <option value="2">2 Piste (Mini Torneo)</option>
-                  <option value="3" selected>3 Piste (Gran Premio)</option>
-                  <option value="4">4 Piste (Campionato)</option>
-                  <option value="5">5 Piste (Maratona GP)</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Dynamic Track Selectors for Host Playlist -->
-            <div style="text-align: left; margin-bottom: 14px;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">SELEZIONE PISTE SPECIFICHE:</label>
-                <span id="z-mp-playlist-badge" style="font-size: 10px; color: #ffc857; font-weight: 800; background: rgba(255,200,87,0.15); padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(255,200,87,0.4);">3 Piste Configurate</span>
-              </div>
-              <div id="z-mp-playlist-tracks-container" style="display: flex; flex-direction: column; gap: 8px; background: rgba(6, 20, 28, 0.6); padding: 10px; border-radius: 12px; border: 1px solid rgba(118,255,240,0.25); max-height: 180px; overflow-y: auto;">
-              </div>
-            </div>
-
-            <div style="display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;">
-              <div style="width: 75px; text-align: left;">
-                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">GIRI</label>
-                <select id="z-mp-laps-select" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 8px 12px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
-                  <option value="1">1 Giro</option>
-                  <option value="2">2 Giri</option>
-                  <option value="3" selected>3 Giri</option>
-                  <option value="5">5 Giri</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Connected Lobby List -->
-            <div style="text-align: left; margin-bottom: 16px;">
-              <div style="font-size: 11px; color: #94a3b8; font-weight: 700; margin-bottom: 6px;">AMICI IN STANZA (<span id="z-mp-player-count">1</span>/6):</div>
-              <div id="z-mp-lobby-players" style="display: flex; flex-direction: column; gap: 6px; max-height: 140px; overflow-y: auto; background: rgba(6, 20, 28, 0.6); padding: 8px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
-              </div>
-            </div>
-
-            <button id="z-mp-start-race" class="z-mini" style="width: 100%; padding: 14px; font-size: 16px; font-weight: 900; background: linear-gradient(135deg, #059669, #10b981); border: 2px solid #34d399; color: #ffffff; border-radius: 14px; box-shadow: 0 0 25px rgba(16, 185, 129, 0.5); cursor: pointer;">
-              🚀 AVVIA GARA MULTIPLAYER
-            </button>
           </div>
 
           <!-- GUEST TAB CONTENT -->
           <div id="z-mp-guest-view" class="hidden">
             <div id="z-mp-guest-form">
-              <div style="text-align: left; margin-bottom: 14px;">
-                <label style="font-size: 11px; color: #76fff0; font-weight: 700;">CODICE STANZA PRIVATA</label>
-                <input id="z-mp-join-code" type="text" maxlength="12" placeholder="Es. ZEPH-7429" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #ffc857; font-family: monospace; font-size: 20px; text-transform: uppercase; padding: 10px 14px; border-radius: 10px; font-weight: 800; margin-top: 4px;">
-              </div>
-
-              <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
-                <div style="flex: 1; min-width: 140px; text-align: left;">
-                  <label style="font-size: 11px; color: #76fff0; font-weight: 700;">IL TUO NICKNAME</label>
-                  <input id="z-mp-guest-name" type="text" maxlength="16" placeholder="Il tuo nome" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 10px 14px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
+              <div class="z-mp-guest-grid">
+                <div style="text-align: left;">
+                  <label style="font-size: 11px; color: #76fff0; font-weight: 700;">CODICE STANZA PRIVATA</label>
+                  <input id="z-mp-join-code" type="text" maxlength="12" placeholder="Es. ZEPH-7429" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #ffc857; font-family: monospace; font-size: 18px; text-transform: uppercase; padding: 8px 12px; border-radius: 8px; font-weight: 800; margin-top: 4px;">
                 </div>
-                <div style="flex: 1; min-width: 140px; text-align: left;">
-                  <label style="font-size: 11px; color: #76fff0; font-weight: 700;">IL TUO KART</label>
-                  <select id="z-mp-guest-kart" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 10px 14px; border-radius: 10px; font-weight: 700; margin-top: 4px;">
-                    <option value="nix">🦦 Nix (Wave-Runner)</option>
-                    <option value="bruno">🪨 Bruno (Landslide)</option>
-                    <option value="sable">🦋 Sable (Nightflyer)</option>
-                    <option value="zuzu">⚡ Zuzu (Drifter)</option>
-                    <option value="rustam">⚙️ Rustam (Tinkerer)</option>
-                    <option value="marlow">🐸 Marlow (Corsair)</option>
-                    <option value="princess">👑 Principessa Aurelia (Regale)</option>
-                    <option value="pirate">🏴‍☠️ Capitan Barbanera (Corsaro)</option>
-                  </select>
+                <div style="display: flex; gap: 8px;">
+                  <div style="flex: 1; text-align: left;">
+                    <label style="font-size: 11px; color: #76fff0; font-weight: 700;">NICKNAME</label>
+                    <input id="z-mp-guest-name" type="text" maxlength="16" placeholder="Il tuo nome" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 8px 10px; border-radius: 8px; font-weight: 700; margin-top: 4px; font-size: 12px;">
+                  </div>
+                  <div style="flex: 1; text-align: left;">
+                    <label style="font-size: 11px; color: #76fff0; font-weight: 700;">KART</label>
+                    <select id="z-mp-guest-kart" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.9); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 8px 10px; border-radius: 8px; font-weight: 700; margin-top: 4px; font-size: 12px;">
+                      <option value="nix">🦦 Nix (Wave-Runner)</option>
+                      <option value="bruno">🪨 Bruno (Landslide)</option>
+                      <option value="sable">🦋 Sable (Nightflyer)</option>
+                      <option value="zuzu">⚡ Zuzu (Drifter)</option>
+                      <option value="rustam">⚙️ Rustam (Tinkerer)</option>
+                      <option value="marlow">🐸 Marlow (Corsair)</option>
+                      <option value="princess">👑 Principessa Aurelia (Regale)</option>
+                      <option value="pirate">🏴‍☠️ Capitan Barbanera (Corsaro)</option>
+                    </select>
+                  </div>
                 </div>
               </div>
-
-              <button id="z-mp-join-btn" class="z-mini" style="width: 100%; padding: 14px; font-size: 16px; font-weight: 900; background: linear-gradient(135deg, #0284c7, #0ea5e9); border: 2px solid #38bdf8; color: #ffffff; border-radius: 14px; box-shadow: 0 0 25px rgba(14, 165, 233, 0.5); cursor: pointer; margin-bottom: 12px;">
+              <button id="z-mp-join-btn" class="z-mini z-mp-join-btn" style="margin-top: 10px;">
                 🔗 ENTRA NELLA STANZA
               </button>
             </div>
 
-            <div id="z-mp-guest-waiting" class="hidden" style="background: rgba(8, 26, 36, 0.8); border: 1px solid #76fff0; border-radius: 12px; padding: 14px; margin-top: 10px; text-align: left;">
+            <div id="z-mp-guest-waiting" class="hidden z-mp-guest-waiting-box" style="margin-top: 8px;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                <div style="font-size: 14px; font-weight: 800; color: #34d399;">✓ Connesso alla Stanza!</div>
-                <button id="z-mp-guest-leave-btn" style="padding: 4px 10px; font-size: 11px; font-weight: 700; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.5); color: #fca5a5; border-radius: 6px; cursor: pointer;">🚪 Esci</button>
+                <div style="font-size: 13px; font-weight: 800; color: #34d399;">✓ Connesso alla Stanza!</div>
+                <button id="z-mp-guest-leave-btn" class="z-mp-leave-btn">🚪 Esci</button>
               </div>
-              <div id="z-mp-guest-info" style="font-size: 12px; color: #94a3b8; margin-bottom: 10px;">In attesa che l'Host avvii la gara...</div>
+              <div id="z-mp-guest-info" style="font-size: 11px; color: #94a3b8; margin-bottom: 6px;">In attesa che l'Host avvii la gara...</div>
 
-              <!-- Tournament Info for Guest -->
-              <div id="z-mp-guest-tournament-info" style="margin-bottom: 10px; background: rgba(118,255,240,0.08); border: 1px solid rgba(118,255,240,0.3); border-radius: 10px; padding: 10px; font-size: 12px; color: #e2e8f0;">
-                <div style="font-weight: 800; color: #76fff0; font-size: 11px; text-transform: uppercase; margin-bottom: 4px;">🏆 Programma Piste del Torneo:</div>
-                <div id="z-mp-guest-tracks-list" style="color: #ffc857; font-weight: 700; line-height: 1.4;">Caricamento piste...</div>
+              <div class="z-mp-guest-grid">
+                <div>
+                  <!-- Tournament Info for Guest -->
+                  <div id="z-mp-guest-tournament-info" class="z-mp-tourney-info-box">
+                    <div style="font-weight: 800; color: #76fff0; font-size: 10.5px; text-transform: uppercase; margin-bottom: 3px;">🏆 Programma Piste:</div>
+                    <div id="z-mp-guest-tracks-list" style="color: #ffc857; font-weight: 700; font-size: 11px; line-height: 1.3;">Caricamento piste...</div>
+                  </div>
+
+                  <!-- In-Room Character Selector for Guests -->
+                  <div style="margin-bottom: 6px; background: rgba(0,0,0,0.3); padding: 6px 8px; border-radius: 8px; border: 1px solid rgba(118,255,240,0.25);">
+                    <label style="font-size: 10.5px; color: #76fff0; font-weight: 700; display: block; margin-bottom: 2px;">CAMBIA KART:</label>
+                    <select id="z-mp-guest-lobby-kart" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.95); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 6px 8px; border-radius: 6px; font-weight: 700; font-size: 12px;">
+                      <option value="nix">🦦 Nix (Wave-Runner)</option>
+                      <option value="bruno">🪨 Bruno (Landslide)</option>
+                      <option value="sable">🦋 Sable (Nightflyer)</option>
+                      <option value="zuzu">⚡ Zuzu (Drifter)</option>
+                      <option value="rustam">⚙️ Rustam (Tinkerer)</option>
+                      <option value="marlow">🐸 Marlow (Corsair)</option>
+                      <option value="princess">👑 Principessa Aurelia (Regale)</option>
+                      <option value="pirate">🏴‍☠️ Capitan Barbanera (Corsaro)</option>
+                    </select>
+                  </div>
+
+                  <!-- Ready Check Button for Guest -->
+                  <button id="z-mp-guest-ready-btn" class="z-mini z-mp-ready-btn">
+                    ✋ CONFERMA: SONO PRONTO!
+                  </button>
+                </div>
+
+                <div>
+                  <div style="font-size: 10.5px; color: #94a3b8; font-weight: 700; margin-bottom: 4px;">AMICI IN STANZA:</div>
+                  <div id="z-mp-guest-players" class="z-mp-players-box"></div>
+                </div>
               </div>
-
-              <!-- In-Room Character Selector for Guests -->
-              <div style="margin-bottom: 10px; background: rgba(0,0,0,0.3); padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(118,255,240,0.25);">
-                <label style="font-size: 11px; color: #76fff0; font-weight: 700; display: block; margin-bottom: 4px;">CAMBIA PERSONAGGIO / KART:</label>
-                <select id="z-mp-guest-lobby-kart" style="width: 100%; box-sizing: border-box; background: rgba(8, 26, 36, 0.95); border: 1px solid rgba(118,255,240,0.5); color: #fff; padding: 8px 10px; border-radius: 8px; font-weight: 700;">
-                  <option value="nix">🦦 Nix (Wave-Runner)</option>
-                  <option value="bruno">🪨 Bruno (Landslide)</option>
-                  <option value="sable">🦋 Sable (Nightflyer)</option>
-                  <option value="zuzu">⚡ Zuzu (Drifter)</option>
-                  <option value="rustam">⚙️ Rustam (Tinkerer)</option>
-                  <option value="marlow">🐸 Marlow (Corsair)</option>
-                  <option value="princess">👑 Principessa Aurelia (Regale)</option>
-                  <option value="pirate">🏴‍☠️ Capitan Barbanera (Corsaro)</option>
-                </select>
-              </div>
-
-              <!-- Ready Check Button for Guest -->
-              <button id="z-mp-guest-ready-btn" class="z-mini" style="width: 100%; padding: 12px; font-size: 15px; font-weight: 900; background: linear-gradient(135deg, #f59e0b, #d97706); border: 2px solid #fbbf24; color: #ffffff; border-radius: 12px; cursor: pointer; margin-bottom: 12px; box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); transition: all 0.2s ease;">
-                ✋ CONFERMA: SONO PRONTO!
-              </button>
-
-              <div style="font-size: 11px; color: #94a3b8; font-weight: 700; margin-bottom: 6px;">AMICI IN STANZA:</div>
-              <div id="z-mp-guest-players" style="display: flex; flex-direction: column; gap: 6px; max-height: 140px; overflow-y: auto; background: rgba(6, 20, 28, 0.6); padding: 8px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);"></div>
             </div>
           </div>
         </div>
@@ -1386,30 +1844,29 @@
       </div>
 
       <!-- Tournament GP Standings & Championship Modal -->
-      <div id="z-mp-tournament-modal" class="hidden" style="position: fixed; inset: 0; background: rgba(2, 6, 12, 0.94); z-index: 9998; display: none; align-items: center; justify-content: center; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); padding: 16px; box-sizing: border-box;">
-        <div style="background: linear-gradient(135deg, rgba(8, 26, 36, 0.96), rgba(4, 15, 22, 0.98)); border: 2px solid #76fff0; border-radius: 20px; max-width: 540px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 22px; box-shadow: 0 0 50px rgba(118, 255, 240, 0.35); text-align: center; color: #fff; box-sizing: border-box;">
-          
-          <div id="z-mp-tourney-badge" style="display: inline-block; padding: 4px 14px; background: rgba(118,255,240,0.15); border: 1px solid #76fff0; border-radius: 20px; font-size: 11px; font-weight: 800; color: #76fff0; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 8px;">
+      <div id="z-mp-tournament-modal" class="z-modal hidden" style="display: none;">
+        <div class="z-modal-card z-mp-tourney-card">
+          <div id="z-mp-tourney-badge" style="display: inline-block; padding: 3px 12px; background: rgba(118,255,240,0.15); border: 1px solid #76fff0; border-radius: 20px; font-size: 10.5px; font-weight: 800; color: #76fff0; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 6px;">
             🏁 CLASSIFICA TORNEO GP
           </div>
           
-          <h2 id="z-mp-tourney-title" style="font-size: 22px; font-weight: 900; margin: 0 0 4px 0; color: #ffc857; text-shadow: 0 0 20px rgba(255,200,87,0.5);">
+          <h2 id="z-mp-tourney-title" style="font-size: 18px; font-weight: 900; margin: 0 0 2px 0; color: #ffc857; text-shadow: 0 0 20px rgba(255,200,87,0.5);">
             GARA 1 DI 3 COMPLETATA
           </h2>
           
-          <p id="z-mp-tourney-sub" style="font-size: 12px; color: #94a3b8; margin: 0 0 16px 0;">
+          <p id="z-mp-tourney-sub" style="font-size: 11px; color: #94a3b8; margin: 0 0 10px 0;">
             Classifica generale a punti sincronizzata in tempo reale
           </p>
 
           <!-- Standings Table -->
-          <div style="background: rgba(6, 20, 28, 0.7); border: 1px solid rgba(118,255,240,0.25); border-radius: 14px; overflow: hidden; margin-bottom: 18px;">
-            <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left;">
+          <div class="z-mp-tourney-table-wrap">
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: left;">
               <thead>
-                <tr style="background: rgba(118, 255, 240, 0.12); color: #76fff0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;">
-                  <th style="padding: 10px 12px;">POS</th>
-                  <th style="padding: 10px 12px;">PILOTA</th>
-                  <th style="padding: 10px 12px; text-align: center;">GARA</th>
-                  <th style="padding: 10px 12px; text-align: right;">PUNTI TOTALI</th>
+                <tr style="background: rgba(118, 255, 240, 0.12); color: #76fff0; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em;">
+                  <th style="padding: 7px 10px;">POS</th>
+                  <th style="padding: 7px 10px;">PILOTA</th>
+                  <th style="padding: 7px 10px; text-align: center;">GARA</th>
+                  <th style="padding: 7px 10px; text-align: right;">PUNTI TOTALI</th>
                 </tr>
               </thead>
               <tbody id="z-mp-tourney-tbody">
@@ -1418,15 +1875,15 @@
           </div>
 
           <!-- Tournament Action Buttons -->
-          <div id="z-mp-tourney-actions" style="display: flex; flex-direction: column; gap: 10px;">
-            <button id="z-mp-tourney-next-btn" class="z-mini" style="width: 100%; padding: 14px; font-size: 15px; font-weight: 900; background: linear-gradient(135deg, #059669, #10b981); border: 2px solid #34d399; color: #ffffff; border-radius: 12px; box-shadow: 0 0 25px rgba(16, 185, 129, 0.5); cursor: pointer;">
+          <div id="z-mp-tourney-actions" style="display: flex; gap: 8px; width: 100%;">
+            <button id="z-mp-tourney-next-btn" class="z-mini z-mp-tourney-next">
               🚀 AVVIA PROSSIMA PISTA
             </button>
-            <div id="z-mp-tourney-guest-msg" class="hidden" style="font-size: 13px; font-weight: 700; color: #38bdf8; padding: 10px; background: rgba(56,189,248,0.12); border-radius: 10px; border: 1px dashed #38bdf8;">
+            <div id="z-mp-tourney-guest-msg" class="hidden" style="flex: 1.5; font-size: 12px; font-weight: 700; color: #38bdf8; padding: 8px; background: rgba(56,189,248,0.12); border-radius: 10px; border: 1px dashed #38bdf8;">
               ⏳ In attesa che l'Host avvii la prossima gara...
             </div>
-            <button id="z-mp-tourney-exit-btn" class="z-mini" style="width: 100%; padding: 10px; font-size: 13px; font-weight: 700; background: rgba(239,68,68,0.2); border: 1px solid rgba(239,68,68,0.5); color: #fca5a5; border-radius: 10px; cursor: pointer;">
-              🚪 Ritorna alla Lobby Multiplayer
+            <button id="z-mp-tourney-exit-btn" class="z-mini z-mp-tourney-exit">
+              🚪 Esci alla Lobby
             </button>
           </div>
         </div>
