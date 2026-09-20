@@ -10,15 +10,35 @@ android {
     defaultConfig {
         applicationId = "com.example.zephyrreefkart"
         minSdk = 24
-        targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        targetSdk = 35
+        versionCode = 2
+        versionName = "2.0"
+    }
+
+    signingConfigs {
+        getByName("debug") {
+            enableV1Signing = true
+            enableV2Signing = true
+        }
+        create("release") {
+            val debugSigning = signingConfigs.getByName("debug")
+            storeFile = debugSigning.storeFile
+            storePassword = debugSigning.storePassword
+            keyAlias = debugSigning.keyAlias
+            keyPassword = debugSigning.keyPassword
+            enableV1Signing = true
+            enableV2Signing = true
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("release")
+        }
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {
@@ -35,6 +55,9 @@ android {
     packaging {
       resources {
         excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        excludes += "/META-INF/*.version"
+        excludes += "/META-INF/androidx.*"
+        excludes += "/META-INF/kotlinx_*.version"
       }
     }
 }
