@@ -257,6 +257,163 @@
         background: rgba(118, 255, 240, 0.3);
       }
 
+      /* 3 Mobile Control Modes: Steering Wheel, Gyro HUD, and Mode Pills */
+      .z-wheel-container {
+        position: relative;
+        width: 132px;
+        height: 132px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: none;
+        pointer-events: auto;
+      }
+      .z-wheel-disc {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        box-sizing: border-box;
+        border: 4.5px solid rgba(118, 255, 240, 0.75);
+        background: radial-gradient(circle at center, rgba(16, 44, 56, 0.92) 0%, rgba(10, 26, 36, 0.98) 70%, rgba(118, 255, 240, 0.3) 100%);
+        box-shadow: 0 4px 22px rgba(0, 0, 0, 0.75), inset 0 0 18px rgba(118, 255, 240, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        will-change: transform;
+      }
+      .z-wheel-disc.snapping {
+        transition: transform 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+      .z-wheel-spoke {
+        position: absolute;
+        background: linear-gradient(90deg, #76fff0, #ffc857);
+        border-radius: 2px;
+        box-shadow: 0 0 6px rgba(118, 255, 240, 0.6);
+      }
+      .z-wheel-spoke.horizontal {
+        width: 82%;
+        height: 5px;
+      }
+      .z-wheel-spoke.vertical {
+        width: 5px;
+        height: 40%;
+        bottom: 10%;
+      }
+      .z-wheel-center {
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        background: #0d1e30;
+        border: 2px solid #ffc857;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 19px;
+        box-shadow: 0 0 12px rgba(255, 200, 87, 0.6);
+        z-index: 2;
+      }
+      .z-wheel-indicator {
+        position: absolute;
+        top: 5px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #ff4fd8;
+        box-shadow: 0 0 10px #ff4fd8;
+        z-index: 2;
+      }
+      .z-gyro-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        width: 140px;
+        pointer-events: none;
+      }
+      .z-gyro-track {
+        width: 124px;
+        height: 14px;
+        border-radius: 7px;
+        background: rgba(16, 44, 56, 0.88);
+        border: 1.5px solid rgba(118, 255, 240, 0.65);
+        position: relative;
+        box-shadow: 0 0 14px rgba(118, 255, 240, 0.35);
+        overflow: hidden;
+      }
+      .z-gyro-deadzone {
+        position: absolute;
+        left: 50%;
+        top: 0;
+        bottom: 0;
+        width: 16px;
+        transform: translateX(-50%);
+        background: rgba(118, 255, 240, 0.15);
+        border-left: 1px dashed rgba(118, 255, 240, 0.4);
+        border-right: 1px dashed rgba(118, 255, 240, 0.4);
+      }
+      .z-gyro-bubble {
+        position: absolute;
+        top: 1px;
+        bottom: 1px;
+        width: 16px;
+        border-radius: 6px;
+        background: #ffc857;
+        box-shadow: 0 0 12px #ffc857;
+        left: 50%;
+        transform: translateX(-50%);
+        transition: left 0.04s ease-out;
+      }
+      .z-gyro-label {
+        font-size: 11px;
+        font-weight: 800;
+        color: #76fff0;
+        letter-spacing: 0.08em;
+        text-shadow: 0 0 8px rgba(118, 255, 240, 0.8);
+      }
+      .z-mode-pill {
+        flex: 1;
+        padding: 9px 4px;
+        font-size: 12px;
+        font-weight: 800;
+        border-radius: 8px;
+        border: 1.5px solid rgba(255, 255, 255, 0.2);
+        background: rgba(13, 30, 48, 0.7);
+        color: #94a3b8;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .z-mode-pill:active {
+        transform: scale(0.96);
+      }
+      .z-mode-pill.active {
+        border-color: #76fff0;
+        background: rgba(118, 255, 240, 0.28);
+        color: #ffffff;
+        box-shadow: 0 0 16px rgba(118, 255, 240, 0.45);
+      }
+      .touch-compact .z-wheel-container {
+        width: 106px;
+        height: 106px;
+      }
+      .touch-compact .z-wheel-center {
+        width: 38px;
+        height: 38px;
+        font-size: 16px;
+      }
+      .touch-large .z-wheel-container {
+        width: 154px;
+        height: 154px;
+      }
+      .touch-large .z-wheel-center {
+        width: 52px;
+        height: 52px;
+        font-size: 22px;
+      }
+
       /* Track Selection and Pause Modal Overlays */
       .z-modal {
         position: fixed;
@@ -676,14 +833,37 @@
 
       <!-- Mobile Touch Controls -->
       <div id="zephyr-touch" class="zephyr-touch-layer">
-        <!-- Steering Pads (Hidden on Title/Select/Results) -->
+        <!-- Steering Group (Supports 3 Modes: Buttons, Wheel, Gyro) -->
         <div id="z-touch-steer-group" class="touch-group touch-group-left">
-          <button id="z-btn-left" class="z-btn z-steer" aria-label="Steer Left">◀</button>
-          <button id="z-btn-right" class="z-btn z-steer" aria-label="Steer Right">▶</button>
+          <!-- Mode 1: Buttons -->
+          <div id="z-touch-buttons-wrap" style="display: flex; gap: 14px; align-items: center;">
+            <button id="z-btn-left" class="z-btn z-steer" aria-label="Steer Left">◀</button>
+            <button id="z-btn-right" class="z-btn z-steer" aria-label="Steer Right">▶</button>
+          </div>
+
+          <!-- Mode 2: Steering Wheel (Touch) -->
+          <div id="z-touch-wheel-container" class="z-wheel-container hidden">
+            <div id="z-wheel-disc" class="z-wheel-disc">
+              <div class="z-wheel-spoke horizontal"></div>
+              <div class="z-wheel-spoke vertical"></div>
+              <div class="z-wheel-indicator"></div>
+              <div class="z-wheel-center">🏎️</div>
+            </div>
+          </div>
+
+          <!-- Mode 3: Gyro Tilt Gauge HUD -->
+          <div id="z-gyro-hud" class="z-gyro-container hidden">
+            <div class="z-gyro-label">📱 INCLINA TELEFONO</div>
+            <div class="z-gyro-track">
+              <div class="z-gyro-deadzone"></div>
+              <div id="z-gyro-bubble" class="z-gyro-bubble"></div>
+            </div>
+          </div>
         </div>
 
         <!-- Utility Bar (Always Accessible) -->
         <div class="touch-group touch-group-top">
+          <button id="z-btn-ctrlmode" class="z-mini" style="background: rgba(255, 200, 87, 0.22); border-color: #ffc857; color: #ffffff; font-weight: 800;" aria-label="Modalità Controlli">🕹️ TASTI</button>
           <button id="z-btn-multiplayer" class="z-mini" style="background: rgba(118, 255, 240, 0.28); border-color: #76fff0; color: #ffffff; font-weight: 800;" aria-label="Multiplayer">🌐 MULTIPLAYER</button>
           <button id="z-btn-menu" class="z-mini" aria-label="Menu Pausa">⏸️ MENU</button>
           <button id="z-btn-track" class="z-mini" aria-label="Cambia Pista">🗺️ PISTA</button>
@@ -766,10 +946,14 @@
               <span>Acceleratore Automatico (Auto-Gas)</span>
               <input type="checkbox" id="z-opt-autogas" style="width: 20px; height: 20px; accent-color: #76fff0;">
             </label>
-            <label style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #e2e8f0; cursor: pointer;">
-              <span>Sterzo Giroscopico (Tilt Gyro)</span>
-              <input type="checkbox" id="z-opt-gyro" style="width: 20px; height: 20px; accent-color: #76fff0;">
-            </label>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <span style="font-size: 14px; color: #e2e8f0; font-weight: 700;">Modalità di Guida Smartphone</span>
+              <div id="z-control-mode-group" style="display: flex; gap: 6px; width: 100%;">
+                <button type="button" class="z-mode-pill active" data-mode="buttons">🕹️ TASTI</button>
+                <button type="button" class="z-mode-pill" data-mode="wheel">🛞 STERZO</button>
+                <button type="button" class="z-mode-pill" id="z-opt-gyro" data-mode="gyro">📱 GIRO</button>
+              </div>
+            </div>
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #e2e8f0;">
               <span>Dimensione Tasti Touch</span>
               <select id="z-opt-btnsize" style="background: #0d1e30; color: #76fff0; border: 1px solid #76fff0; border-radius: 6px; padding: 4px 8px; font-family: inherit;">
@@ -1818,76 +2002,229 @@
           });
         }
 
-        if (optGyro) {
-          optGyro.checked = localStorage.getItem('zephyr_opt_gyro') === '1';
-          window.__ZEPHYR_GYRO = optGyro.checked;
-          optGyro.addEventListener('change', () => {
-            window.__ZEPHYR_GYRO = optGyro.checked;
-            localStorage.setItem('zephyr_opt_gyro', optGyro.checked ? '1' : '0');
-            if (optGyro.checked && typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-              DeviceOrientationEvent.requestPermission().catch(() => {});
-            }
-          });
-        }
+        // 3 Smartphone Control Modes Manager: Buttons (Pulsanti), Wheel (Sterzo Touch), Gyro (Giroscopio)
+        let currentControlMode = localStorage.getItem('zephyr_control_mode') || 'buttons';
+        if (!['buttons', 'wheel', 'gyro'].includes(currentControlMode)) currentControlMode = 'buttons';
+        window.__ZEPHYR_CONTROL_MODE = currentControlMode;
 
-        if (optBtnSize) {
-          const savedSize = localStorage.getItem('zephyr_opt_btnsize') || 'standard';
-          optBtnSize.value = savedSize;
-          const touchLayer = document.getElementById('zephyr-touch');
-          if (touchLayer) {
-            touchLayer.classList.toggle('touch-large', savedSize === 'large');
-            touchLayer.classList.toggle('touch-compact', savedSize === 'compact');
+        const btnCtrlMode = document.getElementById('z-btn-ctrlmode');
+        const buttonsWrap = document.getElementById('z-touch-buttons-wrap');
+        const wheelContainer = document.getElementById('z-touch-wheel-container');
+        const wheelDisc = document.getElementById('z-wheel-disc');
+        const gyroHud = document.getElementById('z-gyro-hud');
+        const gyroBubble = document.getElementById('z-gyro-bubble');
+        const modePills = document.querySelectorAll('.z-mode-pill');
+
+        const requestGyroPermissionIfNeeded = async () => {
+          if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+            try {
+              const res = await DeviceOrientationEvent.requestPermission();
+              return res === 'granted';
+            } catch (err) {
+              console.warn('Gyro permission error:', err);
+              return false;
+            }
           }
-          optBtnSize.addEventListener('change', () => {
-            localStorage.setItem('zephyr_opt_btnsize', optBtnSize.value);
-            if (touchLayer) {
-              touchLayer.classList.toggle('touch-large', optBtnSize.value === 'large');
-              touchLayer.classList.toggle('touch-compact', optBtnSize.value === 'compact');
+          return true;
+        };
+
+        const setControlMode = async (mode, userTriggered = false) => {
+          if (!['buttons', 'wheel', 'gyro'].includes(mode)) mode = 'buttons';
+          if (mode === 'gyro' && userTriggered) {
+            const granted = await requestGyroPermissionIfNeeded();
+            if (!granted) {
+              if (window.__zephyr?.ui?.toast) {
+                window.__zephyr.ui.toast("⚠️ Permesso Giroscopio non abilitato", 2.5);
+              }
+              mode = 'buttons';
             }
-          });
-        }
+          }
 
-        if (optSpeedClass) {
-          const savedSpeed = localStorage.getItem('zephyr_opt_speedclass') || '150cc';
-          optSpeedClass.value = savedSpeed;
-          optSpeedClass.addEventListener('change', () => {
-            localStorage.setItem('zephyr_opt_speedclass', optSpeedClass.value);
-          });
-        }
+          currentControlMode = mode;
+          window.__ZEPHYR_CONTROL_MODE = mode;
+          localStorage.setItem('zephyr_control_mode', mode);
 
-        if (optFps) {
-          const savedFps = localStorage.getItem('zephyr_opt_fps') || '60';
-          optFps.value = savedFps;
-          window.__ZEPHYR_TARGET_FPS = parseInt(savedFps, 10);
-          optFps.addEventListener('change', () => {
-            localStorage.setItem('zephyr_opt_fps', optFps.value);
-            window.__ZEPHYR_TARGET_FPS = parseInt(optFps.value, 10);
-          });
-        }
+          // Update HUD quick button
+          if (btnCtrlMode) {
+            if (mode === 'buttons') btnCtrlMode.textContent = '🕹️ TASTI';
+            else if (mode === 'wheel') btnCtrlMode.textContent = '🛞 VOLANTE';
+            else if (mode === 'gyro') btnCtrlMode.textContent = '📱 GIRO';
+          }
 
-        const openSettings = (e) => {
-          e.preventDefault();
-          if (settingsModal) settingsModal.classList.remove('hidden');
+          // Update Settings Pills
+          modePills.forEach(pill => {
+            pill.classList.toggle('active', pill.getAttribute('data-mode') === mode);
+          });
+
+          // Update On-Screen Steering Component Visibility
+          if (buttonsWrap) buttonsWrap.style.display = (mode === 'buttons') ? 'flex' : 'none';
+          if (wheelContainer) wheelContainer.style.display = (mode === 'wheel') ? 'flex' : 'none';
+          if (gyroHud) gyroHud.style.display = (mode === 'gyro') ? 'flex' : 'none';
+
+          // Reset custom steer axis
+          if (mode === 'buttons') {
+            window.__customSteerAxis = null;
+          } else {
+            window.__customSteerAxis = 0;
+            if (wheelDisc) {
+              wheelDisc.classList.add('snapping');
+              wheelDisc.style.transform = 'rotate(0deg)';
+            }
+            if (gyroBubble) gyroBubble.style.left = '50%';
+          }
+
+          if (userTriggered && window.__zephyr?.ui?.toast) {
+            const labels = {
+              buttons: '🕹️ Controlli: Pulsanti Direzionali',
+              wheel: '🛞 Controlli: Volante Touch Analogico',
+              gyro: '📱 Controlli: Giroscopio Inclinazione'
+            };
+            window.__zephyr.ui.toast(labels[mode] || mode, 2.0);
+          }
           haptic(15);
         };
-        if (settingsBtn) settingsBtn.addEventListener('click', openSettings);
-        if (pauseOptBtn) pauseOptBtn.addEventListener('click', openSettings);
-        if (settingsClose && settingsModal) {
-          settingsClose.addEventListener('click', () => {
-            settingsModal.classList.add('hidden');
-            haptic(15);
+
+        // Bind quick mode switch button on HUD
+        if (btnCtrlMode) {
+          const cycleMode = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const order = ['buttons', 'wheel', 'gyro'];
+            const nextIdx = (order.indexOf(currentControlMode) + 1) % order.length;
+            setControlMode(order[nextIdx], true);
+          };
+          btnCtrlMode.addEventListener('click', cycleMode);
+          btnCtrlMode.addEventListener('touchstart', cycleMode, { passive: false });
+        }
+
+        // Bind settings pills
+        modePills.forEach(pill => {
+          pill.addEventListener('click', (e) => {
+            e.preventDefault();
+            const m = pill.getAttribute('data-mode');
+            setControlMode(m, true);
+          });
+        });
+
+        // Initialize saved control mode
+        setControlMode(currentControlMode, false);
+
+        // Virtual Steering Wheel Touch / Drag Logic
+        if (wheelContainer && wheelDisc) {
+          let wheelActiveTouchId = null;
+          let wheelCenterX = 0;
+          let wheelCenterY = 0;
+          let wheelRadius = 65;
+
+          const updateWheelSteer = (clientX, clientY) => {
+            const dx = clientX - wheelCenterX;
+            const normX = Math.max(-1, Math.min(1, dx / (wheelRadius * 0.85)));
+            const rotDeg = normX * 72;
+            wheelDisc.classList.remove('snapping');
+            wheelDisc.style.transform = `rotate(${rotDeg}deg)`;
+            window.__customSteerAxis = normX;
+          };
+
+          const startWheel = (clientX, clientY, touchId) => {
+            wheelActiveTouchId = touchId;
+            const rect = wheelContainer.getBoundingClientRect();
+            wheelCenterX = rect.left + rect.width / 2;
+            wheelCenterY = rect.top + rect.height / 2;
+            wheelRadius = Math.max(30, rect.width / 2);
+            updateWheelSteer(clientX, clientY);
+            haptic(10);
+          };
+
+          const endWheel = () => {
+            wheelActiveTouchId = null;
+            wheelDisc.classList.add('snapping');
+            wheelDisc.style.transform = 'rotate(0deg)';
+            window.__customSteerAxis = 0;
+          };
+
+          wheelContainer.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const touch = e.changedTouches[0];
+            if (touch) startWheel(touch.clientX, touch.clientY, touch.identifier);
+          }, { passive: false });
+
+          window.addEventListener('touchmove', (e) => {
+            if (wheelActiveTouchId === null) return;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+              const t = e.changedTouches[i];
+              if (t.identifier === wheelActiveTouchId) {
+                e.preventDefault();
+                updateWheelSteer(t.clientX, t.clientY);
+                break;
+              }
+            }
+          }, { passive: false });
+
+          const onTouchEnd = (e) => {
+            if (wheelActiveTouchId === null) return;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+              if (e.changedTouches[i].identifier === wheelActiveTouchId) {
+                endWheel();
+                break;
+              }
+            }
+          };
+          window.addEventListener('touchend', onTouchEnd);
+          window.addEventListener('touchcancel', onTouchEnd);
+
+          // Mouse support for testing wheel in desktop browser
+          let isMouseDown = false;
+          wheelContainer.addEventListener('mousedown', (e) => {
+            isMouseDown = true;
+            startWheel(e.clientX, e.clientY, 'mouse');
+          });
+          window.addEventListener('mousemove', (e) => {
+            if (isMouseDown && wheelActiveTouchId === 'mouse') {
+              updateWheelSteer(e.clientX, e.clientY);
+            }
+          });
+          window.addEventListener('mouseup', () => {
+            if (isMouseDown) {
+              isMouseDown = false;
+              endWheel();
+            }
           });
         }
 
+        // Gyroscope DeviceOrientation Logic
+        let currentGyroSteer = 0;
         if (typeof window !== 'undefined' && window.DeviceOrientationEvent) {
           window.addEventListener('deviceorientation', (e) => {
-            if (!window.__ZEPHYR_GYRO) return;
-            const gamma = e.gamma || 0;
-            if (Math.abs(gamma) > 4) {
-              const steer = Math.max(-1, Math.min(1, gamma / 25));
-              if (window.__zephyr && window.__zephyr.director && window.__zephyr.director.player) {
-                window.__zephyr.director.player.controls.steer = steer;
-              }
+            if (currentControlMode !== 'gyro') return;
+            const screenAngle = (screen.orientation && screen.orientation.angle !== undefined)
+              ? screen.orientation.angle
+              : (window.orientation !== undefined ? window.orientation : 90);
+
+            let rawTilt = 0;
+            if (Math.abs(screenAngle) === 90 || screenAngle === 270) {
+              const sign = (screenAngle === 90) ? -1 : 1;
+              rawTilt = (e.beta || 0) * sign;
+            } else {
+              rawTilt = e.gamma || 0;
+            }
+
+            const deadzone = 3.0;
+            const maxTilt = 24.0;
+            let target = 0;
+            if (Math.abs(rawTilt) > deadzone) {
+              const sign = Math.sign(rawTilt);
+              const val = Math.min(1, (Math.abs(rawTilt) - deadzone) / (maxTilt - deadzone));
+              target = sign * Math.pow(val, 1.15);
+            }
+
+            currentGyroSteer = currentGyroSteer * 0.72 + target * 0.28;
+            if (Math.abs(currentGyroSteer) < 0.015 && target === 0) currentGyroSteer = 0;
+            window.__customSteerAxis = Math.max(-1, Math.min(1, currentGyroSteer));
+
+            if (gyroBubble) {
+              const pct = 50 + (window.__customSteerAxis * 40);
+              gyroBubble.style.left = `${pct}%`;
             }
           });
         }

@@ -68,5 +68,7 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<key>NSMotionUsageDescription</key>
+	<string>Zephyr Reef Kart usa i sensori di movimento per lo sterzo giroscopico.</string>
 </dict>
 </plist>
