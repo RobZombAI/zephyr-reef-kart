@@ -33,13 +33,33 @@ for (const t of targets) {
   console.log(`Synced -> ${t.dir}`);
 }
 
-// 1. Update ZephyrReefKart.apk
-console.log('--> Updating ZephyrReefKart.apk...');
-const androidAssetsDir = path.join(rootDir, 'android/ZephyrReefKart/app/src/main');
-execSync(`cd "${androidAssetsDir}" && zip -u -r "${path.join(rootDir, 'ZephyrReefKart.apk')}" assets`, { stdio: 'inherit' });
-execSync(`unzip -t "${path.join(rootDir, 'ZephyrReefKart.apk')}" > /dev/null`);
-fs.copyFileSync(path.join(rootDir, 'ZephyrReefKart.apk'), path.join(artifactsDir, 'ZephyrReefKart.apk'));
-console.log('Updated and verified ZephyrReefKart.apk');
+// 1. Build and verify signed ZephyrReefKart.apk via Gradle
+console.log('--> Building properly signed & aligned ZephyrReefKart.apk...');
+const androidDir = path.join(rootDir, 'android/ZephyrReefKart');
+const javaHome = fs.existsSync('/opt/homebrew/opt/openjdk@17') ? '/opt/homebrew/opt/openjdk@17' : process.env.JAVA_HOME;
+const env = { ...process.env, JAVA_HOME: javaHome, PATH: `${javaHome}/bin:${process.env.PATH}` };
+
+execSync('./gradlew assembleRelease --no-daemon', { cwd: androidDir, env, stdio: 'inherit' });
+const builtApk = path.join(androidDir, 'app/build/outputs/apk/release/app-release.apk');
+if (!fs.existsSync(builtApk)) {
+  throw new Error(`Built APK not found at ${builtApk}`);
+}
+
+const targetApk = path.join(rootDir, 'ZephyrReefKart.apk');
+fs.copyFileSync(builtApk, targetApk);
+
+// Verify with apksigner and zipalign
+const apksigner = path.join(process.env.HOME, 'Library/Android/sdk/build-tools/35.0.0/apksigner');
+const zipalign = path.join(process.env.HOME, 'Library/Android/sdk/build-tools/35.0.0/zipalign');
+if (fs.existsSync(apksigner)) {
+  execSync(`"${apksigner}" verify --verbose "${targetApk}"`, { env, stdio: 'inherit' });
+}
+if (fs.existsSync(zipalign)) {
+  execSync(`"${zipalign}" -c -v 4 "${targetApk}"`, { stdio: 'pipe' });
+}
+
+fs.copyFileSync(targetApk, path.join(artifactsDir, 'ZephyrReefKart.apk'));
+console.log('Successfully built, signed, aligned and verified ZephyrReefKart.apk');
 
 // 2. Update ZephyrReefKart.ipa
 console.log('--> Updating ZephyrReefKart.ipa...');
