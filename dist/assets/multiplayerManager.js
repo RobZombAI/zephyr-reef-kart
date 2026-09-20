@@ -280,14 +280,14 @@ export class MultiplayerManager {
       return {
         slot: slot,
         id: slot,
-        name: r.name || playerObj?.name || `Pilota ${slot + 1}`,
-        kartId: r.kartId || playerObj?.kartId || 'nix',
+        name: playerObj?.name || r.name || `Pilota ${slot + 1}`,
+        kartId: playerObj?.kartId || r.kartId || 'nix',
         rank: rank,
         finishTime: r.finishTime || r.time || 0,
         lastRacePoints: pts,
         pointsEarned: pts,
         totalPoints: newTotal,
-        isPlayer: r.isPlayer,
+        isPlayer: slot === this.mySlot,
         isHost: playerObj?.isHost || false
       };
     });
@@ -755,6 +755,7 @@ export class MultiplayerManager {
           this.countdownTimer = null;
         }
         this.state = 'RACING';
+        this.syncStartTime = data.startTime || (Date.now() + 3000);
         this.trackIndex = data.trackIndex;
         this.laps = data.laps;
         this.players = data.players;
@@ -771,7 +772,7 @@ export class MultiplayerManager {
         if (!rState) {
           rState = {
             x: 0, y: 0, z: 0, yaw: 0, pitch: 0, roll: 0, speed: 0, steer: 0,
-            driftTier: 0, isDrifting: false, boost: false, lap: 1, dist: 0, lastUpdate: 0
+            driftTier: 0, isDrifting: false, boost: false, grounded: true, airborne: false, lap: 1, dist: 0, lastUpdate: 0
           };
           this.remoteStates.set(s, rState);
         }
@@ -786,9 +787,24 @@ export class MultiplayerManager {
         rState.driftTier = data.driftTier || 0;
         rState.isDrifting = !!data.isDrifting;
         rState.boost = !!data.boost;
+        rState.grounded = data.grounded !== undefined ? data.grounded : true;
+        rState.airborne = data.airborne !== undefined ? data.airborne : !rState.grounded;
         rState.lap = data.lap || 1;
         rState.dist = data.dist || 0;
         rState.lastUpdate = performance.now();
+
+        // Guest replicates AI states from Host authoritative broadcast
+        if (Array.isArray(data.ais) && !this.isHost) {
+          for (const ai of data.ais) {
+            let aiState = this.remoteStates.get(ai.slot);
+            if (!aiState) {
+              aiState = { ...ai, lastUpdate: performance.now() };
+              this.remoteStates.set(ai.slot, aiState);
+            } else {
+              Object.assign(aiState, ai, { lastUpdate: performance.now() });
+            }
+          }
+        }
 
         if (this.isHost) {
           for (const [peerId, otherConn] of this.connections.entries()) {
@@ -1040,6 +1056,8 @@ export class MultiplayerManager {
 
         if (this.isHost) {
           this.state = 'RACING';
+          const startStamp = Date.now() + 3000;
+          this.syncStartTime = startStamp;
           const raceStartPayload = {
             type: 'RACE_START_SYNC',
             trackIndex: this.trackIndex,
@@ -1047,7 +1065,7 @@ export class MultiplayerManager {
             playlistTracks: this.playlistTracks,
             playlistIndex: this.playlistIndex,
             players: this.players,
-            startTime: Date.now()
+            startTime: startStamp
           };
           this.broadcastToAll(raceStartPayload);
           if (this.onRaceStart) this.onRaceStart(raceStartPayload);
@@ -1081,13 +1099,13 @@ export class MultiplayerManager {
 
   // --- REAL-TIME TRANSMISSION (30 Hz) ---
   sendMyState(kart, director) {
-    if (this.state !== 'RACING') return;
+    if (this.state !== 'RACING' && this.state !== 'COUNTDOWN') return;
     const now = performance.now();
     if (now - this.lastBroadcastTime < this.broadcastIntervalMs) return;
     this.lastBroadcastTime = now;
 
     const p = kart.physics.state;
-    const prog = director.player.progress;
+    const prog = director.player?.progress || director.racers?.[this.mySlot]?.progress || { lap: 1, distance: 0 };
 
     const payload = {
       type: 'KART_STATE',
@@ -1103,16 +1121,47 @@ export class MultiplayerManager {
       driftTier: p.driftTier || 0,
       isDrifting: !!p.drifting,
       boost: (p.boostTime > 0 || p.padBoostTime > 0),
+      grounded: !!p.grounded,
+      airborne: !p.grounded,
       lap: prog.lap || 1,
-      dist: Math.round(prog.distance * 10) / 10
+      dist: Math.round((prog.distance || 0) * 10) / 10
     };
+
+    // If Host, pack AI racer positions so Guest sees identical field
+    if (this.isHost && director && director.racers) {
+      const aiList = [];
+      for (let s = 0; s < director.racers.length; s++) {
+        if (s === this.mySlot) continue;
+        const r = director.racers[s];
+        if (r && r.kind === 'ai') {
+          const rp = r.state || {};
+          const rPos = rp.pos || r.pos || { x: 0, y: 0, z: 0 };
+          aiList.push({
+            slot: s,
+            x: Math.round(rPos.x * 100) / 100,
+            y: Math.round(rPos.y * 100) / 100,
+            z: Math.round(rPos.z * 100) / 100,
+            yaw: Math.round((rp.yaw || 0) * 1000) / 1000,
+            speed: Math.round((rp.speed || 0) * 10) / 10,
+            steer: Math.round((r.controls?.steer || 0) * 100) / 100,
+            driftTier: rp.driftTier || 0,
+            isDrifting: !!rp.drifting,
+            grounded: rp.grounded !== undefined ? !!rp.grounded : true,
+            airborne: rp.grounded !== undefined ? !rp.grounded : false,
+            lap: r.progress?.lap || 1,
+            dist: Math.round((r.progress?.distance || 0) * 10) / 10
+          });
+        }
+      }
+      if (aiList.length > 0) payload.ais = aiList;
+    }
 
     this.broadcastToAll(payload);
   }
 
   // --- 60 FPS INTERPOLATION & RENDERING FOR REMOTE RACERS ---
   updateRemoteRacers(dt, director, scene, camera) {
-    if (this.state !== 'RACING' || !director || !director.racers) {
+    if ((this.state !== 'RACING' && this.state !== 'COUNTDOWN') || !director || !director.racers) {
       this.clearAllNametags();
       return;
     }
@@ -1120,17 +1169,50 @@ export class MultiplayerManager {
     const now = performance.now();
 
     for (const player of this.players) {
-      if (player.slot === this.mySlot || player.isAI) continue;
+      if (player.slot === this.mySlot) continue;
+      // On Host, AI is simulated locally; on Guest, AI is replicated from Host
+      if (this.isHost && player.isAI) continue;
 
-      const racer = director.racers[player.slot];
-      const remote = this.remoteStates.get(player.slot);
+      const slot = player.slot;
+      const racer = director.racers[slot];
+      const remote = this.remoteStates.get(slot);
       if (!racer || !remote) continue;
 
-      // Smooth Position Lerp
-      const posLerpRate = Math.min(1.0, dt * 18.0);
-      racer.pos.x += (remote.x - racer.pos.x) * posLerpRate;
-      racer.pos.y += (remote.y - racer.pos.y) * posLerpRate;
-      racer.pos.z += (remote.z - racer.pos.z) * posLerpRate;
+      // Distance snap check: if distance > 20m, snap directly without flying across map
+      const dx = remote.x - racer.pos.x;
+      const dz = remote.z - racer.pos.z;
+      const distSq = dx * dx + dz * dz;
+      if (distSq > 400) {
+        racer.pos.x = remote.x;
+        racer.pos.y = remote.y;
+        racer.pos.z = remote.z;
+        racer.state.yaw = remote.yaw;
+      } else {
+        // Smooth Position Lerp
+        const posLerpRate = Math.min(1.0, dt * 20.0);
+        racer.pos.x += dx * posLerpRate;
+        racer.pos.z += dz * posLerpRate;
+      }
+
+      // Height Clamping: Opponents MUST NEVER float in the sky!
+      if (director.spline) {
+        const roadHeight = director.spline.surfaceHeight(racer.pos.x, racer.pos.z, -1);
+        const isAirborne = !!remote.airborne && (remote.y > roadHeight + 0.3);
+        if (!isAirborne) {
+          racer.pos.y = roadHeight;
+          racer.state.grounded = true;
+          racer.state.airHeight = 0;
+        } else {
+          // Genuinely airborne over jump ramp
+          const yLerpRate = Math.min(1.0, dt * 18.0);
+          racer.pos.y += (remote.y - racer.pos.y) * yLerpRate;
+          if (racer.pos.y < roadHeight) racer.pos.y = roadHeight;
+          racer.state.grounded = (racer.pos.y <= roadHeight + 0.05);
+          racer.state.airHeight = Math.max(0, racer.pos.y - roadHeight);
+        }
+      } else {
+        racer.pos.y += (remote.y - racer.pos.y) * Math.min(1.0, dt * 18.0);
+      }
 
       // Angular Yaw Lerp
       let deltaYaw = (remote.yaw - racer.state.yaw) % (Math.PI * 2);
@@ -1146,14 +1228,36 @@ export class MultiplayerManager {
       racer.progress.lap = remote.lap;
       racer.progress.distance = remote.dist;
 
-      // Sync kart visual geometry & wheels
+      // Sync internal kart physics state so shadows and visual transforms stay aligned
+      if (racer.kart && racer.kart.physics && racer.kart.physics.state) {
+        racer.kart.physics.state.pos.copy(racer.pos);
+        racer.kart.physics.state.yaw = racer.state.yaw;
+        racer.kart.physics.state.speed = remote.speed;
+        racer.kart.physics.state.grounded = racer.state.grounded;
+        racer.kart.physics.state.airHeight = racer.state.airHeight || 0;
+      }
+
+      // Align ground normal with track banking so chassis leans and wheels don't hover
+      if (director.adapter && director.adapter.querySurface) {
+        const q = director.adapter.querySurface(racer.pos.x, racer.pos.z, racer.state.trackIndex || 0, director.adapter.scratch);
+        if (q) {
+          racer.kart.setGroundNormal(q.upX, q.upY, q.upZ);
+          racer.state.trackS = q.s;
+          racer.state.onRoad = q.onRoad;
+        }
+      }
+
+      // Sync kart visual geometry, wheels, and model transforms
+      racer.kart?.syncVisual?.(dt);
       if (racer.kart && racer.kart.visual) {
         racer.kart.visual.syncWheelSteer?.(remote.steer);
         racer.kart.visual.syncDriftSpark?.(remote.isDrifting, remote.driftTier);
       }
 
-      // Update 3D projected DOM Nametag
-      this.updateProjectedNametag(player.slot, player.name, player.ping, racer.pos, camera);
+      // Update 3D projected DOM Nametag (only for human players)
+      if (player && !player.isAI) {
+        this.updateProjectedNametag(player.slot, player.name, player.ping, racer.pos, camera);
+      }
     }
 
     this.updateEmoteBubbles(now, director, camera);
