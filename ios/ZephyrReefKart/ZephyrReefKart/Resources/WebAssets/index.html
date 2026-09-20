@@ -841,17 +841,7 @@
             <button id="z-btn-right" class="z-btn z-steer" aria-label="Steer Right">▶</button>
           </div>
 
-          <!-- Mode 2: Steering Wheel (Touch) -->
-          <div id="z-touch-wheel-container" class="z-wheel-container hidden">
-            <div id="z-wheel-disc" class="z-wheel-disc">
-              <div class="z-wheel-spoke horizontal"></div>
-              <div class="z-wheel-spoke vertical"></div>
-              <div class="z-wheel-indicator"></div>
-              <div class="z-wheel-center">🏎️</div>
-            </div>
-          </div>
-
-          <!-- Mode 3: Gyro Tilt Gauge HUD -->
+          <!-- Gyro Tilt Gauge HUD -->
           <div id="z-gyro-hud" class="z-gyro-container hidden">
             <div class="z-gyro-label">📱 INCLINA TELEFONO</div>
             <div class="z-gyro-track">
@@ -948,10 +938,9 @@
             </label>
             <div style="display: flex; flex-direction: column; gap: 8px;">
               <span style="font-size: 14px; color: #e2e8f0; font-weight: 700;">Modalità di Guida Smartphone</span>
-              <div id="z-control-mode-group" style="display: flex; gap: 6px; width: 100%;">
-                <button type="button" class="z-mode-pill active" data-mode="buttons">🕹️ TASTI</button>
-                <button type="button" class="z-mode-pill" data-mode="wheel">🛞 STERZO</button>
-                <button type="button" class="z-mode-pill" id="z-opt-gyro" data-mode="gyro">📱 GIRO</button>
+              <div id="z-control-mode-group" style="display: flex; gap: 8px; width: 100%;">
+                <button type="button" class="z-mode-pill active" data-mode="buttons" style="flex: 1;">🕹️ TASTI</button>
+                <button type="button" class="z-mode-pill" id="z-opt-gyro" data-mode="gyro" style="flex: 1;">📱 GIRO</button>
               </div>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #e2e8f0;">
@@ -2002,15 +1991,13 @@
           });
         }
 
-        // 3 Smartphone Control Modes Manager: Buttons (Pulsanti), Wheel (Sterzo Touch), Gyro (Giroscopio)
+        // 2 Smartphone Control Modes: Tasti Normali (buttons) & Giroscopio Calibrato (gyro)
         let currentControlMode = localStorage.getItem('zephyr_control_mode') || 'buttons';
-        if (!['buttons', 'wheel', 'gyro'].includes(currentControlMode)) currentControlMode = 'buttons';
+        if (currentControlMode !== 'gyro') currentControlMode = 'buttons';
         window.__ZEPHYR_CONTROL_MODE = currentControlMode;
 
         const btnCtrlMode = document.getElementById('z-btn-ctrlmode');
         const buttonsWrap = document.getElementById('z-touch-buttons-wrap');
-        const wheelContainer = document.getElementById('z-touch-wheel-container');
-        const wheelDisc = document.getElementById('z-wheel-disc');
         const gyroHud = document.getElementById('z-gyro-hud');
         const gyroBubble = document.getElementById('z-gyro-bubble');
         const modePills = document.querySelectorAll('.z-mode-pill');
@@ -2029,7 +2016,7 @@
         };
 
         const setControlMode = async (mode, userTriggered = false) => {
-          if (!['buttons', 'wheel', 'gyro'].includes(mode)) mode = 'buttons';
+          if (mode !== 'gyro') mode = 'buttons';
           if (mode === 'gyro' && userTriggered) {
             const granted = await requestGyroPermissionIfNeeded();
             if (!granted) {
@@ -2044,11 +2031,9 @@
           window.__ZEPHYR_CONTROL_MODE = mode;
           localStorage.setItem('zephyr_control_mode', mode);
 
-          // Update HUD quick button
+          // Update HUD quick button (toggle directly between TASTI and GIRO)
           if (btnCtrlMode) {
-            if (mode === 'buttons') btnCtrlMode.textContent = '🕹️ TASTI';
-            else if (mode === 'wheel') btnCtrlMode.textContent = '🛞 VOLANTE';
-            else if (mode === 'gyro') btnCtrlMode.textContent = '📱 GIRO';
+            btnCtrlMode.textContent = (mode === 'buttons') ? '🕹️ TASTI' : '📱 GIRO';
           }
 
           // Update Settings Pills
@@ -2058,7 +2043,6 @@
 
           // Update On-Screen Steering Component Visibility
           if (buttonsWrap) buttonsWrap.style.display = (mode === 'buttons') ? 'flex' : 'none';
-          if (wheelContainer) wheelContainer.style.display = (mode === 'wheel') ? 'flex' : 'none';
           if (gyroHud) gyroHud.style.display = (mode === 'gyro') ? 'flex' : 'none';
 
           // Reset custom steer axis
@@ -2066,35 +2050,30 @@
             window.__customSteerAxis = null;
           } else {
             window.__customSteerAxis = 0;
-            if (wheelDisc) {
-              wheelDisc.classList.add('snapping');
-              wheelDisc.style.transform = 'rotate(0deg)';
-            }
+            currentGyroSteer = 0;
             if (gyroBubble) gyroBubble.style.left = '50%';
           }
 
           if (userTriggered && window.__zephyr?.ui?.toast) {
             const labels = {
-              buttons: '🕹️ Controlli: Pulsanti Direzionali',
-              wheel: '🛞 Controlli: Volante Touch Analogico',
-              gyro: '📱 Controlli: Giroscopio Inclinazione'
+              buttons: '🕹️ Controlli: Tasti Normali (◀ ▶)',
+              gyro: '📱 Controlli: Giroscopio Calibrato'
             };
             window.__zephyr.ui.toast(labels[mode] || mode, 2.0);
           }
           haptic(15);
         };
 
-        // Bind quick mode switch button on HUD
+        // Bind quick mode switch button on HUD: 2-way toggle
         if (btnCtrlMode) {
-          const cycleMode = (e) => {
+          const toggleMode = (e) => {
             e.preventDefault();
             e.stopPropagation();
-            const order = ['buttons', 'wheel', 'gyro'];
-            const nextIdx = (order.indexOf(currentControlMode) + 1) % order.length;
-            setControlMode(order[nextIdx], true);
+            const nextMode = (currentControlMode === 'buttons') ? 'gyro' : 'buttons';
+            setControlMode(nextMode, true);
           };
-          btnCtrlMode.addEventListener('click', cycleMode);
-          btnCtrlMode.addEventListener('touchstart', cycleMode, { passive: false });
+          btnCtrlMode.addEventListener('click', toggleMode);
+          btnCtrlMode.addEventListener('touchstart', toggleMode, { passive: false });
         }
 
         // Bind settings pills
@@ -2109,90 +2088,7 @@
         // Initialize saved control mode
         setControlMode(currentControlMode, false);
 
-        // Virtual Steering Wheel Touch / Drag Logic
-        if (wheelContainer && wheelDisc) {
-          let wheelActiveTouchId = null;
-          let wheelCenterX = 0;
-          let wheelCenterY = 0;
-          let wheelRadius = 65;
-
-          const updateWheelSteer = (clientX, clientY) => {
-            const dx = clientX - wheelCenterX;
-            const normX = Math.max(-1, Math.min(1, dx / (wheelRadius * 0.85)));
-            const rotDeg = normX * 72;
-            wheelDisc.classList.remove('snapping');
-            wheelDisc.style.transform = `rotate(${rotDeg}deg)`;
-            window.__customSteerAxis = normX;
-          };
-
-          const startWheel = (clientX, clientY, touchId) => {
-            wheelActiveTouchId = touchId;
-            const rect = wheelContainer.getBoundingClientRect();
-            wheelCenterX = rect.left + rect.width / 2;
-            wheelCenterY = rect.top + rect.height / 2;
-            wheelRadius = Math.max(30, rect.width / 2);
-            updateWheelSteer(clientX, clientY);
-            haptic(10);
-          };
-
-          const endWheel = () => {
-            wheelActiveTouchId = null;
-            wheelDisc.classList.add('snapping');
-            wheelDisc.style.transform = 'rotate(0deg)';
-            window.__customSteerAxis = 0;
-          };
-
-          wheelContainer.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const touch = e.changedTouches[0];
-            if (touch) startWheel(touch.clientX, touch.clientY, touch.identifier);
-          }, { passive: false });
-
-          window.addEventListener('touchmove', (e) => {
-            if (wheelActiveTouchId === null) return;
-            for (let i = 0; i < e.changedTouches.length; i++) {
-              const t = e.changedTouches[i];
-              if (t.identifier === wheelActiveTouchId) {
-                e.preventDefault();
-                updateWheelSteer(t.clientX, t.clientY);
-                break;
-              }
-            }
-          }, { passive: false });
-
-          const onTouchEnd = (e) => {
-            if (wheelActiveTouchId === null) return;
-            for (let i = 0; i < e.changedTouches.length; i++) {
-              if (e.changedTouches[i].identifier === wheelActiveTouchId) {
-                endWheel();
-                break;
-              }
-            }
-          };
-          window.addEventListener('touchend', onTouchEnd);
-          window.addEventListener('touchcancel', onTouchEnd);
-
-          // Mouse support for testing wheel in desktop browser
-          let isMouseDown = false;
-          wheelContainer.addEventListener('mousedown', (e) => {
-            isMouseDown = true;
-            startWheel(e.clientX, e.clientY, 'mouse');
-          });
-          window.addEventListener('mousemove', (e) => {
-            if (isMouseDown && wheelActiveTouchId === 'mouse') {
-              updateWheelSteer(e.clientX, e.clientY);
-            }
-          });
-          window.addEventListener('mouseup', () => {
-            if (isMouseDown) {
-              isMouseDown = false;
-              endWheel();
-            }
-          });
-        }
-
-        // Gyroscope DeviceOrientation Logic
+        // Gyroscope DeviceOrientation Logic with Best-in-Class Pro Ergonomics (Mario Kart Tour / Asphalt Standard)
         let currentGyroSteer = 0;
         if (typeof window !== 'undefined' && window.DeviceOrientationEvent) {
           window.addEventListener('deviceorientation', (e) => {
@@ -2202,28 +2098,37 @@
               : (window.orientation !== undefined ? window.orientation : 90);
 
             let rawTilt = 0;
-            if (Math.abs(screenAngle) === 90 || screenAngle === 270) {
-              const sign = (screenAngle === 90) ? -1 : 1;
+            if (Math.abs(screenAngle) === 90 || screenAngle === 270 || screenAngle === -90) {
+              // In landscape 90: tilting left (left hand down) reduces beta (negative).
+              // We want tilting left -> negative steer (-1.0). Tilting right -> positive steer (+1.0).
+              // sign = 1 for 90 deg, -1 for 270 / -90 deg.
+              const sign = (screenAngle === 90) ? 1 : -1;
               rawTilt = (e.beta || 0) * sign;
             } else {
+              // Portrait orientation fallback
               rawTilt = e.gamma || 0;
             }
 
-            const deadzone = 3.0;
-            const maxTilt = 24.0;
+            // Calibrated Ergonomics:
+            // 2.5 deg deadzone eliminates natural hand tremors on high-speed straights
+            // 22.0 deg max tilt maps to 100% full steering lock without arm twisting
+            const deadzone = 2.5;
+            const maxTilt = 22.0;
             let target = 0;
             if (Math.abs(rawTilt) > deadzone) {
               const sign = Math.sign(rawTilt);
-              const val = Math.min(1, (Math.abs(rawTilt) - deadzone) / (maxTilt - deadzone));
-              target = sign * Math.pow(val, 1.15);
+              const normalized = Math.min(1, (Math.abs(rawTilt) - deadzone) / (maxTilt - deadzone));
+              // Progressive ergonomic curve for high fidelity: micro-precision at low angles, agile lock in hairpins
+              target = sign * Math.pow(normalized, 1.25);
             }
 
-            currentGyroSteer = currentGyroSteer * 0.72 + target * 0.28;
-            if (Math.abs(currentGyroSteer) < 0.015 && target === 0) currentGyroSteer = 0;
+            // Snappy exponential filter (alpha = 0.35) for instant zero-latency steering with smooth transitions
+            currentGyroSteer = currentGyroSteer * 0.65 + target * 0.35;
+            if (Math.abs(currentGyroSteer) < 0.008 && target === 0) currentGyroSteer = 0;
             window.__customSteerAxis = Math.max(-1, Math.min(1, currentGyroSteer));
 
             if (gyroBubble) {
-              const pct = 50 + (window.__customSteerAxis * 40);
+              const pct = 50 + (window.__customSteerAxis * 42);
               gyroBubble.style.left = `${pct}%`;
             }
           });

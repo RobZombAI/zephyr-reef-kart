@@ -2207,7 +2207,7 @@ describe('=== UNIT & PROCESS TESTS: MINE IMPACT & COLLISION MECHANICS ===', () =
     assert.ok(bundle.includes('e.baseY=py'), 'mine remembers surface baseY');
     assert.ok(bundle.includes('n.armTimer>0&&(n.armTimer-=t);'), 'armTimer decrements without continue blocking rivals');
     assert.ok(bundle.includes('i===n.owner&&n.armTimer>0'), 'owner immunity is restricted strictly to armTimer window');
-    assert.ok(bundle.includes('r*r+o*o<8.2&&Math.abs(a)<3.4'), 'expanded mine collision radius (2.86m)');
+    assert.ok(bundle.includes('r*r+o*o<11.5&&Math.abs(a)<3.4'), 'expanded mine collision radius (3.39m)');
     assert.ok(bundle.includes('i.kart.physics.knockback(kx*7,kz*7,11,7.5)'), 'knockback pop applied to kart on mine hit');
     assert.ok(bundle.includes('this.onHit?.(i,"mine")'), 'explosion event triggered unconditionally');
     assert.ok(bundle.includes('break}}}}killBolt(t)'), 'closing braces balanced in updateBolts and class mv');
@@ -3966,7 +3966,7 @@ describe('=== UNIT & PROCESS TESTS: 24 MASTER OVERHAUL QUALITY, GRAPHICS & GAMEP
   });
 
   it('21. Gameplay: Spline-Bounded Bolt Homing clamps missile laterally inside track width', () => {
-    assert.ok(bundleCode.includes('bMax=bsmp.halfWidth+1.5'), 'Bolt clamped to track boundary halfWidth + 1.5');
+    assert.ok(bundleCode.includes('bMax=bsmp.halfWidth+1.2'), 'Bolt clamped to track boundary halfWidth + 1.2');
   });
 
   it('22. Quality: Curb Rumble Feedback triggers curb_tick audio and haptic feedback', () => {
@@ -4622,7 +4622,7 @@ describe('=== UNIT & PROCESS TESTS: MULTIPLAYER SYNCHRONIZATION & HIGH-FIDELITY 
   });
 });
 
-describe('=== UNIT & PROCESS TESTS: SMARTPHONE 3 CONTROL MODES (BUTTONS, TOUCH WHEEL, GYROSCOPE) ===', () => {
+describe('=== UNIT & PROCESS TESTS: SMARTPHONE 2 HIGH-PERFORMANCE CONTROL MODES (BUTTONS & CALIBRATED GYROSCOPE) ===', () => {
   it('1. steerAxis() correctly bridges analog custom steer axis into engine input', () => {
     class MockInputManager {
       constructor() {
@@ -4650,7 +4650,7 @@ describe('=== UNIT & PROCESS TESTS: SMARTPHONE 3 CONTROL MODES (BUTTONS, TOUCH W
     input.held.add('right');
     assert.strictEqual(input.steerAxis(), 1, 'Steers full right with button');
 
-    // Mode 2: Touch Wheel (customSteerAxis provides smooth analog value)
+    // Mode 2: Gyroscope (customSteerAxis provides smooth analog value)
     globalThis.__customSteerAxis = -0.42;
     assert.strictEqual(input.steerAxis(), -0.42, 'Reads exact analog left tilt');
     globalThis.__customSteerAxis = 0.85;
@@ -4666,78 +4666,57 @@ describe('=== UNIT & PROCESS TESTS: SMARTPHONE 3 CONTROL MODES (BUTTONS, TOUCH W
     delete globalThis.__customSteerAxis;
   });
 
-  it('2. Virtual Steering Wheel drag angle and spring-back centering computation', () => {
-    const wheelRadius = 66; // standard radius
-    const computeSteerFromDrag = (dx) => {
-      const normX = Math.max(-1, Math.min(1, dx / (wheelRadius * 0.85)));
-      const rotDeg = normX * 72;
-      return { steer: normX, rotDeg };
-    };
-
-    // Center position
-    const center = computeSteerFromDrag(0);
-    assert.strictEqual(center.steer, 0);
-    assert.strictEqual(center.rotDeg, 0);
-
-    // Half right turn (30px)
-    const rightHalf = computeSteerFromDrag(28.05);
-    assert.ok(Math.abs(rightHalf.steer - 0.5) < 0.01);
-    assert.ok(Math.abs(rightHalf.rotDeg - 36) < 0.5);
-
-    // Full left turn (-70px exceeds max)
-    const leftFull = computeSteerFromDrag(-70);
-    assert.strictEqual(leftFull.steer, -1.0);
-    assert.strictEqual(leftFull.rotDeg, -72);
-
-    // Spring return reset
-    let axis = leftFull.steer;
-    axis = 0; // touch end
-    assert.strictEqual(axis, 0, 'Releasing finger zeroes steer axis');
-  });
-
-  it('3. Gyroscope orientation calculation, deadzone filtering and landscape polarity', () => {
+  it('2. Gyroscope ergonomic calibration, deadzone filtering and non-inverted polarity', () => {
     const calcGyro = (beta, gamma, screenAngle, prevSteer = 0) => {
       let rawTilt = 0;
       if (Math.abs(screenAngle) === 90 || screenAngle === 270) {
-        const sign = (screenAngle === 90) ? -1 : 1;
+        const sign = (screenAngle === 90) ? 1 : -1;
         rawTilt = (beta || 0) * sign;
       } else {
         rawTilt = gamma || 0;
       }
 
-      const deadzone = 3.0;
-      const maxTilt = 24.0;
+      const deadzone = 2.5;
+      const maxTilt = 22.0;
       let target = 0;
       if (Math.abs(rawTilt) > deadzone) {
         const sign = Math.sign(rawTilt);
         const val = Math.min(1, (Math.abs(rawTilt) - deadzone) / (maxTilt - deadzone));
-        target = sign * Math.pow(val, 1.15);
+        target = sign * Math.pow(val, 1.25);
       }
 
-      const smoothed = prevSteer * 0.72 + target * 0.28;
+      const smoothed = prevSteer * (1 - 0.35) + target * 0.35;
       return { rawTilt, target, smoothed };
     };
 
     // 1. Inside deadzone (resting phone tilt 2.0 degrees): steer remains 0
     const idle = calcGyro(2.0, 0, 90, 0);
-    assert.strictEqual(idle.target, 0, 'Deadzone eliminates hand jitter');
+    assert.strictEqual(idle.target, 0, 'Deadzone 2.5 deg eliminates hand jitter');
 
-    // 2. Intentional left turn in landscape (beta = 15.0 deg, sign = -1 -> -15 deg)
-    const turnLeft = calcGyro(15.0, 0, 90, 0);
-    assert.ok(turnLeft.target < -0.4, 'Tilt generates negative left steer');
-    assert.ok(turnLeft.smoothed < 0, 'Smoothed filter updates smoothly');
+    // 2. Intentional left turn in landscape 90 (tilting left lowers top of phone -> beta is negative)
+    // Non-inverted formula: sign = 1, so rawTilt = -12.0 deg -> negative left steer!
+    const turnLeft = calcGyro(-12.0, 0, 90, 0);
+    assert.ok(turnLeft.target < -0.3, 'Left tilt produces negative steer (turn left)');
+    assert.ok(turnLeft.smoothed < 0, 'Exponential smoothing yields smooth responsive filter');
 
-    // 3. Reversed landscape (screen angle 270 or -90)
-    const turnLeftReversed = calcGyro(-15.0, 0, 270, 0);
-    assert.ok(turnLeftReversed.target < -0.4, 'Reversed landscape inverts polarity correctly');
+    // 3. Intentional right turn in landscape 90 (tilting right raises top of phone -> beta is positive)
+    const turnRight = calcGyro(12.0, 0, 90, 0);
+    assert.ok(turnRight.target > 0.3, 'Right tilt produces positive steer (turn right)');
 
-    // 4. Max tilt (30 deg > 24 deg max)
-    const maxTurn = calcGyro(-30.0, 0, 90, 0);
+    // 4. Reversed landscape (screen angle 270)
+    // Tilting left in 270 landscape makes beta positive. With sign = -1, rawTilt = -12.0 deg -> negative steer!
+    const turnLeftReversed = calcGyro(12.0, 0, 270, 0);
+    assert.ok(turnLeftReversed.target < -0.3, 'Reversed landscape 270 correctly turns left');
+
+    // 5. Max tilt clamp (30 deg > 22 deg max)
+    const maxTurn = calcGyro(30.0, 0, 90, 0);
     assert.strictEqual(maxTurn.target, 1.0, 'Clamps full tilt to 1.0');
+    const maxTurnLeft = calcGyro(-30.0, 0, 90, 0);
+    assert.strictEqual(maxTurnLeft.target, -1.0, 'Clamps full left tilt to -1.0');
   });
 
-  it('4. Control mode cycling and state transition', () => {
-    const modes = ['buttons', 'wheel', 'gyro'];
+  it('3. Strictly 2 control modes cycling (buttons <-> gyro)', () => {
+    const modes = ['buttons', 'gyro'];
     let curMode = 'buttons';
 
     const cycle = () => {
@@ -4746,30 +4725,132 @@ describe('=== UNIT & PROCESS TESTS: SMARTPHONE 3 CONTROL MODES (BUTTONS, TOUCH W
       return curMode;
     };
 
-    assert.strictEqual(cycle(), 'wheel', 'From buttons goes to wheel');
-    assert.strictEqual(cycle(), 'gyro', 'From wheel goes to gyro');
-    assert.strictEqual(cycle(), 'buttons', 'From gyro loops back to buttons');
+    assert.strictEqual(cycle(), 'gyro', 'From buttons toggles to gyro');
+    assert.strictEqual(cycle(), 'buttons', 'From gyro toggles back to buttons');
+    assert.strictEqual(cycle(), 'gyro', 'Loops smoothly between the only 2 modes');
   });
 
-  it('5. HTML and iOS Info.plist markup integrity for 3 control modes', () => {
+  it('4. HTML and iOS Info.plist markup integrity for strictly 2 modes', () => {
     const indexHtml = fs.readFileSync('index.html', 'utf8');
     const zephyrHtml = fs.readFileSync('zephyr.html', 'utf8');
     const infoPlist = fs.readFileSync('ios/ZephyrReefKart/ZephyrReefKart/Info.plist', 'utf8');
 
-    // Check HTML markers
     for (const html of [indexHtml, zephyrHtml]) {
-      assert.ok(html.includes('id="z-touch-wheel-container"'), 'Includes steering wheel container');
-      assert.ok(html.includes('id="z-wheel-disc"'), 'Includes wheel disc element');
+      // Must contain Gyro and Buttons controls
       assert.ok(html.includes('id="z-gyro-hud"'), 'Includes gyro HUD container');
       assert.ok(html.includes('id="z-btn-ctrlmode"'), 'Includes HUD quick control mode button');
       assert.ok(html.includes('id="z-control-mode-group"'), 'Includes settings control mode pills');
       assert.ok(html.includes('data-mode="buttons"'), 'Includes buttons mode pill');
-      assert.ok(html.includes('data-mode="wheel"'), 'Includes wheel mode pill');
       assert.ok(html.includes('data-mode="gyro"'), 'Includes gyro mode pill');
+
+      // Wheel MUST NOT be present
+      assert.ok(!html.includes('id="z-touch-wheel-container"'), 'Virtual steering wheel container completely removed');
+      assert.ok(!html.includes('data-mode="wheel"'), 'Wheel option removed from settings modal');
     }
 
     // Check iOS Info.plist
     assert.ok(infoPlist.includes('NSMotionUsageDescription'), 'iOS Info.plist contains NSMotionUsageDescription');
+  });
+});
+
+describe('=== UNIT & PROCESS TESTS: SYSTEMIC ITEMS & POWERS AUDIT & REPAIR ===', () => {
+  const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
+
+  it('1. Item registry contains Phantom alias mapped to Photon Pulse', () => {
+    assert.ok(bundle.includes('phantom:{id:"phantom",name:"Photon Pulse"'), 'Phantom item definition registered in bundle');
+    assert.ok(bundle.includes('case "phantom":'), 'Phantom case alias handled in useItem');
+  });
+
+  it('2. Continuous Collision Detection (CCD) prevents bolt tunneling against all rivals', () => {
+    // Verify math in bundle
+    assert.ok(bundle.includes('const segX=cX-pX,segZ=cZ-pZ,segLenSq=segX*segX+segZ*segZ;'), 'Segment vector computed for CCD');
+    assert.ok(bundle.includes('sT=Math.max(0,Math.min(1,((a.pos.x-pX)*segX+(a.pos.z-pZ)*segZ)/segLenSq)'), 'Point-to-segment projection clamping sT');
+    assert.ok(bundle.includes('dx*dx+dz*dz<13.5&&dy<3.2'), 'Expanded 3.68m horizontal and 3.2m vertical tolerance');
+
+    // Simulate high-speed bolt tunneling test in Node
+    const pX = 0, pZ = 0, cX = 3.1, cZ = 0; // bolt moves 3.1m in 1 frame
+    const segX = cX - pX, segZ = cZ - pZ, segLenSq = segX * segX + segZ * segZ;
+    const rivalPos = { x: 1.55, z: 0.8, y: 0 }; // rival positioned halfway along trajectory
+
+    const sT = Math.max(0, Math.min(1, ((rivalPos.x - pX) * segX + (rivalPos.z - pZ) * segZ) / segLenSq));
+    const hitX = pX + segX * sT, hitZ = pZ + segZ * sT;
+    const dx = rivalPos.x - hitX, dz = rivalPos.z - hitZ;
+    const distSq = dx * dx + dz * dz;
+
+    assert.ok(distSq < 13.5, 'CCD catches rival halfway along the frame segment');
+  });
+
+  it('3. Single Shield consumes on hit and grants brief invulnerability grace', () => {
+    assert.ok(bundle.includes('this.shield=0;this.invuln=.6;this.kart.visual.punch(.5);return!1;'), 'Single shield breaks on hit and prevents infinite shield');
+
+    // Simulate hit logic
+    const racer = {
+      shield: 7.5,
+      invuln: 0,
+      hit(duration, dir = 1) {
+        if (this.invuln > 0) return false;
+        if (this.shield > 0) {
+          this.shield = 0;
+          this.invuln = 0.6;
+          return false;
+        }
+        return true;
+      }
+    };
+
+    // First hit: absorbed by shield
+    assert.strictEqual(racer.hit(1.4), false, 'First hit absorbed by shield');
+    assert.strictEqual(racer.shield, 0, 'Shield consumed');
+    assert.strictEqual(racer.invuln, 0.6, 'Invulnerability grace granted');
+
+    // Second hit while invuln: ignored
+    assert.strictEqual(racer.hit(1.4), false, 'Hit during grace period ignored');
+
+    // Third hit after grace expires: takes damage
+    racer.invuln = 0;
+    assert.strictEqual(racer.hit(1.4), true, 'Direct hit succeeds after shield consumed');
+  });
+
+  it('4. Quantum Glitch shrinks racer, slows speed, and timer properly decrements', () => {
+    assert.ok(bundle.includes('r.glitchTimer=5.0;'), 'Glitch sets 5-second timer');
+    assert.ok(bundle.includes('r.kart?.object?.scale?.setScalar?.(0.55);'), 'Rivals scaled down to 55%');
+    assert.ok(bundle.includes('r1.glitchTimer-=t;'), 'Glitch timer decrements by dt');
+    assert.ok(bundle.includes('r1.glitchTimer<=0'), 'Glitch expiration check present');
+    assert.ok(bundle.includes('r1.kart.object.scale.setScalar(1.0)'), 'Scale restored to 1.0 upon expiration');
+  });
+
+  it('5. Sonic Shockwave detonateBlast operates 360-degrees radially without direction exclusion', () => {
+    assert.ok(bundle.includes('detonateBlast(t,e){'), 'detonateBlast function present');
+    assert.ok(!bundle.includes('o*c+a*h<-6'), 'Directional backward-only exclusion removed from shockwave');
+
+    // Simulate 360 degree shockwave
+    const origin = { x: 50, z: 50 };
+    const maxRadius = 27;
+    const rivals = [
+      { id: 1, pos: { x: 50, z: 65 } }, // ahead (dist 15)
+      { id: 2, pos: { x: 50, z: 35 } }, // behind (dist 15)
+      { id: 3, pos: { x: 68, z: 50 } }, // right (dist 18)
+      { id: 4, pos: { x: 50, z: 85 } }  // too far (dist 35)
+    ];
+
+    const hits = [];
+    for (const r of rivals) {
+      const dx = r.pos.x - origin.x, dz = r.pos.z - origin.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 <= maxRadius * maxRadius) hits.push(r.id);
+    }
+
+    assert.deepStrictEqual(hits, [1, 2, 3], 'Hits rivals ahead, behind and sideways within radius');
+  });
+
+  it('6. Orbital Ion Strike targets front-running leader ahead', () => {
+    assert.ok(bundle.includes('leader.hit(1.6);'), 'Orbital ion strike directly hits front leader');
+    assert.ok(bundle.includes('leader.dropCoins();'), 'Drops coins of front leader');
+  });
+
+  it('7. Caltrop mines trigger within 3.39m (r2 < 11.5) and impart knockback', () => {
+    assert.ok(bundle.includes('r*r+o*o<11.5&&Math.abs(a)<3.4'), 'Mine trigger radius is 3.39m');
+    assert.ok(bundle.includes('i.kart.physics.knockback(kx*7,kz*7,11,7.5)'), 'Mine knockback pop applied');
   });
 });
 
