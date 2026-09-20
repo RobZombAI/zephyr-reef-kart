@@ -4385,3 +4385,240 @@ describe('=== UNIT & PROCESS TESTS: NEW CHARACTERS (PRINCESS AURELIA & CAPTAIN B
     assert.ok(iosHtml.includes('Capitan Barbanera'), 'ios has Pirate');
   });
 });
+
+describe('=== UNIT & PROCESS TESTS: MULTIPLAYER SYNCHRONIZATION & HIGH-FIDELITY BUGFIXES ===', () => {
+  it('1. syncStartTime coordination guarantees simultaneous race start across different devices', () => {
+    const host = new MultiplayerManager();
+    const guest = new MultiplayerManager();
+
+    host.isHost = true;
+    host.mySlot = 0;
+    guest.isHost = false;
+    guest.mySlot = 1;
+
+    let broadcastedPayload = null;
+    host.broadcastToAll = (msg) => { broadcastedPayload = msg; };
+
+    // Host triggers countdown start
+    host.handleCountdownStart({
+      trackIndex: 3,
+      laps: 3,
+      countdownSec: 0,
+      players: [
+        { slot: 0, name: 'HostPC', isHost: true },
+        { slot: 1, name: 'GuestPhone', isHost: false }
+      ]
+    });
+
+    // Advance to countdown end
+    const futureTime = Date.now() + 3000;
+    host.syncStartTime = futureTime;
+
+    const startPayload = {
+      type: 'RACE_START_SYNC',
+      trackIndex: 3,
+      laps: 3,
+      players: host.players,
+      startTime: futureTime
+    };
+
+    // Guest receives sync packet
+    let guestStarted = false;
+    guest.onRaceStart = (data) => {
+      guestStarted = true;
+    };
+    guest.handleMessage({ peer: 'host' }, startPayload);
+
+    assert.strictEqual(guestStarted, true, 'Guest must handle RACE_START_SYNC');
+    assert.strictEqual(guest.syncStartTime, futureTime, 'Guest must have identical syncStartTime');
+    assert.strictEqual(guest.state, 'RACING');
+  });
+
+  it('2. Countdown formula in bundle locks to syncStartTime avoiding frame rate and load time drift', () => {
+    const bundleCode = fs.readFileSync('assets/index-C9rd31_W.js', 'utf8');
+    assert.ok(bundleCode.includes('window.__multiplayerManager?.syncStartTime'), 'Bundle checks window.__multiplayerManager.syncStartTime');
+    assert.ok(bundleCode.includes('Math.max(0,(window.__multiplayerManager.syncStartTime-Date.now())/1000)'), 'Countdown formula locks to epoch difference');
+  });
+
+  it('3. Vertical surface height clamping and ground normal alignment in updateRemoteRacers', () => {
+    const mp = new MultiplayerManager();
+    mp.state = 'RACING';
+    mp.mySlot = 0;
+    mp.players = [
+      { slot: 0, isAI: false },
+      { slot: 1, name: 'RivalGuest', isAI: false }
+    ];
+
+    // Remote sent y: 15.0 (flying high in sky)
+    mp.remoteStates.set(1, {
+      x: 10, y: 15.0, z: 20,
+      yaw: 0, speed: 20, steer: 0, driftTier: 0, isDrifting: false,
+      grounded: true, airborne: false, lap: 1, dist: 50,
+      lastUpdate: performance.now()
+    });
+
+    let normalSet = false;
+    let normalVec = null;
+    let syncVisualCalled = false;
+
+    const mockKart = {
+      setGroundNormal(x, y, z) { normalSet = true; normalVec = { x, y, z }; },
+      syncVisual(dt) { syncVisualCalled = true; },
+      physics: {
+        state: { pos: { copy(v) { Object.assign(this, v); } }, yaw: 0, speed: 0, grounded: false, airHeight: 0 }
+      },
+      visual: {}
+    };
+
+    const mockRacer = {
+      pos: { x: 10, y: 0, z: 20, clone() { return { ...this, copy(v) { Object.assign(this, v); }, project() {} }; } },
+      state: { yaw: 0, speed: 0, steer: 0, drifting: false, driftTier: 0, trackIndex: 0, grounded: false, airHeight: 0 },
+      progress: { lap: 1, distance: 0 },
+      kart: mockKart
+    };
+
+    const mockDirector = {
+      racers: [null, mockRacer],
+      spline: {
+        surfaceHeight(x, z, i) { return 1.5; } // Track asphalt is at y: 1.5
+      },
+      adapter: {
+        scratch: {},
+        querySurface(x, z, i, s) {
+          return { upX: 0, upY: 0.98, upZ: 0.2, s: 50, onRoad: true };
+        }
+      }
+    };
+
+    mp.updateRemoteRacers(1 / 60, mockDirector, null, null);
+
+    // Opponent kart MUST be clamped to road height (1.5) instead of flying at 15.0
+    assert.strictEqual(mockRacer.pos.y, 1.5, 'Remote racer vertical position clamped to road surface');
+    assert.strictEqual(mockRacer.state.grounded, true, 'Remote racer is marked grounded on asphalt');
+    assert.strictEqual(normalSet, true, 'Ground normal was aligned with track banking');
+    assert.deepStrictEqual(normalVec, { x: 0, y: 0.98, z: 0.2 }, 'Chassis received track surface normal');
+    assert.strictEqual(syncVisualCalled, true, 'syncVisual executed');
+  });
+
+  it('4. Host broadcasts authoritative AI racer states and Guest replicates them', () => {
+    const host = new MultiplayerManager();
+    const guest = new MultiplayerManager();
+
+    host.isHost = true;
+    host.mySlot = 0;
+    host.state = 'RACING';
+    guest.isHost = false;
+    guest.mySlot = 1;
+    guest.state = 'RACING';
+
+    let sentPacket = null;
+    host.broadcastToAll = (p) => { sentPacket = p; };
+
+    const mockHostDirector = {
+      player: {
+        kart: {
+          physics: {
+            state: {
+              pos: { x: 5, y: 1, z: 12 },
+              yaw: 1.2, speed: 32, steer: 0.1, driftTier: 0, drifting: false, grounded: true,
+              pitch: 0, roll: 0, boostTime: 0, padBoostTime: 0
+            }
+          }
+        }
+      },
+      racers: [
+        { progress: { lap: 1, distance: 100 } }, // Slot 0: Host
+        { progress: { lap: 1, distance: 95 } },  // Slot 1: Guest
+        {
+          id: 2,
+          kind: 'ai',
+          pos: { x: 12, y: 1.2, z: 30 },
+          state: { yaw: 0.5, speed: 28, steer: 0, driftTier: 0, drifting: false, grounded: true },
+          controls: { steer: -0.1 },
+          progress: { lap: 1, distance: 88 }
+        }
+      ]
+    };
+
+    // Host sends state
+    host.sendMyState(mockHostDirector.player.kart, mockHostDirector);
+
+    assert.ok(sentPacket, 'Host must broadcast packet');
+    assert.ok(Array.isArray(sentPacket.ais), 'Packet must contain ais array');
+    assert.strictEqual(sentPacket.ais.length, 1, 'Contains slot 2 AI');
+    assert.strictEqual(sentPacket.ais[0].slot, 2);
+    assert.strictEqual(sentPacket.ais[0].speed, 28);
+
+    // Guest receives Host packet and replicates AI state
+    guest.handleMessage({ peer: 'host' }, sentPacket);
+    const guestAiState = guest.remoteStates.get(2);
+    assert.ok(guestAiState, 'Guest has remote state for AI slot 2');
+    assert.strictEqual(guestAiState.x, 12);
+    assert.strictEqual(guestAiState.speed, 28);
+  });
+
+  it('5. Results mapping associates slot and id accurately without name or rank corruption', () => {
+    const mp = new MultiplayerManager();
+    mp.mySlot = 1; // Playing as Guest (Slot 1)
+    mp.players = [
+      { slot: 0, name: 'AlphaHost', kartId: 'nix', isHost: true },
+      { slot: 1, name: 'BetaGuest', kartId: 'princess', isHost: false },
+      { slot: 2, name: 'GammaAI', kartId: 'bruno', isAI: true }
+    ];
+
+    // Director finishes race: Guest won (rank 1), Host second (rank 2), AI third (rank 3)
+    const directorResults = [
+      { rank: 1, slot: 1, id: 1, kartId: 'princess', finishTime: 45.2 },
+      { rank: 2, slot: 0, id: 0, kartId: 'nix', finishTime: 46.8 },
+      { rank: 3, slot: 2, id: 2, kartId: 'bruno', finishTime: 49.1 }
+    ];
+
+    mp.handleRaceResults(directorResults);
+
+    assert.strictEqual(mp.lastRaceResults.length, 3);
+    const winner = mp.lastRaceResults.find(r => r.rank === 1);
+    const second = mp.lastRaceResults.find(r => r.rank === 2);
+
+    assert.strictEqual(winner.name, 'BetaGuest', 'Winner is BetaGuest');
+    assert.strictEqual(winner.kartId, 'princess');
+    assert.strictEqual(winner.isPlayer, true, 'Guest correctly identified as local player');
+    assert.strictEqual(winner.pointsEarned, 15, '1st place receives 15 points');
+
+    assert.strictEqual(second.name, 'AlphaHost', 'Second place is AlphaHost');
+    assert.strictEqual(second.kartId, 'nix');
+    assert.strictEqual(second.isPlayer, false, 'Host is not local player');
+    assert.strictEqual(second.pointsEarned, 12, '2nd place receives 12 points');
+  });
+
+  it('6. Distance snap guard prevents jumping across the map on spawn/respawn', () => {
+    const mp = new MultiplayerManager();
+    mp.state = 'RACING';
+    mp.mySlot = 0;
+    mp.players = [
+      { slot: 0, isAI: false },
+      { slot: 1, name: 'RespawningRival', isAI: false }
+    ];
+
+    // Remote player respawned 50 meters ahead
+    mp.remoteStates.set(1, {
+      x: 60, y: 1.0, z: 0,
+      yaw: 1.5, speed: 10, steer: 0, driftTier: 0, isDrifting: false,
+      grounded: true, airborne: false, lap: 1, dist: 200,
+      lastUpdate: performance.now()
+    });
+
+    const mockRacer = {
+      pos: { x: 0, y: 1.0, z: 0, clone() { return { ...this, copy() {}, project() {} }; } },
+      state: { yaw: 0, speed: 0, steer: 0, drifting: false, driftTier: 0, trackIndex: 0, grounded: true },
+      progress: { lap: 1, distance: 0 },
+      kart: null
+    };
+
+    mp.updateRemoteRacers(1 / 60, { racers: [null, mockRacer] }, null, null);
+
+    // Distance squared is 60^2 = 3600 > 400. Pos should snap directly to 60 rather than creeping/flying
+    assert.strictEqual(mockRacer.pos.x, 60, 'Snapped immediately without sky lerp');
+    assert.strictEqual(mockRacer.state.yaw, 1.5, 'Snapped yaw immediately');
+  });
+});
+

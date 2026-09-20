@@ -26,8 +26,9 @@ for (const t of targets) {
   if (t.hasAssets) {
     const assetsDir = path.join(t.dir, 'assets');
     fs.mkdirSync(assetsDir, { recursive: true });
-    fs.copyFileSync(bundle, path.join(assetsDir, 'index-C9rd31_W.js'));
-    fs.copyFileSync(css, path.join(assetsDir, 'index-DMliwuo_.css'));
+    for (const file of fs.readdirSync(path.join(rootDir, 'assets'))) {
+      fs.copyFileSync(path.join(rootDir, 'assets', file), path.join(assetsDir, file));
+    }
   }
   console.log(`Synced -> ${t.dir}`);
 }
@@ -35,7 +36,7 @@ for (const t of targets) {
 // 1. Update ZephyrReefKart.apk
 console.log('--> Updating ZephyrReefKart.apk...');
 const androidAssetsDir = path.join(rootDir, 'android/ZephyrReefKart/app/src/main');
-execSync(`cd "${androidAssetsDir}" && zip -u "${path.join(rootDir, 'ZephyrReefKart.apk')}" assets/index.html assets/zephyr.html assets/assets/index-C9rd31_W.js assets/assets/index-DMliwuo_.css`, { stdio: 'inherit' });
+execSync(`cd "${androidAssetsDir}" && zip -u -r "${path.join(rootDir, 'ZephyrReefKart.apk')}" assets`, { stdio: 'inherit' });
 execSync(`unzip -t "${path.join(rootDir, 'ZephyrReefKart.apk')}" > /dev/null`);
 fs.copyFileSync(path.join(rootDir, 'ZephyrReefKart.apk'), path.join(artifactsDir, 'ZephyrReefKart.apk'));
 console.log('Updated and verified ZephyrReefKart.apk');
@@ -48,10 +49,11 @@ const ipaAssetsDir = path.join(tempIpa, 'Payload/ZephyrReefKart.app/WebAssets/as
 fs.mkdirSync(ipaAssetsDir, { recursive: true });
 fs.copyFileSync(indexHtml, path.join(tempIpa, 'Payload/ZephyrReefKart.app/WebAssets/index.html'));
 fs.copyFileSync(zephyrHtml, path.join(tempIpa, 'Payload/ZephyrReefKart.app/WebAssets/zephyr.html'));
-fs.copyFileSync(bundle, path.join(ipaAssetsDir, 'index-C9rd31_W.js'));
-fs.copyFileSync(css, path.join(ipaAssetsDir, 'index-DMliwuo_.css'));
+for (const file of fs.readdirSync(path.join(rootDir, 'assets'))) {
+  fs.copyFileSync(path.join(rootDir, 'assets', file), path.join(ipaAssetsDir, file));
+}
 
-execSync(`cd "${tempIpa}" && zip -u "${path.join(rootDir, 'ZephyrReefKart.ipa')}" Payload/ZephyrReefKart.app/WebAssets/index.html Payload/ZephyrReefKart.app/WebAssets/zephyr.html Payload/ZephyrReefKart.app/WebAssets/assets/index-C9rd31_W.js Payload/ZephyrReefKart.app/WebAssets/assets/index-DMliwuo_.css`, { stdio: 'inherit' });
+execSync(`cd "${tempIpa}" && zip -u -r "${path.join(rootDir, 'ZephyrReefKart.ipa')}" Payload`, { stdio: 'inherit' });
 fs.rmSync(tempIpa, { recursive: true, force: true });
 execSync(`unzip -t "${path.join(rootDir, 'ZephyrReefKart.ipa')}" > /dev/null`);
 fs.copyFileSync(path.join(rootDir, 'ZephyrReefKart.ipa'), path.join(artifactsDir, 'ZephyrReefKart.ipa'));
