@@ -1980,6 +1980,105 @@
           mp.state === 'RESULTS'
         );
 
+        const KART_INFO = {
+          nix: { icon: '🦦', label: 'Nix' },
+          bruno: { icon: '🪨', label: 'Bruno' },
+          sable: { icon: '🦋', label: 'Sable' },
+          zuzu: { icon: '⚡', label: 'Zuzu' },
+          rustam: { icon: '⚙️', label: 'Rustam' },
+          marlow: { icon: '🐸', label: 'Marlow' },
+          princess: { icon: '👑', label: 'Principessa' },
+          pirate: { icon: '🏴‍☠️', label: 'Pirata' }
+        };
+
+        const ALL_TRACKS = [
+          { id: 0, cup: 'Coppa Brezza', name: 'Coral Sanctuary', sub: 'Laguna Corallina', ico: '🪸' },
+          { id: 1, cup: 'Coppa Brezza', name: 'Sunken Shallows', sub: 'Bassi Fondali Sabbiosi', ico: '🏖️' },
+          { id: 2, cup: 'Coppa Brezza', name: 'Palm Grove Way', sub: 'Viale delle Palme', ico: '🌴' },
+          { id: 3, cup: 'Coppa Brezza', name: 'Pearl Atoll', sub: 'Atollo delle Perle', ico: '⚪' },
+          { id: 4, cup: 'Coppa Canyon', name: 'Amber Reef Gulch', sub: 'Gola dell\'Ambra', ico: '🪨' },
+          { id: 5, cup: 'Coppa Canyon', name: 'Nautilus Spiral', sub: 'Spirale del Nautilus', ico: '🐚' },
+          { id: 6, cup: 'Coppa Canyon', name: 'Seafoam Viaduct', sub: 'Viadotto della Spuma', ico: '🌉' },
+          { id: 7, cup: 'Coppa Canyon', name: 'Tidal Drift Arena', sub: 'Arena del Flusso', ico: '🌀' },
+          { id: 8, cup: 'Coppa Abissi', name: 'Abyssal Trench', sub: 'Fossa degli Abissi', ico: '🌊' },
+          { id: 9, cup: 'Coppa Abissi', name: 'Obsidian Gorge', sub: 'Gola di Ossidiana', ico: '🌋' },
+          { id: 10, cup: 'Coppa Abissi', name: 'Kraken Spine', sub: 'Dorso del Kraken', ico: '🦑' },
+          { id: 11, cup: 'Coppa Abissi', name: 'Bioluminescent Caves', sub: 'Grotte Luminescenti', ico: '💎' },
+          { id: 12, cup: 'Coppa Cielo', name: 'Sky Reef', sub: 'Arcipelago Celeste', ico: '☁️' },
+          { id: 13, cup: 'Coppa Cielo', name: 'Nimbus Overpass', sub: 'Cavalcavia dei Nembi', ico: '🌩️' },
+          { id: 14, cup: 'Coppa Cielo', name: 'Stratos Hairpins', sub: 'Tornanti della Stratosfera', ico: '🦅' },
+          { id: 15, cup: 'Coppa Cielo', name: 'Vortex Zenith', sub: 'Zenith del Vortice', ico: '🌪️' },
+          { id: 16, cup: 'Coppa Antica', name: 'Temple of Nix', sub: 'Il Tempio Sommerso', ico: '🏛️' },
+          { id: 17, cup: 'Coppa Antica', name: 'Sunken Acropolis', sub: 'Acropoli Sommersa', ico: '🏺' },
+          { id: 18, cup: 'Coppa Antica', name: 'Leviathan\'s Roar', sub: 'Ruggito del Leviatano', ico: '🐉' },
+          { id: 19, cup: 'Coppa Antica', name: 'Prism Citadel', sub: 'Cittadella dei Prismi', ico: '🔮' },
+          { id: 20, cup: 'Coppa Nova', name: 'Solar Forge Caldera', sub: 'Caldera della Forgia Solare', ico: '🔥' },
+          { id: 21, cup: 'Coppa Nova', name: 'Cosmic Warpway', sub: 'Autostrada Iperspaziale', ico: '🌌' },
+          { id: 22, cup: 'Coppa Nova', name: 'Quantum Singularity', sub: 'Singolarità Quantistica', ico: '⚛️' },
+          { id: 23, cup: 'Coppa Nova', name: 'Zephyr Omega Finale', sub: 'Gran Finale Zephyr Omega', ico: '👑' }
+        ];
+
+        const getTrackName = (idx) => {
+          const t = ALL_TRACKS[idx] || (window.__ZEPHYR_TRACKS && window.__ZEPHYR_TRACKS[idx]);
+          return t ? `${t.ico || '🏁'} ${t.name}` : `Pista ${idx + 1}`;
+        };
+
+        const buildTrackOptionsHtml = (selectedId) => {
+          let html = '';
+          const cups = ['Coppa Brezza', 'Coppa Canyon', 'Coppa Abissi', 'Coppa Cielo', 'Coppa Antica', 'Coppa Nova'];
+          for (const cup of cups) {
+            html += `<optgroup label="🏆 ${cup}">`;
+            for (const trk of ALL_TRACKS.filter(t => t.cup === cup)) {
+              const isSel = trk.id === selectedId ? 'selected' : '';
+              html += `<option value="${trk.id}" ${isSel}>${trk.ico} ${trk.name}</option>`;
+            }
+            html += `</optgroup>`;
+          }
+          return html;
+        };
+
+        const renderPlaylistSelects = () => {
+          if (!playlistTracksContainer || !playlistCountSelect) return;
+          const count = Math.max(1, Math.min(5, parseInt(playlistCountSelect.value || '3', 10)));
+          if (playlistBadge) playlistBadge.textContent = `${count} ${count === 1 ? 'Pista' : 'Piste'} Configurate`;
+
+          if (mp) {
+            while (mp.playlistTracks.length < count) {
+              const nextIdx = (mp.playlistTracks[mp.playlistTracks.length - 1] + 1) % 24;
+              mp.playlistTracks.push(nextIdx);
+            }
+            mp.playlistTracks = mp.playlistTracks.slice(0, count);
+          }
+
+          playlistTracksContainer.innerHTML = '';
+          for (let i = 0; i < count; i++) {
+            const curTrk = mp ? (mp.playlistTracks[i] ?? i) : i;
+            const row = document.createElement('div');
+            row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px;';
+            row.innerHTML = `
+              <span style="font-weight: 800; color: #76fff0; min-width: 65px;">Pista ${i + 1}:</span>
+              <select class="z-mp-playlist-slot-select" data-slot-index="${i}" style="flex: 1; background: rgba(8, 26, 36, 0.95); border: 1px solid rgba(118,255,240,0.4); color: #fff; padding: 6px 10px; border-radius: 8px; font-weight: 700; font-size: 12px;">
+                ${buildTrackOptionsHtml(curTrk)}
+              </select>
+            `;
+            playlistTracksContainer.appendChild(row);
+          }
+
+          playlistTracksContainer.querySelectorAll('.z-mp-playlist-slot-select').forEach(sel => {
+            sel.addEventListener('change', (e) => {
+              const slotIdx = parseInt(e.target.dataset.slotIndex, 10);
+              const val = parseInt(e.target.value, 10);
+              if (mp) {
+                mp.setPlaylistTrackAt(slotIdx, val);
+              }
+            });
+          });
+
+          if (mp && mp.isHost) {
+            mp.setPlaylist(mp.playlistTracks, parseInt(lapsSelect?.value || '3', 10));
+          }
+        };
+
         const initMultiplayer = () => {
           if (window.MultiplayerManager && !mp) {
             mp = new window.MultiplayerManager();
@@ -1990,104 +2089,6 @@
               if (window.__zephyr?.ui?.toast) window.__zephyr.ui.toast(msg, 2.8);
             };
 
-            const KART_INFO = {
-              nix: { icon: '🦦', label: 'Nix' },
-              bruno: { icon: '🪨', label: 'Bruno' },
-              sable: { icon: '🦋', label: 'Sable' },
-              zuzu: { icon: '⚡', label: 'Zuzu' },
-              rustam: { icon: '⚙️', label: 'Rustam' },
-              marlow: { icon: '🐸', label: 'Marlow' },
-              princess: { icon: '👑', label: 'Principessa' },
-              pirate: { icon: '🏴‍☠️', label: 'Pirata' }
-            };
-
-            const ALL_TRACKS = [
-              { id: 0, cup: 'Coppa Brezza', name: 'Coral Sanctuary', sub: 'Laguna Corallina', ico: '🪸' },
-              { id: 1, cup: 'Coppa Brezza', name: 'Sunken Shallows', sub: 'Bassi Fondali Sabbiosi', ico: '🏖️' },
-              { id: 2, cup: 'Coppa Brezza', name: 'Palm Grove Way', sub: 'Viale delle Palme', ico: '🌴' },
-              { id: 3, cup: 'Coppa Brezza', name: 'Pearl Atoll', sub: 'Atollo delle Perle', ico: '⚪' },
-              { id: 4, cup: 'Coppa Canyon', name: 'Amber Reef Gulch', sub: 'Gola dell\'Ambra', ico: '🪨' },
-              { id: 5, cup: 'Coppa Canyon', name: 'Nautilus Spiral', sub: 'Spirale del Nautilus', ico: '🐚' },
-              { id: 6, cup: 'Coppa Canyon', name: 'Seafoam Viaduct', sub: 'Viadotto della Spuma', ico: '🌉' },
-              { id: 7, cup: 'Coppa Canyon', name: 'Tidal Drift Arena', sub: 'Arena del Flusso', ico: '🌀' },
-              { id: 8, cup: 'Coppa Abissi', name: 'Abyssal Trench', sub: 'Fossa degli Abissi', ico: '🌊' },
-              { id: 9, cup: 'Coppa Abissi', name: 'Obsidian Gorge', sub: 'Gola di Ossidiana', ico: '🌋' },
-              { id: 10, cup: 'Coppa Abissi', name: 'Kraken Spine', sub: 'Dorso del Kraken', ico: '🦑' },
-              { id: 11, cup: 'Coppa Abissi', name: 'Bioluminescent Caves', sub: 'Grotte Luminescenti', ico: '💎' },
-              { id: 12, cup: 'Coppa Cielo', name: 'Sky Reef', sub: 'Arcipelago Celeste', ico: '☁️' },
-              { id: 13, cup: 'Coppa Cielo', name: 'Nimbus Overpass', sub: 'Cavalcavia dei Nembi', ico: '🌩️' },
-              { id: 14, cup: 'Coppa Cielo', name: 'Stratos Hairpins', sub: 'Tornanti della Stratosfera', ico: '🦅' },
-              { id: 15, cup: 'Coppa Cielo', name: 'Vortex Zenith', sub: 'Zenith del Vortice', ico: '🌪️' },
-              { id: 16, cup: 'Coppa Antica', name: 'Temple of Nix', sub: 'Il Tempio Sommerso', ico: '🏛️' },
-              { id: 17, cup: 'Coppa Antica', name: 'Sunken Acropolis', sub: 'Acropoli Sommersa', ico: '🏺' },
-              { id: 18, cup: 'Coppa Antica', name: 'Leviathan\'s Roar', sub: 'Ruggito del Leviatano', ico: '🐉' },
-              { id: 19, cup: 'Coppa Antica', name: 'Prism Citadel', sub: 'Cittadella dei Prismi', ico: '🔮' },
-              { id: 20, cup: 'Coppa Nova', name: 'Solar Forge Caldera', sub: 'Caldera della Forgia Solare', ico: '🔥' },
-              { id: 21, cup: 'Coppa Nova', name: 'Cosmic Warpway', sub: 'Autostrada Iperspaziale', ico: '🌌' },
-              { id: 22, cup: 'Coppa Nova', name: 'Quantum Singularity', sub: 'Singolarità Quantistica', ico: '⚛️' },
-              { id: 23, cup: 'Coppa Nova', name: 'Zephyr Omega Finale', sub: 'Gran Finale Zephyr Omega', ico: '👑' }
-            ];
-
-            const getTrackName = (idx) => {
-              const t = ALL_TRACKS[idx] || (window.__ZEPHYR_TRACKS && window.__ZEPHYR_TRACKS[idx]);
-              return t ? `${t.ico || '🏁'} ${t.name}` : `Pista ${idx + 1}`;
-            };
-
-            const buildTrackOptionsHtml = (selectedId) => {
-              let html = '';
-              const cups = ['Coppa Brezza', 'Coppa Canyon', 'Coppa Abissi', 'Coppa Cielo', 'Coppa Antica', 'Coppa Nova'];
-              for (const cup of cups) {
-                html += `<optgroup label="🏆 ${cup}">`;
-                for (const trk of ALL_TRACKS.filter(t => t.cup === cup)) {
-                  const isSel = trk.id === selectedId ? 'selected' : '';
-                  html += `<option value="${trk.id}" ${isSel}>${trk.ico} ${trk.name}</option>`;
-                }
-                html += `</optgroup>`;
-              }
-              return html;
-            };
-
-            const renderPlaylistSelects = () => {
-              if (!playlistTracksContainer || !playlistCountSelect) return;
-              const count = Math.max(1, Math.min(5, parseInt(playlistCountSelect.value || '3', 10)));
-              if (playlistBadge) playlistBadge.textContent = `${count} ${count === 1 ? 'Pista' : 'Piste'} Configurate`;
-
-              if (mp) {
-                while (mp.playlistTracks.length < count) {
-                  const nextIdx = (mp.playlistTracks[mp.playlistTracks.length - 1] + 1) % 24;
-                  mp.playlistTracks.push(nextIdx);
-                }
-                mp.playlistTracks = mp.playlistTracks.slice(0, count);
-              }
-
-              playlistTracksContainer.innerHTML = '';
-              for (let i = 0; i < count; i++) {
-                const curTrk = mp ? (mp.playlistTracks[i] ?? i) : i;
-                const row = document.createElement('div');
-                row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px;';
-                row.innerHTML = `
-                  <span style="font-weight: 800; color: #76fff0; min-width: 65px;">Pista ${i + 1}:</span>
-                  <select class="z-mp-playlist-slot-select" data-slot-index="${i}" style="flex: 1; background: rgba(8, 26, 36, 0.95); border: 1px solid rgba(118,255,240,0.4); color: #fff; padding: 6px 10px; border-radius: 8px; font-weight: 700; font-size: 12px;">
-                    ${buildTrackOptionsHtml(curTrk)}
-                  </select>
-                `;
-                playlistTracksContainer.appendChild(row);
-              }
-
-              playlistTracksContainer.querySelectorAll('.z-mp-playlist-slot-select').forEach(sel => {
-                sel.addEventListener('change', (e) => {
-                  const slotIdx = parseInt(e.target.dataset.slotIndex, 10);
-                  const val = parseInt(e.target.value, 10);
-                  if (mp) {
-                    mp.setPlaylistTrackAt(slotIdx, val);
-                  }
-                });
-              });
-
-              if (mp && mp.isHost) {
-                mp.setPlaylist(mp.playlistTracks, parseInt(lapsSelect?.value || '3', 10));
-              }
-            };
 
             mp.onLobbyUpdate = (lobby) => {
               if (roomCodeEl) roomCodeEl.textContent = lobby.roomCode || 'ZEPH-....';
@@ -2126,6 +2127,7 @@
                 const curRoom = lobby.roomCode || mp.roomCode || '';
                 const tName = (window.__ZEPHYR_TRACKS && window.__ZEPHYR_TRACKS[lobby.trackIndex]?.name) || 'Circuito';
                 guestInfoEl.innerHTML = `Stanza: <b style="color: #ffc857; font-family: monospace;">${curRoom}</b> • Circuito: <b>${tName}</b> (${lobby.laps} giri)<br>In attesa che l'Host avvii la gara...`;
+              }
               if (guestTracksListEl) {
                 const tracks = (lobby.playlistTracks && lobby.playlistTracks.length > 0) ? lobby.playlistTracks : (mp.playlistTracks || [lobby.trackIndex]);
                 guestTracksListEl.innerHTML = tracks.map((tId, idx) => {
@@ -2781,7 +2783,6 @@
 
         window.addEventListener('DOMContentLoaded', checkAutoJoin);
         setTimeout(checkAutoJoin, 800);
-      }
       })();
     </script>
   </body>
