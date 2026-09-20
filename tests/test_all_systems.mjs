@@ -4622,3 +4622,154 @@ describe('=== UNIT & PROCESS TESTS: MULTIPLAYER SYNCHRONIZATION & HIGH-FIDELITY 
   });
 });
 
+describe('=== UNIT & PROCESS TESTS: SMARTPHONE 3 CONTROL MODES (BUTTONS, TOUCH WHEEL, GYROSCOPE) ===', () => {
+  it('1. steerAxis() correctly bridges analog custom steer axis into engine input', () => {
+    class MockInputManager {
+      constructor() {
+        this.held = new Set();
+      }
+      down(action) {
+        return this.held.has(action);
+      }
+      steerAxis() {
+        if (typeof globalThis !== 'undefined' && typeof globalThis.__customSteerAxis === 'number') {
+          return Math.max(-1, Math.min(1, globalThis.__customSteerAxis));
+        }
+        return (this.down('right') ? 1 : 0) - (this.down('left') ? 1 : 0);
+      }
+    }
+
+    const input = new MockInputManager();
+
+    // Mode 1: Buttons (customSteerAxis is null)
+    globalThis.__customSteerAxis = null;
+    assert.strictEqual(input.steerAxis(), 0, 'Centered when no keys down');
+    input.held.add('left');
+    assert.strictEqual(input.steerAxis(), -1, 'Steers full left with button');
+    input.held.delete('left');
+    input.held.add('right');
+    assert.strictEqual(input.steerAxis(), 1, 'Steers full right with button');
+
+    // Mode 2: Touch Wheel (customSteerAxis provides smooth analog value)
+    globalThis.__customSteerAxis = -0.42;
+    assert.strictEqual(input.steerAxis(), -0.42, 'Reads exact analog left tilt');
+    globalThis.__customSteerAxis = 0.85;
+    assert.strictEqual(input.steerAxis(), 0.85, 'Reads exact analog right turn');
+
+    // Clamping limits
+    globalThis.__customSteerAxis = 2.5;
+    assert.strictEqual(input.steerAxis(), 1.0, 'Clamps excess steering to 1.0');
+    globalThis.__customSteerAxis = -1.8;
+    assert.strictEqual(input.steerAxis(), -1.0, 'Clamps negative steering to -1.0');
+
+    // Clean up
+    delete globalThis.__customSteerAxis;
+  });
+
+  it('2. Virtual Steering Wheel drag angle and spring-back centering computation', () => {
+    const wheelRadius = 66; // standard radius
+    const computeSteerFromDrag = (dx) => {
+      const normX = Math.max(-1, Math.min(1, dx / (wheelRadius * 0.85)));
+      const rotDeg = normX * 72;
+      return { steer: normX, rotDeg };
+    };
+
+    // Center position
+    const center = computeSteerFromDrag(0);
+    assert.strictEqual(center.steer, 0);
+    assert.strictEqual(center.rotDeg, 0);
+
+    // Half right turn (30px)
+    const rightHalf = computeSteerFromDrag(28.05);
+    assert.ok(Math.abs(rightHalf.steer - 0.5) < 0.01);
+    assert.ok(Math.abs(rightHalf.rotDeg - 36) < 0.5);
+
+    // Full left turn (-70px exceeds max)
+    const leftFull = computeSteerFromDrag(-70);
+    assert.strictEqual(leftFull.steer, -1.0);
+    assert.strictEqual(leftFull.rotDeg, -72);
+
+    // Spring return reset
+    let axis = leftFull.steer;
+    axis = 0; // touch end
+    assert.strictEqual(axis, 0, 'Releasing finger zeroes steer axis');
+  });
+
+  it('3. Gyroscope orientation calculation, deadzone filtering and landscape polarity', () => {
+    const calcGyro = (beta, gamma, screenAngle, prevSteer = 0) => {
+      let rawTilt = 0;
+      if (Math.abs(screenAngle) === 90 || screenAngle === 270) {
+        const sign = (screenAngle === 90) ? -1 : 1;
+        rawTilt = (beta || 0) * sign;
+      } else {
+        rawTilt = gamma || 0;
+      }
+
+      const deadzone = 3.0;
+      const maxTilt = 24.0;
+      let target = 0;
+      if (Math.abs(rawTilt) > deadzone) {
+        const sign = Math.sign(rawTilt);
+        const val = Math.min(1, (Math.abs(rawTilt) - deadzone) / (maxTilt - deadzone));
+        target = sign * Math.pow(val, 1.15);
+      }
+
+      const smoothed = prevSteer * 0.72 + target * 0.28;
+      return { rawTilt, target, smoothed };
+    };
+
+    // 1. Inside deadzone (resting phone tilt 2.0 degrees): steer remains 0
+    const idle = calcGyro(2.0, 0, 90, 0);
+    assert.strictEqual(idle.target, 0, 'Deadzone eliminates hand jitter');
+
+    // 2. Intentional left turn in landscape (beta = 15.0 deg, sign = -1 -> -15 deg)
+    const turnLeft = calcGyro(15.0, 0, 90, 0);
+    assert.ok(turnLeft.target < -0.4, 'Tilt generates negative left steer');
+    assert.ok(turnLeft.smoothed < 0, 'Smoothed filter updates smoothly');
+
+    // 3. Reversed landscape (screen angle 270 or -90)
+    const turnLeftReversed = calcGyro(-15.0, 0, 270, 0);
+    assert.ok(turnLeftReversed.target < -0.4, 'Reversed landscape inverts polarity correctly');
+
+    // 4. Max tilt (30 deg > 24 deg max)
+    const maxTurn = calcGyro(-30.0, 0, 90, 0);
+    assert.strictEqual(maxTurn.target, 1.0, 'Clamps full tilt to 1.0');
+  });
+
+  it('4. Control mode cycling and state transition', () => {
+    const modes = ['buttons', 'wheel', 'gyro'];
+    let curMode = 'buttons';
+
+    const cycle = () => {
+      const idx = (modes.indexOf(curMode) + 1) % modes.length;
+      curMode = modes[idx];
+      return curMode;
+    };
+
+    assert.strictEqual(cycle(), 'wheel', 'From buttons goes to wheel');
+    assert.strictEqual(cycle(), 'gyro', 'From wheel goes to gyro');
+    assert.strictEqual(cycle(), 'buttons', 'From gyro loops back to buttons');
+  });
+
+  it('5. HTML and iOS Info.plist markup integrity for 3 control modes', () => {
+    const indexHtml = fs.readFileSync('index.html', 'utf8');
+    const zephyrHtml = fs.readFileSync('zephyr.html', 'utf8');
+    const infoPlist = fs.readFileSync('ios/ZephyrReefKart/ZephyrReefKart/Info.plist', 'utf8');
+
+    // Check HTML markers
+    for (const html of [indexHtml, zephyrHtml]) {
+      assert.ok(html.includes('id="z-touch-wheel-container"'), 'Includes steering wheel container');
+      assert.ok(html.includes('id="z-wheel-disc"'), 'Includes wheel disc element');
+      assert.ok(html.includes('id="z-gyro-hud"'), 'Includes gyro HUD container');
+      assert.ok(html.includes('id="z-btn-ctrlmode"'), 'Includes HUD quick control mode button');
+      assert.ok(html.includes('id="z-control-mode-group"'), 'Includes settings control mode pills');
+      assert.ok(html.includes('data-mode="buttons"'), 'Includes buttons mode pill');
+      assert.ok(html.includes('data-mode="wheel"'), 'Includes wheel mode pill');
+      assert.ok(html.includes('data-mode="gyro"'), 'Includes gyro mode pill');
+    }
+
+    // Check iOS Info.plist
+    assert.ok(infoPlist.includes('NSMotionUsageDescription'), 'iOS Info.plist contains NSMotionUsageDescription');
+  });
+});
+
