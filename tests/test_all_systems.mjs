@@ -1961,10 +1961,10 @@ describe('=== UNIT & PROCESS TESTS: REAR FLICKER PREVENTION & CAMERA OCCLUSION =
 
   it('6. Closer third-person camera perspective optimized for desktop and mobile devices', () => {
     const bundle = fs.readFileSync(new URL('../assets/index-C9rd31_W.js', import.meta.url), 'utf-8');
-    assert.ok(bundle.includes('distance:4.8'), 'desktop camera distance should be 4.8m');
-    assert.ok(bundle.includes('mobileDistance:4.35'), 'mobile camera distance should be 4.35m');
-    assert.ok(bundle.includes('height:2.18'), 'desktop camera height should be 2.18m');
-    assert.ok(bundle.includes('mobileHeight:1.98'), 'mobile camera height should be 1.98m');
+    assert.ok(bundle.includes('distance:3.5'), 'desktop camera distance should be 3.5m');
+    assert.ok(bundle.includes('mobileDistance:3.1'), 'mobile camera distance should be 3.1m');
+    assert.ok(bundle.includes('height:1.72'), 'desktop camera height should be 1.72m');
+    assert.ok(bundle.includes('mobileHeight:1.52'), 'mobile camera height should be 1.52m');
     assert.ok(bundle.includes('isMob=(typeof window!=="undefined")'), 'must dynamically detect mobile touch device viewport');
   });
 

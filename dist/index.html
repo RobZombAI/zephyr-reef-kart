@@ -2567,20 +2567,20 @@
             }
 
             // Calibrated Ergonomics:
-            // 2.5 deg deadzone eliminates natural hand tremors on high-speed straights
-            // 22.0 deg max tilt maps to 100% full steering lock without arm twisting
-            const deadzone = 2.5;
-            const maxTilt = 22.0;
+            // 1.5 deg deadzone eliminates natural hand tremors while providing instant turn-in
+            // 18.0 deg max tilt maps to 100% full steering lock for agile arcade kart handling
+            const deadzone = 1.5;
+            const maxTilt = 18.0;
             let target = 0;
             if (Math.abs(rawTilt) > deadzone) {
               const sign = Math.sign(rawTilt);
               const normalized = Math.min(1, (Math.abs(rawTilt) - deadzone) / (maxTilt - deadzone));
-              // Progressive ergonomic curve for high fidelity: micro-precision at low angles, agile lock in hairpins
-              target = sign * Math.pow(normalized, 1.25);
+              // Progressive ergonomic curve for high fidelity: agile lock in hairpins
+              target = sign * Math.pow(normalized, 1.1);
             }
 
-            // Snappy exponential filter (alpha = 0.35) for instant zero-latency steering with smooth transitions
-            currentGyroSteer = currentGyroSteer * 0.65 + target * 0.35;
+            // Snappy low-latency filter (alpha = 0.65) for instant zero-latency steering with smooth transitions
+            currentGyroSteer = currentGyroSteer * 0.35 + target * 0.65;
             if (Math.abs(currentGyroSteer) < 0.008 && target === 0) currentGyroSteer = 0;
             window.__customSteerAxis = Math.max(-1, Math.min(1, currentGyroSteer));
 
