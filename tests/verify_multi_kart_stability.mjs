@@ -3,9 +3,11 @@ import puppeteer from 'puppeteer';
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
-const root = '/Users/robzomb/Documents/antigravity/agitated-einstein';
-const artifactsDir = '/Users/robzomb/.gemini/antigravity/brain/0394039c-7986-43d7-9058-02535fa2c8fe';
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const artifactsDir = path.join(root, 'build', 'artifacts');
+fs.mkdirSync(artifactsDir, { recursive: true });
 
 const server = http.createServer((req, res) => {
   let reqPath = req.url.split('?')[0];

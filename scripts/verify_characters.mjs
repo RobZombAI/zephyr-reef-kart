@@ -2,9 +2,11 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import puppeteer from 'puppeteer';
+import { fileURLToPath } from 'url';
 
-const rootDir = process.cwd();
-const artifactsDir = '/Users/robzomb/.gemini/antigravity/brain/0394039c-7986-43d7-9058-02535fa2c8fe';
+const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const artifactsDir = path.join(rootDir, 'build', 'artifacts');
+fs.mkdirSync(artifactsDir, { recursive: true });
 
 const mimeTypes = {
   '.html': 'text/html',

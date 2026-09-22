@@ -11,8 +11,8 @@ android {
         applicationId = "com.example.zephyrreefkart"
         minSdk = 24
         targetSdk = 35
-        versionCode = 2
-        versionName = "2.0"
+        versionCode = 60905
+        versionName = "6.9.5"
     }
 
     signingConfigs {

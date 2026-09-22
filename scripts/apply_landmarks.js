@@ -1,6 +1,9 @@
 import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-const bundlePath = 'assets/index-C9rd31_W.js';
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const bundlePath = path.join(REPO_ROOT, 'assets/index-C9rd31_W.js');
 let src = fs.readFileSync(bundlePath, 'utf8');
 
 const targetStart = 'const U=(_.kind==="shell"?18:_.kind==="floatisland"||_.kind==="waterfall"?24:_.kind==="wreck"?23:8)*b,G=["wreck","rocks","waterfall","floatisland"].includes(_.kind),H=y(M,_.lateral,U,G);if(H)if(_.kind==="beacon"){';
@@ -12,11 +15,14 @@ if (startIdx === -1) {
   process.exit(1);
 }
 
-const endIdx = src.indexOf(targetEnd, startIdx) + targetEnd.length;
-if (endIdx === -1) {
+// BUG FIX: prima endIdx = indexOf(...) + len trasformava -1 in un indice positivo,
+// aggirando la guardia e troncando il bundle. Ora si verifica indexOf esplicitamente.
+const endMatch = src.indexOf(targetEnd, startIdx);
+if (endMatch === -1) {
   console.error("Target end not found!");
   process.exit(1);
 }
+const endIdx = endMatch + targetEnd.length;
 
 const replacement = `const _customKinds=["temple_colonnade","radar_tower","giant_redwood","stadium_jumbotron","mine_headframe","ice_shard_monolith","cyber_skyscraper","lava_chimney","hell_obelisk","stargate_ring","kraken_tentacle","bioluminescent_shroom","cloud_palace","storm_pylon","sky_needle","vortex_funnel","abyssal_trident","acropolis_rotunda","dragon_ribcage","prism_pyramid","smelter_forge","tachyon_gate","singularity_collider","omega_monument"];
 const _isFloatOrWide=["wreck","rocks","waterfall","floatisland",..._customKinds].includes(_.kind);
