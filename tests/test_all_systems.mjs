@@ -4198,7 +4198,7 @@ describe('=== UNIT & PROCESS TESTS: PERMANENT MAXIMUM HIGH QUALITY GRAPHICS LOCK
   const zephyrHtml = fs.readFileSync(path.join(REPO_ROOT, 'zephyr.html'), 'utf8');
 
   it('1. yo() profile generator unconditionally returns maximum HIGH quality spec', () => {
-    assert.ok(bundleCode.includes('function yo(s,t){return{level:"high",pixelRatioCap:Math.min(1.5,t),shadows:!0,shadowMapSize:2048,bloom:.5,sceneryDensity:1,particleBudget:2400,fancyWater:!0,antialias:!0,anisotropy:8}}'), 'yo() locked to return high-fidelity profile with 2048 shadows, 0.5 bloom, 2400 particles and 8x anisotropy');
+    assert.ok(bundleCode.includes('function yo(s,t){return{level:"high",pixelRatioCap:(t>=2.5&&typeof navigator!=="undefined"&&navigator.hardwareConcurrency>=8?2:(t>=2&&typeof navigator!=="undefined"&&navigator.hardwareConcurrency>=6?1.75:Math.min(1.5,t))),shadows:!0,shadowMapSize:2048,bloom:.5,sceneryDensity:1,particleBudget:2400,fancyWater:!0,antialias:!0,anisotropy:16}}'), 'yo() locked to high-fidelity profile with ADAPTIVE pixel ratio (2.0x flagship / 1.75x upper-mid), 2048 shadows, 0.5 bloom, 2400 particles, 16x anisotropy');
   });
 
   it('2. Mg() settings loader strictly defaults and returns quality: "high"', () => {

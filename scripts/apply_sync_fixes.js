@@ -58,6 +58,16 @@ const PATCHES = [
     altFind: 'lc=["bolt","mine","turbo","blast","shield","vortex","horn","triple_shield"];function dv(s,t,e){const n=$t(t<=1?0:(s-1)/(t-1)),i={bolt:Math.max(1,10-n*4),mine:Math.max(1,12-n*7),turbo:3+n*8,blast:1+n*7,shield:Math.max(1,9-n*6),vortex:1+n*9,horn:2+n*6,triple_shield:Math.max(1,8-n*6)};'
   },
   {
+    name: 'Risoluzione adattiva: 2.0x su flagship (niente piu\u2019 rendering a meta\u2019 risoluzione su telefono)',
+    find: 'pixelRatioCap:Math.min(1.5,t)',
+    replace: 'pixelRatioCap:(t>=2.5&&typeof navigator!=="undefined"&&navigator.hardwareConcurrency>=8?2:(t>=2&&typeof navigator!=="undefined"&&navigator.hardwareConcurrency>=6?1.75:Math.min(1.5,t)))'
+  },
+  {
+    name: 'Anisotropy 16x: texture della pista nitide in prospettiva',
+    find: 'antialias:!0,anisotropy:8}',
+    replace: 'antialias:!0,anisotropy:16}'
+  },
+  {
     name: 'Quantum Glitch: rimozione sistemica del case in useItem',
     type: 'removeBetween',
     from: 'case "glitch":',

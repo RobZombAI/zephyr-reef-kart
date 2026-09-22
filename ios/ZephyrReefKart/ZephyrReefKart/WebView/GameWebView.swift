@@ -36,6 +36,10 @@ final class GameWebView: WKWebView {
         
         let webView = GameWebView(frame: .zero, configuration: configuration)
         webView.setupView()
+        // Identifica l'app nei log/UA e disattiva lo swipe-back che in gara
+        // intercetta i tocchi di sterzata sul bordo sinistro
+        webView.configuration.applicationNameForUserAgent = "ZephyrReefKart/6.9.5"
+        webView.allowsBackForwardNavigationGestures = false
         
         userContentController.add(webView.hapticsBridge, name: "iosHaptics")
         

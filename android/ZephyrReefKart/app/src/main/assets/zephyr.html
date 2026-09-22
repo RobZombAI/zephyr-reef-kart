@@ -3713,12 +3713,22 @@
             .z-statusfx{position:fixed;top:calc(env(safe-area-inset-top,0px) + 74px);left:50%;transform:translateX(-50%);
               pointer-events:none;z-index:9500;font-weight:800;font-size:15px;letter-spacing:.5px;display:none;
               padding:7px 16px;border-radius:10px;background:rgba(8,26,36,.82);backdrop-filter:blur(4px)}
-            .z-statusfx.emp{display:block;color:#fca5a5;border:1px solid #ef4444;text-shadow:0 0 12px rgba(239,68,68,.7)}`;
+            .z-statusfx.emp{display:block;color:#fca5a5;border:1px solid #ef4444;text-shadow:0 0 12px rgba(239,68,68,.7)}
+            html,body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+            body,input,button,select{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+            input,textarea{user-select:text;-webkit-user-select:text}
+            #z-rotate{position:fixed;inset:0;z-index:1000002;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+              background:linear-gradient(160deg,#06131f,#0b2438);color:#bff7ee;font-weight:800;font-size:18px;text-align:center;padding:24px}
+            #z-rotate .z-rot-ico{font-size:52px;animation:zrot 2.2s ease-in-out infinite}
+            @keyframes zrot{0%,20%{transform:rotate(0)}55%,100%{transform:rotate(90deg)}}
+            @media (orientation:portrait){#z-rotate{display:flex}}`;
           document.head.appendChild(st);
           const v = document.createElement('div'); v.className = 'z-vignette'; v.id = 'z-vignette';
           const n = document.createElement('div'); n.className = 'z-grain'; n.id = 'z-grain';
           const fx = document.createElement('div'); fx.className = 'z-statusfx'; fx.id = 'z-statusfx';
-          document.body.append(v, n, fx);
+          const rot = document.createElement('div'); rot.id = 'z-rotate';
+          rot.innerHTML = '<div class="z-rot-ico">🔄</div><div>Ruota il dispositivo</div><div style="font-size:13px;opacity:.75">Zephyr Reef Grand Prix \u00e8 un gioco orizzontale</div>';
+          document.body.append(v, n, fx, rot);
           const gl = document.getElementById('gl');
           if (gl && (navigator.hardwareConcurrency || 4) >= 6) gl.classList.add('z-light-hw');
         }
@@ -3891,11 +3901,27 @@
           }
         }
 
+        // Rileva rendering software (SwiftShader): su alcuni device Android il
+        // WebView perde l'accelerazione GPU — meglio saperlo che subire stutter
+        function detectSoftGpu(z) {
+          if (window.__zSoftGpuChecked || !z.renderer) return;
+          window.__zSoftGpuChecked = true;
+          try {
+            const gl = z.renderer.getContext();
+            const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+            const rn = String(dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : '');
+            if (/swiftshader|software|basic render/i.test(rn)) {
+              z.ui?.toast?.('\u26a0\ufe0f GPU hardware non attiva: qualit\u00e0 ridotta dal sistema', 5);
+              if (z.quality) { z.quality.shadowMapSize = 1024; }
+            }
+          } catch (e) {}
+        }
+
         let tries = 0;
         const iv = setInterval(() => {
           const z = window.__zephyr;
           if (!z?.scene) { if (++tries > 900) clearInterval(iv); return; }
-          try { installOverlays(); gradeScene(z); gradeKarts(z); updateStatusFx(); charStudio(z); } catch (e) { console.warn('[grade]', e); }
+          try { installOverlays(); detectSoftGpu(z); gradeScene(z); gradeKarts(z); updateStatusFx(); charStudio(z); } catch (e) { console.warn('[grade]', e); }
         }, 1200);
       })();
     </script>

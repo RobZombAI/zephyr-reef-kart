@@ -16,6 +16,7 @@ import android.view.View
 import android.view.WindowManager
 import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -101,6 +102,21 @@ class MainActivity : ComponentActivity() {
                 loadWithOverviewMode = true
                 cacheMode = WebSettings.LOAD_DEFAULT
                 mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                // Il gioco gestisce da solo la dimensione del testo nell'HUD:
+                // il font scale di sistema romperebbe il layout di gara
+                textZoom = 100
+                // App solo locale: niente controlli safe browsing (boot piu' rapido)
+                @Suppress("DEPRECATION")
+                safeBrowsingEnabled = false
+            }
+
+            // Renderer WebGL esplicitamente legato alla visibilita' dell'app e
+            // riavviabile in anticipo: evita degradi/kill del GPU renderer in gara
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                setRendererPriorityPolicy(
+                    WebView.RENDERER_PRIORITY_BOUND,
+                    /* attemptedStartupWhenRendererPriorityRaised = */ true
+                )
             }
         }
 
@@ -118,6 +134,16 @@ class MainActivity : ComponentActivity() {
                 request: WebResourceRequest
             ): WebResourceResponse? {
                 return assetLoader.shouldInterceptRequest(request.url)
+            }
+
+            // Il renderer WebGL di WebView puo' essere ucciso dal sistema su
+            // device con poca memoria durante una gara: senza questo handler
+            // l'utente resterebbe su schermo nero. Ricreiamo l'attivita' puliti.
+            override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+                Log.w("ZephyrKart", "Renderer WebGL terminato: riavvio dell'app")
+                view.destroy()
+                recreate()
+                return true
             }
         }
 

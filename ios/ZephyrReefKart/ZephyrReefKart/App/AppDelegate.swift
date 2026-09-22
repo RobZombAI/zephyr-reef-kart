@@ -13,9 +13,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Prevent screen sleep/dimming during race
         UIApplication.shared.isIdleTimerDisabled = true
         
-        // Configure Game Audio Session (allows ambient mixing with user audio)
+        // Configure Game Audio Session: .playback = l'audio di gara resta pieno
+        // (non viene abbassato dal switch campanella ne' dalla musica altrui)
         do {
-            try AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default, options: [.mixWithOthers])
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {
             print("[ZephyrKart-iOS] Failed to set AVAudioSession category: \(error)")

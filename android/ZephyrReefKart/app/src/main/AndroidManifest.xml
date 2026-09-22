@@ -11,6 +11,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:hardwareAccelerated="true"
+        android:largeHeap="true"
         android:enableOnBackInvokedCallback="true"
         android:theme="@style/Theme.ZephyrReefKart">
         <activity

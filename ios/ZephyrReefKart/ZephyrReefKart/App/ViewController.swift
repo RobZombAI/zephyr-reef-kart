@@ -92,6 +92,13 @@ final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate
     @objc private func handleDidBecomeActive() {
         gameWebView?.resumeGame()
     }
+
+    // iOS avvisa prima di uccidere l'app per memoria: mettiamo in pausa subito
+    // per liberare il buffer di render e non perdere la gara
+    override func didReceiveMemoryWarning() {
+        super.didReceiveMemoryWarning()
+        gameWebView?.pauseGame()
+    }
     
     // MARK: - WKNavigationDelegate
     
