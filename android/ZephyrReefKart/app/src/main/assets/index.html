@@ -2841,27 +2841,46 @@
               const origShowResults = ui.showResults.bind(ui);
               ui.showResults = (entries, bestLap, totalTime, localRank) => {
                 const mpInst = window.__multiplayerManager;
-                if (!mpInst || mpInst.isHost || mpInst.state !== 'RESULTS' || !Array.isArray(entries) || entries.length === 0) {
+                // NB: il motore chiama showResults PRIMA di handleRaceResults, quindi
+                // mp.state puo' essere ancora 'RACING': la condizione giusta e' "sono
+                // un guest in stanza", non lo stato corrente.
+                if (!mpInst || mpInst.isHost || !mpInst.roomCode || !Array.isArray(entries) || entries.length === 0) {
                   return origShowResults(entries, bestLap, totalTime, localRank);
                 }
-                const tryAuthoritative = (attempt) => {
-                  const auth = mpInst.authRaceResults;
-                  if (Array.isArray(auth) && auth.length) {
-                    const bySlot = new Map(auth.map(r => [r.slot, r]));
-                    const fixed = entries
-                      .map(e => {
-                        const a = bySlot.get(e.slot ?? e.id);
-                        return a ? { ...e, rank: a.rank, finishTime: a.finishTime || e.finishTime } : e;
-                      })
-                      .sort((x, y) => x.rank - y.rank);
-                    origShowResults(fixed, bestLap, totalTime, fixed.find(e => e.isPlayer)?.rank ?? localRank);
-                  } else if (attempt < 60) {
-                    setTimeout(() => tryAuthoritative(attempt + 1), 200); // max ~12s
-                  } else {
-                    origShowResults(entries, bestLap, totalTime, localRank);
-                  }
+                let renderedFinal = false;
+                let renderedLocal = false;
+                const applyAuth = (auth) => {
+                  if (renderedFinal || !Array.isArray(auth) || !auth.length) return;
+                  renderedFinal = true;
+                  const bySlot = new Map(auth.map(r => [r.slot, r]));
+                  const fixed = entries
+                    .map(e => {
+                      const a = bySlot.get(e.slot ?? e.id);
+                      return a ? { ...e, rank: a.rank, finishTime: a.finishTime || e.finishTime } : e;
+                    })
+                    .sort((x, y) => x.rank - y.rank);
+                  origShowResults(fixed, bestLap, totalTime, fixed.find(e => e.isPlayer)?.rank ?? localRank);
+                  if (renderedLocal && window.__zephyr?.ui?.toast) window.__zephyr.ui.toast('📊 Classifica ufficiale aggiornata', 2.5);
                 };
-                tryAuthoritative(0);
+                // Fase 1: attende l'ordine autorevole dell'host (max ~12s)
+                const waitAuth = (attempt) => {
+                  if (renderedFinal) return;
+                  const auth = mpInst.authRaceResults;
+                  if (Array.isArray(auth) && auth.length) { applyAuth(auth); return; }
+                  if (attempt < 60) { setTimeout(() => waitAuth(attempt + 1), 200); return; }
+                  // Fase 2: fallback sui dati locali, ma se l'auth arriva tardi
+                  // (host con raceOverTimer>18s) ri-disegna comunque con i dati veri
+                  renderedLocal = true;
+                  origShowResults(entries, bestLap, totalTime, localRank);
+                  const lateAuth = (attempt2) => {
+                    if (renderedFinal) return;
+                    const auth2 = mpInst.authRaceResults;
+                    if (Array.isArray(auth2) && auth2.length) { applyAuth(auth2); return; }
+                    if (attempt2 < 360) setTimeout(() => lateAuth(attempt2 + 1), 250); // max ~90s
+                  };
+                  setTimeout(() => lateAuth(0), 1000);
+                };
+                waitAuth(0);
               };
             };
             installResultsWrapper();
@@ -3600,6 +3619,129 @@
 
         window.addEventListener('DOMContentLoaded', checkAutoJoin);
         setTimeout(checkAutoJoin, 800);
+      })();
+    </script>
+    <script>
+      /* ── Zephyr Visual Grade: look cinematografico a costo quasi zero ──
+         - IBL: env map equirectangular generata su canvas -> riflessi reali sui
+           materiali (il metalness dei kart senza env map e' "spento")
+         - Luci: spegne le shadow pass delle luci di riempimento (512px) e tiene
+           solo la key a 2048: -2 shadow render pass per frame, qualita' invariata
+         - Bloom: soglia/forza tarate per far brillare neon e poteri (stesso costo)
+         - Materiali kart: metalness/roughness bilanciati per speculari "dipinta"
+         - Overlay CSS: vignetta + grana statica GPU-composita (zero repaint)   */
+      (function () {
+        if (typeof location !== 'undefined' && location.search.indexOf('nograde') !== -1) return; // A/B switch
+        const GRADED = new WeakSet();
+        const LIGHTS_OFF = new WeakSet();
+        let envApplied = false;
+
+        function buildEquirectTexture(TexCtor) {
+          const c = document.createElement('canvas');
+          c.width = 1024; c.height = 512;
+          const g = c.getContext('2d');
+          const sky = g.createLinearGradient(0, 0, 0, 300);
+          sky.addColorStop(0, '#0a2540');
+          sky.addColorStop(0.55, '#1b6d8c');
+          sky.addColorStop(1, '#7fd8d8');
+          g.fillStyle = sky; g.fillRect(0, 0, 1024, 300);
+          const sun = g.createRadialGradient(640, 120, 8, 640, 120, 220);
+          sun.addColorStop(0, 'rgba(255,250,230,0.95)');
+          sun.addColorStop(0.25, 'rgba(255,220,160,0.35)');
+          sun.addColorStop(1, 'rgba(255,220,160,0)');
+          g.fillStyle = sun; g.fillRect(0, 0, 1024, 300);
+          const hor = g.createLinearGradient(0, 240, 0, 320);
+          hor.addColorStop(0, 'rgba(255,200,120,0)');
+          hor.addColorStop(1, 'rgba(255,190,120,0.35)');
+          g.fillStyle = hor; g.fillRect(0, 240, 1024, 80);
+          const gr = g.createLinearGradient(0, 300, 0, 512);
+          gr.addColorStop(0, '#134a52');
+          gr.addColorStop(1, '#03141c');
+          g.fillStyle = gr; g.fillRect(0, 300, 1024, 212);
+          const tex = new TexCtor(c);
+          tex.mapping = 302;       // EquirectangularReflectionMapping
+          tex.colorSpace = 3001;   // SRGBColorSpace
+          return tex;
+        }
+
+        function gradeScene(z) {
+          const S = z.scene;
+          if (!S) return;
+          // env map una tantum; luci/bloom/esposure ri-applicate a ogni tick
+          // (il motore ripristina intensita' a ogni load pista/theme)
+          if (!envApplied) {
+            let TexCtor = null;
+            S.traverse(o => {
+              if (!TexCtor && o.material) {
+                const maps = Array.isArray(o.material) ? o.material.map(m => m.map) : [o.material.map];
+                for (const m of maps) { if (m) { TexCtor = m.constructor; break; } }
+              }
+            });
+            if (TexCtor) {
+              try {
+                S.environment = buildEquirectTexture(TexCtor);
+                if ('environmentIntensity' in S) S.environmentIntensity = 0.55;
+                envApplied = true;
+              } catch (e) { console.warn('[grade] env map non applicata:', e); }
+            }
+          }
+          S.traverse(o => {
+            if (!o.isLight) return;
+            if (o.shadow?.mapSize && o.shadow.mapSize.x <= 512 && o.castShadow && !LIGHTS_OFF.has(o)) {
+              o.castShadow = false;           // riempimento: via la shadow pass
+              LIGHTS_OFF.add(o);
+            }
+            if (o.isHemisphereLight && o.intensity > 0.6) o.intensity = 0.55; // riequilibra con IBL
+          });
+          if (z.bloom) { z.bloom.strength = 0.62; z.bloom.radius = 0.55; z.bloom.threshold = 0.76; }
+          if (z.renderer) z.renderer.toneMappingExposure = 1.08;
+        }
+
+        function gradeKarts(z) {
+          const d = z.director;
+          if (!d?.racers) return;
+          for (const r of d.racers) {
+            r.kart?.object?.traverse(o => {
+              const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
+              for (const m of mats) {
+                if (m.userData?.zGraded || m.map || m.transparent) continue;
+                m.userData = m.userData || {};
+                m.userData.zGraded = true;
+                if (m.metalness !== undefined) {
+                  m.metalness = Math.max(m.metalness, 0.32);
+                  m.roughness = Math.min(m.roughness, 0.38);
+                  m.envMapIntensity = 0.9;
+                }
+              }
+            });
+          }
+        }
+
+        // overlay CSS (creati una sola volta, compositing GPU)
+        function installOverlays() {
+          if (document.getElementById('z-vignette')) return;
+          const st = document.createElement('style');
+          st.textContent = `#gl{filter:saturate(1.07) contrast(1.04)}
+            @media (max-width:900px){#gl.z-light-hw{filter:saturate(1.07) contrast(1.04)}#gl:not(.z-light-hw){filter:none}}
+            .z-vignette{position:fixed;inset:0;pointer-events:none;z-index:9000;
+              background:radial-gradient(ellipse at center,rgba(0,0,0,0) 58%,rgba(0,10,20,0.28) 100%)}
+            .z-grain{position:fixed;inset:0;pointer-events:none;z-index:9001;opacity:.05;mix-blend-mode:overlay;
+              background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2"/></filter><rect width="180" height="180" filter="url(%23n)" opacity="0.6"/></svg>');
+              background-size:180px 180px}`;
+          document.head.appendChild(st);
+          const v = document.createElement('div'); v.className = 'z-vignette'; v.id = 'z-vignette';
+          const n = document.createElement('div'); n.className = 'z-grain'; n.id = 'z-grain';
+          document.body.append(v, n);
+          const gl = document.getElementById('gl');
+          if (gl && (navigator.hardwareConcurrency || 4) >= 6) gl.classList.add('z-light-hw');
+        }
+
+        let tries = 0;
+        const iv = setInterval(() => {
+          const z = window.__zephyr;
+          if (!z?.scene) { if (++tries > 900) clearInterval(iv); return; }
+          try { installOverlays(); gradeScene(z); gradeKarts(z); } catch (e) { console.warn('[grade]', e); }
+        }, 1200);
       })();
     </script>
   </body>
