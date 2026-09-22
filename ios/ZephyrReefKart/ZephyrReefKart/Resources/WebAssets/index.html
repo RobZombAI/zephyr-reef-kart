@@ -3151,15 +3151,13 @@
                   director.events?.sfx?.('vortex', { volume: 0.6 });
                   break;
                 case 'glitch': {
-                  // Effetto fedele al motore: tutti i rivali entro 20m dietro il
-                  // lanciatore (e chiunque davanti) si rimpiccioliscono e rallentano.
-                  // Sul giocatore lo shrink e' piu' leggero (0.78) per restare leggibile.
+                  // Effetto Quantum Glitch: niente shrink (il personaggio resta
+                  // visibile) — l'aspetto "ologramma glitchato" e' dato dal loop FX
+                  // holoLoop() che sfarfalla i materiali dei racer con glitchTimer>0
                   for (const r of director.racers) {
                     if (r !== racer && r.progress.distance >= racer.progress.distance - 20) {
                       r.glitchTimer = 5.0;
-                      r.kart?.object?.scale?.setScalar?.(r.isPlayer ? 0.78 : 0.55);
                       r.state.speed *= 0.65;
-                      r.hit(0.8);
                       r.dropCoins();
                       director.vfx?.burst?.(r.pos.x, r.pos.y + .5, r.pos.z, 11141375, 20, 8);
                     }
@@ -3753,6 +3751,57 @@
           else if (p.state?.spinTimer > 0 && p.invuln > 0) { fx.className = 'z-statusfx emp'; fx.textContent = '💥 COLPITO DA EMP!'; }
           else if (fx.className !== 'z-statusfx') fx.className = 'z-statusfx';
         }
+
+        // ── FX Ologramma Quantum Glitch ──
+        // I racer con glitchTimer>0 diventano "ologrammi": materiali che
+        // sfarfallano (interferenze viola/ciano, wireframe a scatti), micro-vibrazione
+        // di scala e rallentamento forte. Nessuno shrink: il personaggio resta visibile.
+        const HOLO = new Map();
+        function holoLoop() {
+          try {
+            const d = window.__zephyr?.director;
+            if (d?.racers) {
+              for (const r of d.racers) {
+                const glitched = r.glitchTimer > 0;
+                if (glitched && !HOLO.has(r)) {
+                  const recs = [];
+                  r.kart?.object?.traverse(o => {
+                    if (o.isMesh && o.material && !Array.isArray(o.material) && o.material.emissive) {
+                      recs.push({ m: o.material, e: o.material.emissive.clone(), ei: o.material.emissiveIntensity ?? 1, o: o.material.opacity ?? 1, t: !!o.material.transparent, w: !!o.material.wireframe });
+                    }
+                  });
+                  HOLO.set(r, recs);
+                }
+                if (glitched) {
+                  const recs = HOLO.get(r) || [];
+                  const f = Math.random();
+                  for (const rec of recs) {
+                    rec.m.transparent = true;
+                    rec.m.opacity = 0.5 + Math.random() * 0.45;
+                    rec.m.emissive.setHex(f < 0.34 ? 0xa855f7 : (f < 0.67 ? 0x22d3ee : 0xf0abfc));
+                    rec.m.emissiveIntensity = 0.55 + Math.random() * 0.9;
+                    rec.m.wireframe = Math.random() < 0.14;
+                  }
+                  r.kart?.object?.scale?.setScalar?.(1 + Math.sin(performance.now() * 0.085) * 0.045 + (Math.random() - 0.5) * 0.03);
+                  r.state.speed = Math.min(r.state.speed, 6);
+                  if (r.state.vel?.multiplyScalar) r.state.vel.multiplyScalar(0.93);
+                } else if (HOLO.has(r)) {
+                  for (const rec of HOLO.get(r)) {
+                    rec.m.transparent = rec.t;
+                    rec.m.opacity = rec.o;
+                    rec.m.wireframe = rec.w;
+                    rec.m.emissive.copy(rec.e);
+                    rec.m.emissiveIntensity = rec.ei;
+                  }
+                  r.kart?.object?.scale?.setScalar?.(1);
+                  HOLO.delete(r);
+                }
+              }
+            }
+          } catch (e) { /* il loop FX non deve mai bloccare il rAF */ }
+          requestAnimationFrame(holoLoop);
+        }
+        requestAnimationFrame(holoLoop);
 
         let tries = 0;
         const iv = setInterval(() => {

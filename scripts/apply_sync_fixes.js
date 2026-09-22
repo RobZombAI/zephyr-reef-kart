@@ -54,9 +54,14 @@ const PATCHES = [
     'lc=["turbo","triple_turbo","drone","mine","matrix","glitch","vortex"];function dv(s,t,e){const n=$t(t<=1?0:(s-1)/(t-1)),i={turbo:3+n*8,triple_turbo:1+n*4,drone:3+n*3,mine:Math.max(2,4-n*2),vortex:1+n*9,matrix:.6+n*2.4,glitch:.6+n*2.4};let r=0;for(const a of lc)r+=i[a]||1;let o=e()*r;for(const a of lc)if(o-=(i[a]||1),o<=0)return a;return"turbo"}'
   ],
   [
-    'Glitch: shrink piu\u2019 leggero sul giocatore (resta visibile, niente "personaggio sparito")',
-    'r.kart?.object?.scale?.setScalar?.(0.55);',
-    'r.kart?.object?.scale?.setScalar?.(r.isPlayer?0.78:0.55);'
+    'Glitch: shrink rimosso (ologramma FX invece dello shrink)',
+    'r.kart?.object?.scale?.setScalar?.(r.isPlayer?0.78:0.55);',
+    '/* holo-no-shrink */', true
+  ],
+  [
+    'Glitch: niente spinout, il malus e\u2019 ologramma+vibrazione+lento (FX shell)',
+    'r.hit(0.8);',
+    '/* holo-no-spin */', true
   ],
   [
     'Mina: knockback piu\u2019 contenuto (il kart resta inquadrato durante il volo)',
@@ -74,13 +79,17 @@ function countOccurrences(hay, needle) {
 let src = readFileSync(BUNDLE, 'utf8');
 let applied = 0;
 
-for (const [name, find, replace] of PATCHES) {
-  if (src.includes(replace)) {
+for (const [name, find, replace, optional] of PATCHES) {
+  if (replace && src.includes(replace)) {
     console.log(`SKIP (gia' applicata): ${name}`);
     continue;
   }
   const n = countOccurrences(src, find);
   if (n !== 1) {
+    if (optional && n === 0 && !src.includes(replace)) {
+      console.log(`SKIP (anchor gia’ assente, stato ok): ${name}`);
+      continue;
+    }
     console.error(`ERRORE: anchor per "${name}" trovato ${n} volte (atteso 1). Nessuna modifica scritta.`);
     process.exit(1);
   }

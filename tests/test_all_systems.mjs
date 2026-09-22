@@ -4856,7 +4856,8 @@ describe('=== UNIT & PROCESS TESTS: SYSTEMIC ITEMS & POWERS AUDIT & REPAIR ===',
 
   it('4. Quantum Glitch shrinks racer, slows speed, and timer properly decrements', () => {
     assert.ok(bundle.includes('r.glitchTimer=5.0;'), 'Glitch sets 5-second timer');
-    assert.ok(bundle.includes('r.kart?.object?.scale?.setScalar?.(r.isPlayer?0.78:0.55);'), 'Rivals scaled to 55%, player to softer 78% (character stays visible)');
+    assert.ok(!bundle.includes('setScalar?.(0.55'), 'glitch no longer shrinks karts (hologram FX instead)');
+    assert.ok(bundle.includes('r.glitchTimer=5.0'), 'glitch timer drives the hologram effect');
     assert.ok(bundle.includes('r1.glitchTimer-=t;'), 'Glitch timer decrements by dt');
     assert.ok(bundle.includes('r1.glitchTimer<=0'), 'Glitch expiration check present');
     assert.ok(bundle.includes('r1.kart.object.scale.setScalar(1.0)'), 'Scale restored to 1.0 upon expiration');

@@ -4574,9 +4574,9 @@ if(typeof window!=="undefined"&&window.__ZEPHYR_AUTOGAS&&!n.brake){n.throttle=1;
       for(const r of this.racers){
         if(r!==t&&r.progress.distance>=t.progress.distance-20){
           r.glitchTimer=5.0;
-          r.kart?.object?.scale?.setScalar?.(r.isPlayer?0.78:0.55);
+          
           r.state.speed*=0.65;
-          r.hit(0.8);
+          
           r.dropCoins();
           this.vfx?.burst(r.pos.x,r.pos.y+.5,r.pos.z,11141375,20,8);
         }
