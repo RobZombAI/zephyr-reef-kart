@@ -2830,6 +2830,42 @@
             mp = new window.MultiplayerManager();
             window.__multiplayerManager = mp;
 
+            // Schermata risultati autorevole: il rank mostrato dal motore e'
+            // calcolato dal finishCounter LOCALE di ogni macchina e puo' divergere
+            // dall'ordine reale. Sul guest, sostituiamo i risultati locali con
+            // quelli pubblicati dall'host (TOURNAMENT_STANDINGS_SYNC.raceResults).
+            const installResultsWrapper = () => {
+              const ui = window.__zephyr?.ui;
+              if (!ui?.showResults || ui.__mpResultsWrapped) return;
+              ui.__mpResultsWrapped = true;
+              const origShowResults = ui.showResults.bind(ui);
+              ui.showResults = (entries, bestLap, totalTime, localRank) => {
+                const mpInst = window.__multiplayerManager;
+                if (!mpInst || mpInst.isHost || mpInst.state !== 'RESULTS' || !Array.isArray(entries) || entries.length === 0) {
+                  return origShowResults(entries, bestLap, totalTime, localRank);
+                }
+                const tryAuthoritative = (attempt) => {
+                  const auth = mpInst.authRaceResults;
+                  if (Array.isArray(auth) && auth.length) {
+                    const bySlot = new Map(auth.map(r => [r.slot, r]));
+                    const fixed = entries
+                      .map(e => {
+                        const a = bySlot.get(e.slot ?? e.id);
+                        return a ? { ...e, rank: a.rank, finishTime: a.finishTime || e.finishTime } : e;
+                      })
+                      .sort((x, y) => x.rank - y.rank);
+                    origShowResults(fixed, bestLap, totalTime, fixed.find(e => e.isPlayer)?.rank ?? localRank);
+                  } else if (attempt < 60) {
+                    setTimeout(() => tryAuthoritative(attempt + 1), 200); // max ~12s
+                  } else {
+                    origShowResults(entries, bestLap, totalTime, localRank);
+                  }
+                };
+                tryAuthoritative(0);
+              };
+            };
+            installResultsWrapper();
+
             // Wire callbacks
             mp.onToast = (msg) => {
               if (window.__zephyr?.ui?.toast) window.__zephyr.ui.toast(msg, 2.8);
@@ -3019,6 +3055,7 @@
             };
 
             mp.onRaceStart = (data) => {
+              installResultsWrapper();
               lastLap = 1;
               raceEndHandled = false;
               if (tourneyModal) {

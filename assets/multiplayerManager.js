@@ -80,6 +80,11 @@ export class MultiplayerManager {
     this.clockOffsetSamples = []; // [{ rtt, offset }]
     this.clockOffset = null;
 
+    // Risultati di gara autorevoli (solo guest, da TOURNAMENT_STANDINGS_SYNC):
+    // ordine di arrivo e tempi calcolati dall'host, usati dalla shell per il
+    // ridisegno della schermata risultati.
+    this.authRaceResults = null;
+
     this.initDOM();
   }
 
@@ -893,6 +898,12 @@ export class MultiplayerManager {
             this.tournamentScores.set(st.slot, st.totalPoints);
           }
         }
+        // Risultati autorevoli dell'host (ordine di arrivo + tempi): la shell li
+        // usa per ridisegnare la schermata risultati del guest, che altrimenti
+        // mostrerebbe l'ordine calcolato dal proprio finishCounter locale.
+        if (Array.isArray(data.raceResults)) {
+          this.authRaceResults = data.raceResults;
+        }
         if (this.onTournamentStandings) {
           this.onTournamentStandings(data);
         }
@@ -963,6 +974,7 @@ export class MultiplayerManager {
         this.trackIndex = data.trackIndex;
         this.laps = data.laps;
         this.players = data.players;
+        this.authRaceResults = null;
         try { localStorage.setItem('zephyr_track', String(data.trackIndex)); } catch {}
         if (this.onRaceStart) {
           this.onRaceStart(data);
@@ -1313,6 +1325,7 @@ export class MultiplayerManager {
     this.trackIndex = data.trackIndex;
     this.laps = data.laps;
     this.players = data.players;
+    this.authRaceResults = null;
     if (Array.isArray(data.playlistTracks) && data.playlistTracks.length > 0) {
       this.playlistTracks = data.playlistTracks;
       this.playlistIndex = data.playlistIndex || 0;

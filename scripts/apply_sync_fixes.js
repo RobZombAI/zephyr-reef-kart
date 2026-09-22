@@ -42,6 +42,11 @@ const PATCHES = [
     'No auto-pausa durante COUNTDOWN (onBlur)',
     'onBlur(){if(window.__multiplayerManager&&window.__multiplayerManager.state==="RACING")return;this.mode==="race"',
     'onBlur(){if(window.__multiplayerManager&&(window.__multiplayerManager.state==="RACING"||window.__multiplayerManager.state==="COUNTDOWN"))return;this.mode==="race"'
+  ],
+  [
+    'Camera chase alzata (+0.65) per vedere piu\u2019 pista',
+    'Ie.set(t.pos.x-us.x*(c+boostPush)+rightX*sway,t.pos.y+h,t.pos.z-us.z*(c+boostPush)+rightZ*sway)',
+    'Ie.set(t.pos.x-us.x*(c+boostPush)+rightX*sway,t.pos.y+h+0.65,t.pos.z-us.z*(c+boostPush)+rightZ*sway)'
   ]
 ];
 
