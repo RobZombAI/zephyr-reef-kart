@@ -2172,7 +2172,8 @@ describe('=== UNIT & PROCESS TESTS: 50 ARCHITECTURAL IMPROVEMENTS ===', () => {
 
   it('6. Dynamic item roulette distribution scales with race position', () => {
     const bundle = fs.readFileSync(BUNDLE_PATH, 'utf-8');
-    assert.ok(bundle.includes('lc=["turbo","triple_turbo","drone","mine","matrix","glitch","vortex"]'), 'item pool restricted to the 7 approved items');
+    assert.ok(bundle.includes('lc=["turbo","triple_turbo","drone","mine","matrix","vortex"]'), 'item pool restricted to the 6 approved items (glitch removed)');
+    assert.ok(!bundle.includes('case "glitch":'), 'quantum glitch fully removed from useItem');
     assert.ok(bundle.includes('vortex:1+n*9'), 'vortex weight scales with trailing position');
     assert.ok(bundle.includes('mine:Math.max(2,4-n*2)'), 'defensive mine favoured in leading position');
 
@@ -4854,13 +4855,11 @@ describe('=== UNIT & PROCESS TESTS: SYSTEMIC ITEMS & POWERS AUDIT & REPAIR ===',
     assert.strictEqual(racer.hit(1.4), true, 'Direct hit succeeds after shield consumed');
   });
 
-  it('4. Quantum Glitch shrinks racer, slows speed, and timer properly decrements', () => {
-    assert.ok(bundle.includes('r.glitchTimer=5.0;'), 'Glitch sets 5-second timer');
-    assert.ok(!bundle.includes('setScalar?.(0.55'), 'glitch no longer shrinks karts (hologram FX instead)');
-    assert.ok(bundle.includes('r.glitchTimer=5.0'), 'glitch timer drives the hologram effect');
-    assert.ok(bundle.includes('r1.glitchTimer-=t;'), 'Glitch timer decrements by dt');
-    assert.ok(bundle.includes('r1.glitchTimer<=0'), 'Glitch expiration check present');
-    assert.ok(bundle.includes('r1.kart.object.scale.setScalar(1.0)'), 'Scale restored to 1.0 upon expiration');
+  it('4. Quantum Glitch is fully removed (pool, useItem and application)', () => {
+    assert.ok(!bundle.includes('case "glitch":'), 'glitch useItem case removed');
+    assert.ok(!bundle.includes('glitchTimer=5.0'), 'glitch timer no longer applied to racers');
+    assert.ok(!bundle.includes('glitch:.6'), 'glitch weight removed from roulette map');
+    assert.ok(bundle.includes('lc=["turbo","triple_turbo","drone","mine","matrix","vortex"]'), 'pool is the 6-item CTR-style set');
   });
 
   it('5. Sonic Shockwave detonateBlast operates 360-degrees radially without direction exclusion', () => {

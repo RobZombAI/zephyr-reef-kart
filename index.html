@@ -2080,7 +2080,6 @@
                   triple_turbo: '🚀',
                   matrix: '⭐',
                   shockwave: '📢',
-                  glitch: '🌐',
                   decoy: '📦',
                   bolt: '⚡',
                   blast: '📢',
@@ -2098,7 +2097,6 @@
                   triple_turbo: (player.turboCharges || 3) + 'x NITRO',
                   matrix: 'MATRIX',
                   shockwave: 'SHOCKWAVE',
-                  glitch: 'GLITCH',
                   decoy: 'DECOY',
                   bolt: 'PHOTON',
                   blast: 'SHOCKWAVE',
@@ -3150,21 +3148,6 @@
                   director.vfx?.burst?.(racer.pos.x, racer.pos.y + .6, racer.pos.z, 65535, 24, 10);
                   director.events?.sfx?.('vortex', { volume: 0.6 });
                   break;
-                case 'glitch': {
-                  // Effetto Quantum Glitch: niente shrink (il personaggio resta
-                  // visibile) — l'aspetto "ologramma glitchato" e' dato dal loop FX
-                  // holoLoop() che sfarfalla i materiali dei racer con glitchTimer>0
-                  for (const r of director.racers) {
-                    if (r !== racer && r.progress.distance >= racer.progress.distance - 20) {
-                      r.glitchTimer = 5.0;
-                      r.state.speed *= 0.65;
-                      r.dropCoins();
-                      director.vfx?.burst?.(r.pos.x, r.pos.y + .5, r.pos.z, 11141375, 20, 8);
-                    }
-                  }
-                  director.events?.sfx?.('hit', { volume: 0.7 });
-                  break;
-                }
                 case 'shield':
                   director.items?.raiseShield(racer);
                   director.events?.sfx?.('shield_up', { volume: 0.6 });
@@ -3730,7 +3713,6 @@
             .z-statusfx{position:fixed;top:calc(env(safe-area-inset-top,0px) + 74px);left:50%;transform:translateX(-50%);
               pointer-events:none;z-index:9500;font-weight:800;font-size:15px;letter-spacing:.5px;display:none;
               padding:7px 16px;border-radius:10px;background:rgba(8,26,36,.82);backdrop-filter:blur(4px)}
-            .z-statusfx.glitch{display:block;color:#c084fc;border:1px solid #a855f7;text-shadow:0 0 12px rgba(168,85,247,.8)}
             .z-statusfx.emp{display:block;color:#fca5a5;border:1px solid #ef4444;text-shadow:0 0 12px rgba(239,68,68,.7)}`;
           document.head.appendChild(st);
           const v = document.createElement('div'); v.className = 'z-vignette'; v.id = 'z-vignette';
@@ -3741,67 +3723,15 @@
           if (gl && (navigator.hardwareConcurrency || 4) >= 6) gl.classList.add('z-light-hw');
         }
 
-        // indicatore stato negativo sul giocatore (glitch / EMP-mine): chiarezza UX
+        // indicatore stato negativo sul giocatore (EMP-mine): chiarezza UX
         function updateStatusFx() {
           const fx = document.getElementById('z-statusfx');
           const d = window.__zephyr?.director;
           const p = d?.player || d?.racers?.find?.(r => r.isPlayer);
           if (!fx || !p) return;
-          if (p.glitchTimer > 0) { fx.className = 'z-statusfx glitch'; fx.textContent = '🌐 QUANTUM GLITCH!'; }
-          else if (p.state?.spinTimer > 0 && p.invuln > 0) { fx.className = 'z-statusfx emp'; fx.textContent = '💥 COLPITO DA EMP!'; }
+          if (p.state?.spinTimer > 0 && p.invuln > 0) { fx.className = 'z-statusfx emp'; fx.textContent = '💥 COLPITO DA EMP!'; }
           else if (fx.className !== 'z-statusfx') fx.className = 'z-statusfx';
         }
-
-        // ── FX Ologramma Quantum Glitch ──
-        // I racer con glitchTimer>0 diventano "ologrammi": materiali che
-        // sfarfallano (interferenze viola/ciano, wireframe a scatti), micro-vibrazione
-        // di scala e rallentamento forte. Nessuno shrink: il personaggio resta visibile.
-        const HOLO = new Map();
-        function holoLoop() {
-          try {
-            const d = window.__zephyr?.director;
-            if (d?.racers) {
-              for (const r of d.racers) {
-                const glitched = r.glitchTimer > 0;
-                if (glitched && !HOLO.has(r)) {
-                  const recs = [];
-                  r.kart?.object?.traverse(o => {
-                    if (o.isMesh && o.material && !Array.isArray(o.material) && o.material.emissive) {
-                      recs.push({ m: o.material, e: o.material.emissive.clone(), ei: o.material.emissiveIntensity ?? 1, o: o.material.opacity ?? 1, t: !!o.material.transparent, w: !!o.material.wireframe });
-                    }
-                  });
-                  HOLO.set(r, recs);
-                }
-                if (glitched) {
-                  const recs = HOLO.get(r) || [];
-                  const f = Math.random();
-                  for (const rec of recs) {
-                    rec.m.transparent = true;
-                    rec.m.opacity = 0.5 + Math.random() * 0.45;
-                    rec.m.emissive.setHex(f < 0.34 ? 0xa855f7 : (f < 0.67 ? 0x22d3ee : 0xf0abfc));
-                    rec.m.emissiveIntensity = 0.55 + Math.random() * 0.9;
-                    rec.m.wireframe = Math.random() < 0.14;
-                  }
-                  r.kart?.object?.scale?.setScalar?.(1 + Math.sin(performance.now() * 0.085) * 0.045 + (Math.random() - 0.5) * 0.03);
-                  r.state.speed = Math.min(r.state.speed, 6);
-                  if (r.state.vel?.multiplyScalar) r.state.vel.multiplyScalar(0.93);
-                } else if (HOLO.has(r)) {
-                  for (const rec of HOLO.get(r)) {
-                    rec.m.transparent = rec.t;
-                    rec.m.opacity = rec.o;
-                    rec.m.wireframe = rec.w;
-                    rec.m.emissive.copy(rec.e);
-                    rec.m.emissiveIntensity = rec.ei;
-                  }
-                  r.kart?.object?.scale?.setScalar?.(1);
-                  HOLO.delete(r);
-                }
-              }
-            }
-          } catch (e) { /* il loop FX non deve mai bloccare il rAF */ }
-          requestAnimationFrame(holoLoop);
-        }
-        requestAnimationFrame(holoLoop);
 
         // ── Character Studio: sembianze potenziate per-carattere ──
         // Il motore costruisce teste senza volto; qui aggiungiamo occhi espressivi
