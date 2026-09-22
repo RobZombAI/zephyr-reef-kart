@@ -10,7 +10,7 @@ export class MultiplayerManager {
     this.peer = null;
     this.isHost = false;
     this.roomCode = '';
-    this.state = 'IDLE'; // 'IDLE' | 'HOST_LOBBY' | 'GUEST_LOBBY' | 'RACING' | 'RESULTS'
+    this.state = 'IDLE'; // 'IDLE' | 'CONNECTING' | 'HOST_LOBBY' | 'GUEST_LOBBY' | 'COUNTDOWN' | 'RACING' | 'RESULTS'
     
     // Player details
     this.playerName = localStorage.getItem('zephyr_player_name') || ('Racer_' + Math.floor(100 + Math.random() * 900));
@@ -21,6 +21,9 @@ export class MultiplayerManager {
     this.connections = new Map(); // peerId -> DataConnection
     this.hostConnection = null;   // For guests: DataConnection to Host
     this.players = [];            // [{ peerId, slot, name, kartId, isHost, ping, isAI, finishTime, rank }]
+    this.peerSlots = new Map();       // Host: peerId -> slot assegnato al JOIN_REQUEST (binding anti-spoofing)
+    this.spoofStrikes = new Map();    // Host: peerId -> violazioni del binding slot
+    this.eventRateLimits = new Map(); // Host: peerId -> { eventType: [timestamp] } (anti-griefing)
     
     // Room settings & Grand Prix Playlist
     this.trackIndex = parseInt(localStorage.getItem('zephyr_track') || '0', 10);
@@ -66,6 +69,10 @@ export class MultiplayerManager {
     // Heartbeat ping timer
     this.pingInterval = null;
 
+    // Misurazioni RTT per la compensazione della sincronizzazione di partenza
+    this.rttSamples = new Map(); // Host: peerId -> ultimo rtt misurato
+    this.lastRtt = 0;            // Guest: ultimo rtt misurato verso l'host
+
     this.initDOM();
   }
 
@@ -95,7 +102,12 @@ export class MultiplayerManager {
   }
 
   getInviteLink() {
-    const base = window.location.origin + window.location.pathname;
+    const loc = window.location;
+    // Origin assente/opaco (iframe sandbox, file://): il chiamante mostrera' solo il codice
+    if (!loc || !loc.origin || loc.origin === 'null' || loc.protocol === 'file:') {
+      return '';
+    }
+    const base = loc.origin + loc.pathname;
     return `${base}#room=${encodeURIComponent(this.roomCode)}`;
   }
 
@@ -429,11 +441,11 @@ export class MultiplayerManager {
         this.toast('Connesso all\'Host! Invio dati pilota...');
         this.state = 'GUEST_LOBBY';
         this.notifyLobbyUpdate();
-        conn.send({
+        this.safeSend(conn, {
           type: 'JOIN_REQUEST',
           name: this.playerName,
           kartId: this.selectedKart
-        });
+        }, false);
       });
 
       conn.on('data', (data) => this.handleMessage(conn, data));
@@ -468,9 +480,24 @@ export class MultiplayerManager {
         }
       });
 
+      this._peerReconnectAttempted = false;
+
       this.peer.on('open', (id) => {
         console.log(`[Multiplayer] Peer initialized: ${id}`);
+        this._peerReconnectAttempted = false;
         if (onOpen) onOpen(id);
+      });
+
+      // Signaling disconnesso: tenta un singolo reconnect (guard anti-loop)
+      this.peer.on('disconnected', () => {
+        console.warn('[Multiplayer] Peer disconnesso dal signaling server.');
+        if (this._peerReconnectAttempted) return;
+        this._peerReconnectAttempted = true;
+        try {
+          this.peer.reconnect();
+        } catch (e) {
+          console.warn('[Multiplayer] Reconnect fallito:', e?.message || e);
+        }
       });
 
       this.peer.on('connection', (conn) => {
@@ -510,11 +537,20 @@ export class MultiplayerManager {
     conn.on('close', () => {
       this.handlePeerDisconnect(conn.peer);
     });
+
+    conn.on('error', (err) => {
+      console.warn(`[Host] Errore connessione ${conn.peer}:`, err?.type || err?.message || err);
+      this.handlePeerDisconnect(conn.peer);
+    });
   }
 
   handlePeerDisconnect(peerId) {
     console.log(`[Host] Client disconnected: ${peerId}`);
     this.connections.delete(peerId);
+    this.peerSlots.delete(peerId);
+    this.spoofStrikes.delete(peerId);
+    this.eventRateLimits.delete(peerId);
+    this.rttSamples.delete(peerId);
     const idx = this.players.findIndex(p => p.peerId === peerId);
     if (idx !== -1) {
       const leaving = this.players[idx];
@@ -550,6 +586,77 @@ export class MultiplayerManager {
     }
   }
 
+  // --- SECURITY & ROBUSTNESS HELPERS ---
+  // Pulisce un nome ricevuto dalla rete prima che raggiunga roster e renderer
+  sanitizeName(raw) {
+    if (raw === undefined || raw === null) return '';
+    return String(raw).slice(0, 16).replace(/[<>&"']/g, '').trim();
+  }
+
+  // Host: verifica che lo slot dichiarato nel messaggio corrisponda a quello
+  // assegnato al mittente al JOIN_REQUEST (anti-spoofing). Se il mittente non ha
+  // un binding noto non e' autenticabile: il messaggio viene accettato.
+  isSlotAuthentic(conn, data) {
+    if (!this.isHost) return true;
+    const peerId = conn?.peer;
+    if (!peerId) return true;
+    const boundSlot = this.peerSlots.get(peerId);
+    if (boundSlot !== undefined) return data.slot === boundSlot;
+    return true;
+  }
+
+  // Host: slot verificato del mittente (binding JOIN_REQUEST), da usare per
+  // riscrivere data.slot prima del relay invece di fidarsi del payload
+  getSenderSlot(conn, data) {
+    const peerId = conn?.peer;
+    if (peerId) {
+      const boundSlot = this.peerSlots.get(peerId);
+      if (boundSlot !== undefined) return boundSlot;
+    }
+    return data.slot;
+  }
+
+  // Host: gestisce una violazione del binding slot (drop + strike, chiusura dopo abusi ripetuti)
+  handleSlotViolation(conn) {
+    const peerId = conn?.peer;
+    if (!peerId) return;
+    const strikes = (this.spoofStrikes.get(peerId) || 0) + 1;
+    this.spoofStrikes.set(peerId, strikes);
+    console.warn(`[Multiplayer] Slot non valido da ${peerId} (violazione ${strikes})`);
+    if (strikes >= 3) {
+      this.toast('Attività sospetta rilevata: connessione chiusa.');
+      try { conn.close(); } catch {}
+      this.handlePeerDisconnect(peerId);
+    }
+  }
+
+  // Host: rate-limit per evento (default: max 3 ogni 2s per tipo e per peer)
+  checkEventRateLimit(peerId, eventType, maxEvents = 3, windowMs = 2000) {
+    if (!peerId) return true;
+    let perPeer = this.eventRateLimits.get(peerId);
+    if (!perPeer) {
+      perPeer = {};
+      this.eventRateLimits.set(peerId, perPeer);
+    }
+    const now = performance.now();
+    const recent = (perPeer[eventType] || []).filter(t => now - t < windowMs);
+    perPeer[eventType] = recent;
+    if (recent.length >= maxEvents) {
+      console.warn(`[Multiplayer] Rate limit (${eventType}) superato da ${peerId}: evento scartato`);
+      return false;
+    }
+    recent.push(now);
+    return true;
+  }
+
+  // RTT medio misurato verso i guest (0 se nessuna misurazione disponibile)
+  getAverageRtt() {
+    if (!this.rttSamples || this.rttSamples.size === 0) return 0;
+    let sum = 0;
+    for (const rtt of this.rttSamples.values()) sum += rtt;
+    return Math.round(sum / this.rttSamples.size);
+  }
+
   // --- MESSAGE ROUTING ---
   handleIncomingData(conn, data) {
     return this.handleMessage(conn, data);
@@ -561,32 +668,57 @@ export class MultiplayerManager {
     switch (data.type) {
       case 'JOIN_REQUEST': {
         if (!this.isHost) return;
+
+        // Gara in corso o countdown: non allocare slot
+        if (this.state === 'RACING' || this.state === 'COUNTDOWN') {
+          this.safeSend(conn, { type: 'ROOM_BUSY' });
+          try { conn.close(); } catch {}
+          return;
+        }
+
+        // JOIN_REQUEST duplicato dallo stesso peer: re-sync con lo stato attuale
+        if (this.peerSlots.has(conn.peer) || this.players.some(p => p.peerId === conn.peer)) {
+          const known = this.players.find(p => p.peerId === conn.peer);
+          this.safeSend(conn, {
+            type: 'ROOM_WELCOME',
+            roomCode: this.roomCode,
+            mySlot: known ? known.slot : this.peerSlots.get(conn.peer),
+            trackIndex: this.trackIndex,
+            laps: this.laps,
+            playlistTracks: this.playlistTracks,
+            playlistIndex: this.playlistIndex,
+            players: this.players
+          });
+          break;
+        }
+
         const usedSlots = new Set(this.players.map(p => p.slot));
         let slot = 1;
         while (usedSlots.has(slot) && slot < 6) slot++;
 
         if (slot >= 6) {
-          conn.send({ type: 'ROOM_FULL' });
-          conn.close();
+          this.safeSend(conn, { type: 'ROOM_FULL' });
+          try { conn.close(); } catch {}
           return;
         }
 
         const newPlayer = {
           peerId: conn.peer,
           slot: slot,
-          name: data.name || `Ospite ${slot}`,
+          name: this.sanitizeName(data.name) || `Ospite ${slot}`,
           kartId: data.kartId || 'bruno',
           isHost: false,
-          ping: 30,
+          ping: 0,
           isAI: false,
           isReady: false
         };
 
         this.connections.set(conn.peer, conn);
+        this.peerSlots.set(conn.peer, slot);
         this.players.push(newPlayer);
         this.toast(`${newPlayer.name} è entrato nella stanza!`);
 
-        conn.send({
+        this.safeSend(conn, {
           type: 'ROOM_WELCOME',
           roomCode: this.roomCode,
           mySlot: slot,
@@ -602,6 +734,10 @@ export class MultiplayerManager {
       }
 
       case 'PLAYER_READY': {
+        if (this.isHost && !this.isSlotAuthentic(conn, data)) {
+          this.handleSlotViolation(conn);
+          break;
+        }
         const p = this.players.find(pl => pl.slot === data.slot);
         if (p) {
           p.isReady = !!data.isReady;
@@ -616,9 +752,16 @@ export class MultiplayerManager {
 
       case 'PLAYER_UPDATE': {
         if (!this.isHost) return;
+        if (!this.isSlotAuthentic(conn, data)) {
+          this.handleSlotViolation(conn);
+          break;
+        }
         const p = this.players.find(pl => pl.slot === data.slot);
         if (p) {
-          if (data.name) p.name = data.name;
+          if (data.name) {
+            const cleanName = this.sanitizeName(data.name);
+            if (cleanName) p.name = cleanName;
+          }
           if (data.kartId) p.kartId = data.kartId;
           if (typeof data.isReady === 'boolean') p.isReady = data.isReady;
           this.broadcastLobbyUpdate();
@@ -658,6 +801,18 @@ export class MultiplayerManager {
         this.toast(`Sei nella stanza privata! (Slot ${this.mySlot + 1})`);
         this.notifyLobbyUpdate();
         this.startHeartbeat();
+        break;
+      }
+
+      case 'ROOM_FULL': {
+        this.toast('La stanza è piena');
+        this.leaveRoom();
+        break;
+      }
+
+      case 'ROOM_BUSY': {
+        this.toast('Gara in corso, riprova dopo');
+        this.leaveRoom();
         break;
       }
 
@@ -755,7 +910,9 @@ export class MultiplayerManager {
           this.countdownTimer = null;
         }
         this.state = 'RACING';
-        this.syncStartTime = data.startTime || (Date.now() + 3000);
+        // Compensazione conservativa del RTT: il timestamp host e' stato stampato
+        // circa mezzo RTT prima dell'arrivo (max 150ms)
+        this.syncStartTime = (data.startTime || (Date.now() + 3000)) + Math.min((this.lastRtt || 0) / 2, 150);
         this.trackIndex = data.trackIndex;
         this.laps = data.laps;
         this.players = data.players;
@@ -767,6 +924,10 @@ export class MultiplayerManager {
       }
 
       case 'KART_STATE': {
+        if (this.isHost && !this.isSlotAuthentic(conn, data)) {
+          this.handleSlotViolation(conn);
+          break;
+        }
         const s = data.slot;
         let rState = this.remoteStates.get(s);
         if (!rState) {
@@ -807,9 +968,13 @@ export class MultiplayerManager {
         }
 
         if (this.isHost) {
+          // Relay: riscrive lo slot con quello verificato del mittente e rimuove
+          // 'ais' (le posizioni AI sono solo dell'host)
+          const relayData = { ...data, slot: this.getSenderSlot(conn, data) };
+          delete relayData.ais;
           for (const [peerId, otherConn] of this.connections.entries()) {
             if (peerId !== conn?.peer && otherConn.open) {
-              otherConn.send(data);
+              this.safeSend(otherConn, relayData);
             }
           }
         }
@@ -818,6 +983,11 @@ export class MultiplayerManager {
 
 
       case 'ITEM_USE': {
+        if (this.isHost) {
+          if (!this.isSlotAuthentic(conn, data)) { this.handleSlotViolation(conn); break; }
+          if (!this.checkEventRateLimit(conn?.peer, 'ITEM_USE')) break;
+          data.slot = this.getSenderSlot(conn, data);
+        }
         if (this.onItemUse) this.onItemUse(data);
         if (this.isHost) {
           this.relayToOthers(conn?.peer, data);
@@ -826,6 +996,11 @@ export class MultiplayerManager {
       }
 
       case 'RACER_HIT': {
+        if (this.isHost) {
+          if (!this.isSlotAuthentic(conn, data)) { this.handleSlotViolation(conn); break; }
+          if (!this.checkEventRateLimit(conn?.peer, 'RACER_HIT')) break;
+          data.slot = this.getSenderSlot(conn, data);
+        }
         if (this.onRacerHit) this.onRacerHit(data);
         if (this.isHost) {
           this.relayToOthers(conn?.peer, data);
@@ -834,6 +1009,13 @@ export class MultiplayerManager {
       }
 
       case 'EMOTE': {
+        if (this.isHost && !this.isSlotAuthentic(conn, data)) {
+          this.handleSlotViolation(conn);
+          break;
+        }
+        // Clamp del testo remoto: nessun payload ostile verso bubble e renderer
+        data.text = String(data.text ?? '').slice(0, 32);
+        data.slot = this.getSenderSlot(conn, data);
         this.displayEmoteBubble(data.slot, data.text);
         if (this.onEmote) this.onEmote(data);
         if (this.isHost) {
@@ -843,6 +1025,10 @@ export class MultiplayerManager {
       }
 
       case 'PLAYER_FINISH': {
+        if (this.isHost && !this.isSlotAuthentic(conn, data)) {
+          this.handleSlotViolation(conn);
+          break;
+        }
         const p = this.players.find(pl => pl.slot === data.slot);
         if (p) {
           p.finishTime = data.finishTime;
@@ -862,15 +1048,20 @@ export class MultiplayerManager {
       }
 
       case 'PING': {
-        if (conn?.send) conn.send({ type: 'PONG', t: data.t });
+        this.safeSend(conn, { type: 'PONG', t: data.t }, false);
         break;
       }
 
       case 'PONG': {
         const rtt = Math.round(performance.now() - data.t);
         const p = this.players.find(pl => pl.peerId === conn?.peer);
-        if (p) p.ping = Math.max(12, rtt);
-        this.notifyLobbyUpdate();
+        if (p) p.ping = Math.max(1, rtt);
+        this.lastRtt = rtt;
+        if (this.isHost && conn?.peer) this.rttSamples.set(conn.peer, rtt);
+        // Durante gara/countdown il ping non deve ridisegnare la lobby
+        if (this.state !== 'RACING' && this.state !== 'COUNTDOWN') {
+          this.notifyLobbyUpdate();
+        }
         break;
       }
     }
@@ -883,17 +1074,32 @@ export class MultiplayerManager {
       const now = performance.now();
       if (this.isHost) {
         for (const conn of this.connections.values()) {
-          if (conn.open) conn.send({ type: 'PING', t: now });
+          if (conn.open) this.safeSend(conn, { type: 'PING', t: now });
         }
       } else if (this.hostConnection && this.hostConnection.open) {
-        this.hostConnection.send({ type: 'PING', t: now });
+        this.safeSend(this.hostConnection, { type: 'PING', t: now }, false);
       }
     }, 2500);
   }
 
   // --- BROADCAST HELPERS ---
+  // Alias pubblico storico: consentito l'override per-istanza (hook usato da test/UI)
   broadcast(data) {
     this.broadcastToAll(data);
+  }
+
+  // Invio protetto: un'eccezione non deve mai interrompere i loop di broadcast/heartbeat
+  safeSend(conn, data, cleanupOnFail = true) {
+    try {
+      conn?.send(data);
+      return true;
+    } catch (e) {
+      console.warn('[Multiplayer] Invio fallito:', e?.message || e);
+      if (cleanupOnFail && conn?.peer) {
+        this.handlePeerDisconnect(conn.peer);
+      }
+      return false;
+    }
   }
 
   broadcastToAll(data) {
@@ -903,17 +1109,17 @@ export class MultiplayerManager {
     }
     if (this.isHost) {
       for (const conn of this.connections.values()) {
-        if (conn.open) conn.send(data);
+        if (conn.open) this.safeSend(conn, data);
       }
     } else if (this.hostConnection && this.hostConnection.open) {
-      this.hostConnection.send(data);
+      this.safeSend(this.hostConnection, data, false);
     }
   }
 
   relayToOthers(senderPeerId, data) {
     for (const [peerId, conn] of this.connections.entries()) {
       if (peerId !== senderPeerId && conn.open) {
-        conn.send(data);
+        this.safeSend(conn, data);
       }
     }
   }
@@ -1013,12 +1219,14 @@ export class MultiplayerManager {
     }
 
     this.state = 'RACING';
+    const startStamp = Date.now() + 1000;
+    this.syncStartTime = startStamp;
     const payload = {
       type: 'RACE_START_SYNC',
       trackIndex: this.trackIndex,
       laps: this.laps,
       players: this.players,
-      startTime: Date.now() + 1000
+      startTime: startStamp
     };
 
     this.broadcastToAll(payload);
@@ -1056,7 +1264,8 @@ export class MultiplayerManager {
 
         if (this.isHost) {
           this.state = 'RACING';
-          const startStamp = Date.now() + 3000;
+          // Compensazione conservativa del RTT medio verso i guest (max 250ms)
+          const startStamp = Date.now() + 3000 + Math.min(this.getAverageRtt(), 250);
           this.syncStartTime = startStamp;
           const raceStartPayload = {
             type: 'RACE_START_SYNC',
@@ -1411,6 +1620,13 @@ export class MultiplayerManager {
     emote.expireTime = performance.now() + 2600;
     emote.el.style.display = 'block';
     emote.el.style.opacity = '1';
+
+    // Rimozione dal DOM dopo 6s (protegge il caso nodo gia' rimosso)
+    if (emote._removeTimer) clearTimeout(emote._removeTimer);
+    emote._removeTimer = setTimeout(() => {
+      try { emote.el?.remove?.(); } catch {}
+      if (this.emoteEls.get(slot) === emote) this.emoteEls.delete(slot);
+    }, 6000);
   }
 
   updateEmoteBubbles(now, director, camera) {
@@ -1538,6 +1754,11 @@ export class MultiplayerManager {
     this.lastRaceResults = [];
     this.isTournamentComplete = false;
     this.remoteStates.clear();
+    this.peerSlots.clear();
+    this.spoofStrikes.clear();
+    this.eventRateLimits.clear();
+    this.rttSamples.clear();
+    this.lastRtt = 0;
     this.notifyLobbyUpdate();
   }
 

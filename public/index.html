@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="it">
   <head>
     <meta charset="UTF-8" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
@@ -38,12 +38,19 @@
         var APP_VERSION = 'zephyr-6.9.5';
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistrations().then(function(regs) {
-            for (var r of regs) r.unregister();
+            for (var r of regs) {
+              try {
+                // Purge only this app's service workers (same origin may host other apps)
+                if (r.scope && (r.scope.indexOf('zephyr') !== -1 || r.scope.indexOf(window.location.pathname) !== -1)) r.unregister();
+              } catch (e) {}
+            }
           });
         }
         if ('caches' in window) {
           caches.keys().then(function(names) {
-            for (var n of names) caches.delete(n);
+            for (var n of names) {
+              if (n.indexOf('zephyr') !== -1) caches.delete(n);
+            }
           });
         }
         try {
@@ -61,7 +68,7 @@
           var storedVersion = localStorage.getItem('zephyr_client_version');
           if (storedVersion !== APP_VERSION) {
             localStorage.setItem('zephyr_client_version', APP_VERSION);
-            if (storedVersion && window.location.search.indexOf('v=') === -1) {
+            if (storedVersion && !new URLSearchParams(window.location.search).has('v')) {
               window.location.replace(window.location.pathname + '?v=' + APP_VERSION);
             }
           }
@@ -257,75 +264,7 @@
         background: rgba(118, 255, 240, 0.3);
       }
 
-      /* 3 Mobile Control Modes: Steering Wheel, Gyro HUD, and Mode Pills */
-      .z-wheel-container {
-        position: relative;
-        width: 132px;
-        height: 132px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        user-select: none;
-        -webkit-user-select: none;
-        touch-action: none;
-        pointer-events: auto;
-      }
-      .z-wheel-disc {
-        position: relative;
-        width: 100%;
-        height: 100%;
-        border-radius: 50%;
-        box-sizing: border-box;
-        border: 4.5px solid rgba(118, 255, 240, 0.75);
-        background: radial-gradient(circle at center, rgba(16, 44, 56, 0.92) 0%, rgba(10, 26, 36, 0.98) 70%, rgba(118, 255, 240, 0.3) 100%);
-        box-shadow: 0 4px 22px rgba(0, 0, 0, 0.75), inset 0 0 18px rgba(118, 255, 240, 0.4);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        will-change: transform;
-      }
-      .z-wheel-disc.snapping {
-        transition: transform 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      }
-      .z-wheel-spoke {
-        position: absolute;
-        background: linear-gradient(90deg, #76fff0, #ffc857);
-        border-radius: 2px;
-        box-shadow: 0 0 6px rgba(118, 255, 240, 0.6);
-      }
-      .z-wheel-spoke.horizontal {
-        width: 82%;
-        height: 5px;
-      }
-      .z-wheel-spoke.vertical {
-        width: 5px;
-        height: 40%;
-        bottom: 10%;
-      }
-      .z-wheel-center {
-        width: 46px;
-        height: 46px;
-        border-radius: 50%;
-        background: #0d1e30;
-        border: 2px solid #ffc857;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 19px;
-        box-shadow: 0 0 12px rgba(255, 200, 87, 0.6);
-        z-index: 2;
-      }
-      .z-wheel-indicator {
-        position: absolute;
-        top: 5px;
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #ff4fd8;
-        box-shadow: 0 0 10px #ff4fd8;
-        z-index: 2;
-      }
+      /* Mobile Control Modes: Gyro HUD and Mode Pills (dead steering-wheel CSS removed) */
       .z-gyro-container {
         display: flex;
         flex-direction: column;
@@ -394,24 +333,6 @@
         background: rgba(118, 255, 240, 0.28);
         color: #ffffff;
         box-shadow: 0 0 16px rgba(118, 255, 240, 0.45);
-      }
-      .touch-compact .z-wheel-container {
-        width: 106px;
-        height: 106px;
-      }
-      .touch-compact .z-wheel-center {
-        width: 38px;
-        height: 38px;
-        font-size: 16px;
-      }
-      .touch-large .z-wheel-container {
-        width: 154px;
-        height: 154px;
-      }
-      .touch-large .z-wheel-center {
-        width: 52px;
-        height: 52px;
-        font-size: 22px;
       }
 
       /* ======================================================================
@@ -1342,11 +1263,11 @@
       <div id="z-threat-radar" class="hud__threat-alert hidden">⚠️ ATTACCO IN ARRIVO! ⚠️</div>
       <div id="z-blind-left" class="hud__blind-spot left hidden">◀ RIVALE</div>
       <div id="z-blind-right" class="hud__blind-spot right hidden">RIVALE ▶</div>
-      <div id="z-hud-wrong-way" class="z-banner z-banner-wrong hidden">⚠️ WRONG WAY! TURN AROUND! ⚠️</div>
-      <div id="z-hud-final-lap" class="z-banner z-banner-lap hidden">🏁 FINAL LAP! 🏁</div>
+      <div id="z-hud-wrong-way" class="z-banner z-banner-wrong hidden" aria-live="polite">⚠️ WRONG WAY! TURN AROUND! ⚠️</div>
+      <div id="z-hud-final-lap" class="z-banner z-banner-lap hidden" aria-live="polite">🏁 FINAL LAP! 🏁</div>
 
       <!-- In-race Pause Menu -->
-      <div id="z-pause-modal" class="z-modal hidden">
+      <div id="z-pause-modal" class="z-modal hidden" role="dialog" aria-modal="true">
         <div class="z-modal-card z-pause-card">
           <h2 style="font-size: 20px; font-weight: 800; color: #76fff0; margin: 0 0 4px 0;">⏸️ GARA IN PAUSA</h2>
           <p style="font-size: 12px; color: #94a3b8; margin: 0 0 12px 0;">Zephyr Reef Grand Prix</p>
@@ -1362,7 +1283,7 @@
       </div>
 
       <!-- Quick Chat Modal -->
-      <div id="z-chat-modal" class="z-modal hidden">
+      <div id="z-chat-modal" class="z-modal hidden" role="dialog" aria-modal="true">
         <div class="z-modal-card z-chat-card">
           <h2 style="font-size: 18px; font-weight: 800; color: #76fff0; margin: 0 0 8px 0;">💬 CHAT RAPIDA</h2>
           <div class="z-chat-grid">
@@ -1378,7 +1299,7 @@
       </div>
 
       <!-- Settings Modal -->
-      <div id="z-settings-modal" class="z-modal hidden">
+      <div id="z-settings-modal" class="z-modal hidden" role="dialog" aria-modal="true">
         <div class="z-modal-card z-settings-card">
           <h2 style="font-size: 20px; font-weight: 800; color: #76fff0; margin: 0 0 10px 0; text-align: center;">⚙️ OPZIONI GIOCO</h2>
           <div class="z-settings-grid">
@@ -1423,7 +1344,7 @@
       </div>
 
       <!-- Track Selector Modal -->
-      <div id="z-track-modal" class="z-modal hidden">
+      <div id="z-track-modal" class="z-modal hidden" role="dialog" aria-modal="true">
         <div class="z-modal-card z-track-card">
           <h2>SCEGLI CIRCUITO ZEPHYR REEF</h2>
           <p>Seleziona il tracciato con guardrail protettivo continuo (Zero cadute nel vuoto):</p>
@@ -1650,7 +1571,7 @@
       </div>
 
       <!-- Multiplayer Private Room Modal -->
-      <div id="z-multiplayer-modal" class="z-modal hidden">
+      <div id="z-multiplayer-modal" class="z-modal hidden" role="dialog" aria-modal="true">
         <div class="z-modal-card z-mp-card">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <h2 style="font-size: 18px; font-weight: 800; color: #76fff0; margin: 0; display: flex; align-items: center; gap: 8px;">
@@ -1823,7 +1744,7 @@
       </div>
 
       <!-- 5-Second Synchronized Pre-Race Countdown / Loading Overlay -->
-      <div id="z-mp-countdown-overlay" class="hidden" style="position: fixed; inset: 0; background: radial-gradient(circle at center, rgba(8, 26, 36, 0.97) 0%, rgba(2, 8, 14, 0.99) 100%); z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); text-align: center; padding: 20px;">
+      <div id="z-mp-countdown-overlay" class="hidden" style="position: fixed; inset: 0; background: radial-gradient(circle at center, rgba(8, 26, 36, 0.97) 0%, rgba(2, 8, 14, 0.99) 100%); z-index: 100001; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); text-align: center; padding: 20px;">
         <div style="font-size: 13px; font-weight: 900; letter-spacing: 0.2em; color: #76fff0; text-transform: uppercase; margin-bottom: 6px;">
           TUTTI I PILOTI CONFERMATI!
         </div>
@@ -1909,25 +1830,92 @@
           }
         };
 
+        // HTML escape helper: ALL remote data must pass through esc() before touching innerHTML
+        const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+        // Safe storage helpers: private mode / WebView quota errors must never crash the shell
+        const zsGet = (k, session) => {
+          try { return (session ? window.sessionStorage : window.localStorage).getItem(k); } catch (e) { return null; }
+        };
+        const zsSet = (k, v, session) => {
+          try { (session ? window.sessionStorage : window.localStorage).setItem(k, v); } catch (e) {}
+        };
+        const zsDel = (k, session) => {
+          try { (session ? window.sessionStorage : window.localStorage).removeItem(k); } catch (e) {}
+        };
+        const zsParse = (k, fallback, session) => {
+          try {
+            const v = (session ? window.sessionStorage : window.localStorage).getItem(k);
+            return v ? JSON.parse(v) : fallback;
+          } catch (e) { return fallback; }
+        };
+
+        // Unified toast: prefers the engine toast, falls back to the shell toast element
+        const showToast = (msg, secs = 2.5) => {
+          if (window.__zephyr?.ui?.toast) {
+            window.__zephyr.ui.toast(msg, secs);
+            return;
+          }
+          const toastEl = document.getElementById('z-toast-msg');
+          if (toastEl) {
+            toastEl.textContent = msg;
+            toastEl.classList.add('show');
+            setTimeout(() => toastEl.classList.remove('show'), secs * 1000);
+          }
+        };
+
         // Multi-touch & Anti-sticky button management
         const activeKeys = new Set();
+
+        // Correct key/keyCode metadata for synthetic KeyboardEvents (the engine reads key + keyCode)
+        const CODE_META = {
+          KeyW: { key: 'w', keyCode: 87 },
+          KeyA: { key: 'a', keyCode: 65 },
+          KeyS: { key: 's', keyCode: 83 },
+          KeyD: { key: 'd', keyCode: 68 },
+          KeyE: { key: 'e', keyCode: 69 },
+          KeyP: { key: 'p', keyCode: 80 },
+          KeyC: { key: 'c', keyCode: 67 },
+          KeyQ: { key: 'q', keyCode: 81 },
+          ArrowUp: { key: 'ArrowUp', keyCode: 38 },
+          ArrowDown: { key: 'ArrowDown', keyCode: 40 },
+          ArrowLeft: { key: 'ArrowLeft', keyCode: 37 },
+          ArrowRight: { key: 'ArrowRight', keyCode: 39 },
+          Space: { key: ' ', keyCode: 32 },
+          ShiftLeft: { key: 'Shift', keyCode: 16 }
+        };
+        const keyMetaFor = (code) => {
+          if (CODE_META[code]) return CODE_META[code];
+          if (code.indexOf('Key') === 0 && code.length === 4) return { key: code.slice(3).toLowerCase(), keyCode: code.charCodeAt(3) };
+          return { key: code, keyCode: 0 };
+        };
+
+        // Track REAL (trusted) key state: never stack a synthetic event on top of a physically held key
+        const physicalKeys = new Set();
+        window.addEventListener('keydown', (e) => { if (e.isTrusted) physicalKeys.add(e.code); }, true);
+        window.addEventListener('keyup', (e) => { if (e.isTrusted) physicalKeys.delete(e.code); }, true);
+
         const sendKey = (code, isDown) => {
           if (isDown) {
+            if (physicalKeys.has(code)) return;
             if (!activeKeys.has(code)) {
               activeKeys.add(code);
-              window.dispatchEvent(new KeyboardEvent('keydown', { code, key: code, bubbles: true }));
+              const m = keyMetaFor(code);
+              window.dispatchEvent(new KeyboardEvent('keydown', { code, key: m.key, keyCode: m.keyCode, bubbles: true, cancelable: true }));
             }
           } else {
             if (activeKeys.has(code)) {
               activeKeys.delete(code);
-              window.dispatchEvent(new KeyboardEvent('keyup', { code, key: code, bubbles: true }));
+              const m = keyMetaFor(code);
+              window.dispatchEvent(new KeyboardEvent('keyup', { code, key: m.key, keyCode: m.keyCode, bubbles: true, cancelable: true }));
             }
           }
         };
 
         const clearAllInputs = () => {
           for (const code of activeKeys) {
-            window.dispatchEvent(new KeyboardEvent('keyup', { code, key: code, bubbles: true }));
+            const m = keyMetaFor(code);
+            window.dispatchEvent(new KeyboardEvent('keyup', { code, key: m.key, keyCode: m.keyCode, bubbles: true, cancelable: true }));
           }
           activeKeys.clear();
           document.querySelectorAll('.z-btn.active').forEach(b => b.classList.remove('active'));
@@ -2000,6 +1988,8 @@
         // HUD, Auto-Recovery, Adaptive Touch Layer & Lap Monitor
         let stuckTime = 0;
         let lastLap = 1;
+        let raceEndHandled = false;
+        let tickIdleDone = false;
         const steerGroup = document.getElementById('z-touch-steer-group');
         const pedalsGroup = document.getElementById('z-touch-pedals-group');
         const wrongWayEl = document.getElementById('z-hud-wrong-way');
@@ -2031,9 +2021,22 @@
             window.addEventListener('touchstart', () => { window.__touchActive = true; }, { passive: true });
           }
 
-          // Toggle touch controls visibility depending on game mode AND touch device capability
+          // Idle early-out: outside a race only one hidden pass is needed (perf on title/menus)
+          if (!isRacing) {
+            if (!tickIdleDone) {
+              tickIdleDone = true;
+              if (steerGroup) steerGroup.style.display = 'none';
+              if (pedalsGroup) pedalsGroup.style.display = 'none';
+              const emoteBarEl = document.getElementById('z-emote-bar');
+              if (emoteBarEl) emoteBarEl.classList.add('hidden');
+            }
+            return;
+          }
+          tickIdleDone = false;
+
+          // Toggle touch controls visibility depending on touch capability (racing)
           if (steerGroup && pedalsGroup) {
-            if (isRacing && window.__touchActive) {
+            if (window.__touchActive) {
               steerGroup.style.display = 'flex';
               pedalsGroup.style.display = 'flex';
             } else {
@@ -2044,7 +2047,7 @@
 
           const emoteBarEl = document.getElementById('z-emote-bar');
           if (emoteBarEl) {
-            if (isRacing && window.__multiplayerManager && window.__multiplayerManager.state === 'RACING') {
+            if (window.__multiplayerManager && window.__multiplayerManager.state === 'RACING') {
               emoteBarEl.classList.remove('hidden');
             } else {
               emoteBarEl.classList.add('hidden');
@@ -2200,9 +2203,14 @@
               }
             }
 
-            // Final Lap banner
-            if (player.lap === 3 && lastLap === 2) {
-              lastLap = 3;
+            // Final Lap banner (any configured lap count; the racer exposes the current lap
+            // via displayLap()/progress.lap — player.lap does not exist on the engine racer)
+            const totalLaps = (director.config && parseInt(director.config.laps, 10)) || 3;
+            const curLap = (typeof player.displayLap === 'function')
+              ? player.displayLap(totalLaps)
+              : Math.max(1, player.progress?.lap || 0);
+            if (curLap === totalLaps && lastLap < totalLaps) {
+              lastLap = totalLaps;
               if (finalLapEl) {
                 finalLapEl.classList.remove('hidden');
                 haptic(50);
@@ -2210,23 +2218,23 @@
               }
             }
 
-            // Save track record & progression if player finishes
-            if (player.progress && player.progress.finished && player.progress.finishTime > 0) {
-              const curTrack = localStorage.getItem('zephyr_track') || '0';
+            // Save track record & progression if player finishes (one-shot latch: this poll
+            // keeps ticking after the finish, so writes + unlock toast must fire once)
+            if (!raceEndHandled && player.progress && player.progress.finished && player.progress.finishTime > 0) {
+              raceEndHandled = true;
+              const curTrack = zsGet('zephyr_track') || '0';
               const curIdx = parseInt(curTrack, 10);
-              const oldRecord = parseFloat(localStorage.getItem('zephyr_record_' + curTrack) || '9999');
+              const oldRecord = parseFloat(zsGet('zephyr_record_' + curTrack) || '9999');
               if (player.progress.finishTime < oldRecord) {
-                localStorage.setItem('zephyr_record_' + curTrack, player.progress.finishTime.toFixed(2));
+                zsSet('zephyr_record_' + curTrack, player.progress.finishTime.toFixed(2));
               }
               const rank = player.progress.finishRank || player.rank || 1;
               if (rank === 1) {
-                localStorage.setItem('zephyr_won_track_' + curIdx, '1');
-                const curMax = parseInt(localStorage.getItem('zephyr_max_unlocked_track') || '0', 10);
+                zsSet('zephyr_won_track_' + curIdx, '1');
+                const curMax = parseInt(zsGet('zephyr_max_unlocked_track') || '0', 10);
                 if (curIdx >= curMax && curIdx < 23) {
-                  localStorage.setItem('zephyr_max_unlocked_track', String(curIdx + 1));
-                  if (window.__zephyr?.ui?.toast) {
-                    window.__zephyr.ui.toast(`🎉 VITTORIA 1° POSTO! Pista ${curIdx + 2} Sbloccata!`, 4.0);
-                  }
+                  zsSet('zephyr_max_unlocked_track', String(curIdx + 1));
+                  showToast(`🎉 VITTORIA 1° POSTO! Pista ${curIdx + 2} Sbloccata!`, 4.0);
                 }
               }
             }
@@ -2239,7 +2247,9 @@
         const closeBtn = document.getElementById('z-modal-close');
 
         const getUnlockedMax = () => {
-          const v = parseInt(localStorage.getItem('zephyr_max_unlocked_track') || '0', 10);
+          // Keep the direct (try/catch-guarded) read: progression source of truth for the engine
+          let v = 0;
+          try { v = parseInt(localStorage.getItem('zephyr_max_unlocked_track') || '0', 10); } catch (e) { v = 0; }
           return isNaN(v) ? 0 : Math.max(0, Math.min(23, v));
         };
 
@@ -2249,7 +2259,7 @@
             const item = document.querySelector(`.z-track-item[data-index="${i}"]`);
             const el = document.getElementById('z-record-' + i);
             const isUnlocked = i <= maxUnlocked;
-            const isWon = localStorage.getItem('zephyr_won_track_' + i) === '1';
+            const isWon = zsGet('zephyr_won_track_' + i) === '1';
 
             if (item) {
               item.classList.toggle('locked', !isUnlocked);
@@ -2276,7 +2286,7 @@
             }
 
             if (el) {
-              const rec = localStorage.getItem('zephyr_record_' + i);
+              const rec = zsGet('zephyr_record_' + i);
               if (rec) {
                 const sec = parseFloat(rec);
                 const m = Math.floor(sec / 60);
@@ -2307,10 +2317,10 @@
         }
 
         const maxInit = getUnlockedMax();
-        let curTrack = localStorage.getItem('zephyr_track') || '0';
+        let curTrack = zsGet('zephyr_track') || '0';
         if (parseInt(curTrack, 10) > maxInit) {
           curTrack = '0';
-          localStorage.setItem('zephyr_track', '0');
+          zsSet('zephyr_track', '0');
         }
 
         document.querySelectorAll('.z-track-item').forEach(item => {
@@ -2334,7 +2344,9 @@
               return;
             }
             haptic(25);
-            localStorage.setItem('zephyr_track', item.dataset.index);
+            lastLap = 1;
+            raceEndHandled = false;
+            zsSet('zephyr_track', item.dataset.index);
             if (window.__zephyr && typeof window.__zephyr.loadTrack === 'function') {
               window.__zephyr.loadTrack(trackIdx);
               document.querySelectorAll('.z-track-item').forEach(el => el.classList.toggle('active', el.dataset.index === item.dataset.index));
@@ -2371,6 +2383,8 @@
 
         document.getElementById('z-pause-restart')?.addEventListener('click', () => {
           pauseModal?.classList.add('hidden');
+          lastLap = 1;
+          raceEndHandled = false;
           if (window.__zephyr) {
             window.__zephyr.restartRace();
             window.__zephyr.setPaused(false);
@@ -2389,6 +2403,8 @@
 
         document.getElementById('z-pause-title')?.addEventListener('click', () => {
           pauseModal?.classList.add('hidden');
+          lastLap = 1;
+          raceEndHandled = false;
           if (window.__zephyr) {
             window.__zephyr.quitToTitle();
             window.__zephyr.setPaused(false);
@@ -2435,21 +2451,18 @@
         const settingsClose = document.getElementById('z-settings-close');
         const optAutogas = document.getElementById('z-opt-autogas');
         const optGyro = document.getElementById('z-opt-gyro');
-        const optBtnSize = document.getElementById('z-opt-btnsize');
-        const optSpeedClass = document.getElementById('z-opt-speedclass');
-        const optFps = document.getElementById('z-opt-fps');
 
         if (optAutogas) {
-          optAutogas.checked = localStorage.getItem('zephyr_opt_autogas') === '1';
+          optAutogas.checked = zsGet('zephyr_opt_autogas') === '1';
           window.__ZEPHYR_AUTOGAS = optAutogas.checked;
           optAutogas.addEventListener('change', () => {
             window.__ZEPHYR_AUTOGAS = optAutogas.checked;
-            localStorage.setItem('zephyr_opt_autogas', optAutogas.checked ? '1' : '0');
+            zsSet('zephyr_opt_autogas', optAutogas.checked ? '1' : '0');
           });
         }
 
         // 2 Smartphone Control Modes: Tasti Normali (buttons) & Giroscopio Calibrato (gyro)
-        let currentControlMode = localStorage.getItem('zephyr_control_mode') || 'buttons';
+        let currentControlMode = zsGet('zephyr_control_mode') || 'buttons';
         if (currentControlMode !== 'gyro') currentControlMode = 'buttons';
         window.__ZEPHYR_CONTROL_MODE = currentControlMode;
 
@@ -2458,6 +2471,10 @@
         const gyroHud = document.getElementById('z-gyro-hud');
         const gyroBubble = document.getElementById('z-gyro-bubble');
         const modePills = document.querySelectorAll('.z-mode-pill');
+
+        // Declared before setControlMode: it is invoked at load with a restored gyro mode
+        let currentGyroSteer = 0;
+        let lastOrientationTs = 0;
 
         const requestGyroPermissionIfNeeded = async () => {
           if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
@@ -2472,6 +2489,30 @@
           return true;
         };
 
+        // iOS: gyro mode restored from settings at load cannot show the permission prompt yet —
+        // arm a one-time gesture listener that requests it on the first user interaction
+        const armGyroPermissionOnFirstGesture = () => {
+          if (typeof DeviceOrientationEvent === 'undefined' || typeof DeviceOrientationEvent.requestPermission !== 'function') return;
+          if (window.__zephyrGyroArmTick) return;
+          window.__zephyrGyroArmTick = true;
+          const onFirstGesture = async () => {
+            window.removeEventListener('touchend', onFirstGesture);
+            window.removeEventListener('click', onFirstGesture);
+            const granted = await requestGyroPermissionIfNeeded();
+            if (granted) {
+              // Permission granted: the deviceorientation listener below is already attached,
+              // it starts receiving events right away (gyro re-hooked)
+              currentGyroSteer = 0;
+              window.__customSteerAxis = 0;
+            } else {
+              showToast('⚠️ Permesso Giroscopio non abilitato', 2.5);
+              if (currentControlMode === 'gyro') setControlMode('buttons', false);
+            }
+          };
+          window.addEventListener('touchend', onFirstGesture, { once: true });
+          window.addEventListener('click', onFirstGesture, { once: true });
+        };
+
         const setControlMode = async (mode, userTriggered = false) => {
           if (mode !== 'gyro') mode = 'buttons';
           if (mode === 'gyro' && userTriggered) {
@@ -2483,10 +2524,13 @@
               mode = 'buttons';
             }
           }
+          if (mode === 'gyro' && !userTriggered) {
+            armGyroPermissionOnFirstGesture();
+          }
 
           currentControlMode = mode;
           window.__ZEPHYR_CONTROL_MODE = mode;
-          localStorage.setItem('zephyr_control_mode', mode);
+          zsSet('zephyr_control_mode', mode);
 
           // Update HUD quick button (toggle directly between TASTI and GIRO)
           if (btnCtrlMode) {
@@ -2546,7 +2590,6 @@
         setControlMode(currentControlMode, false);
 
         // Gyroscope DeviceOrientation Logic with Best-in-Class Pro Ergonomics (Mario Kart Tour / Asphalt Standard)
-        let currentGyroSteer = 0;
         if (typeof window !== 'undefined' && window.DeviceOrientationEvent) {
           window.addEventListener('deviceorientation', (e) => {
             if (currentControlMode !== 'gyro') return;
@@ -2579,8 +2622,12 @@
               target = sign * Math.pow(normalized, 1.1);
             }
 
-            // Snappy low-latency filter (alpha = 0.65) for instant zero-latency steering with smooth transitions
-            currentGyroSteer = currentGyroSteer * 0.35 + target * 0.65;
+            // Snappy low-latency filter: base alpha = 0.65 @ 60Hz, scaled by real elapsed time
+            const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+            const dtMs = lastOrientationTs > 0 ? Math.min(1000, Math.max(0, now - lastOrientationTs)) : 16.7;
+            lastOrientationTs = now;
+            const alpha = 1 - Math.pow(1 - 0.65, dtMs / 16.7);
+            currentGyroSteer = currentGyroSteer * (1 - alpha) + target * alpha;
             if (Math.abs(currentGyroSteer) < 0.008 && target === 0) currentGyroSteer = 0;
             window.__customSteerAxis = Math.max(-1, Math.min(1, currentGyroSteer));
 
@@ -2805,14 +2852,14 @@
                   <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${isMe ? 'rgba(118, 255, 240, 0.12)' : 'rgba(255,255,255,0.03)'}; border-radius: 8px; border: 1px solid ${isMe ? '#76fff0' : 'rgba(255,255,255,0.06)'};">
                     <div style="display: flex; align-items: center; gap: 8px;">
                       <span style="font-size: 14px;">${p.isHost ? '👑' : '🏎️'}</span>
-                      <span style="font-size: 13px; font-weight: 800; color: ${isMe ? '#ffc857' : '#ffffff'};">${p.name} ${isMe ? '(Tu)' : ''}</span>
-                      <span style="font-size: 11px; padding: 2px 6px; border-radius: 6px; background: rgba(255,255,255,0.08); color: #76fff0;">${kInfo.icon} ${kInfo.label}</span>
+                      <span style="font-size: 13px; font-weight: 800; color: ${isMe ? '#ffc857' : '#ffffff'};">${esc(p.name)} ${isMe ? '(Tu)' : ''}</span>
+                      <span style="font-size: 11px; padding: 2px 6px; border-radius: 6px; background: rgba(255,255,255,0.08); color: #76fff0;">${kInfo.icon} ${esc(kInfo.label)}</span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
                       ${readyBadge}
                       <div style="display: flex; align-items: center; gap: 4px;">
                         <span style="display:inline-block; width: 6px; height: 6px; border-radius: 50%; background: ${pingColor};"></span>
-                        <span style="font-size: 11px; font-family: monospace; color: #94a3b8;">${p.ping || 30}ms</span>
+                        <span style="font-size: 11px; font-family: monospace; color: #94a3b8;">${esc(p.ping || 30)}ms</span>
                       </div>
                     </div>
                   </div>
@@ -2825,12 +2872,12 @@
               if (guestInfoEl) {
                 const curRoom = lobby.roomCode || mp.roomCode || '';
                 const tName = (window.__ZEPHYR_TRACKS && window.__ZEPHYR_TRACKS[lobby.trackIndex]?.name) || 'Circuito';
-                guestInfoEl.innerHTML = `Stanza: <b style="color: #ffc857; font-family: monospace;">${curRoom}</b> • Circuito: <b>${tName}</b> (${lobby.laps} giri)<br>In attesa che l'Host avvii la gara...`;
+                guestInfoEl.innerHTML = `Stanza: <b style="color: #ffc857; font-family: monospace;">${esc(curRoom)}</b> • Circuito: <b>${esc(tName)}</b> (${esc(lobby.laps)} giri)<br>In attesa che l'Host avvii la gara...`;
               }
               if (guestTracksListEl) {
                 const tracks = (lobby.playlistTracks && lobby.playlistTracks.length > 0) ? lobby.playlistTracks : (mp.playlistTracks || [lobby.trackIndex]);
                 guestTracksListEl.innerHTML = tracks.map((tId, idx) => {
-                  return `<div><span style="opacity: 0.8;">Gara ${idx + 1}:</span> <b>${getTrackName(tId)}</b></div>`;
+                  return `<div><span style="opacity: 0.8;">Gara ${idx + 1}:</span> <b>${esc(getTrackName(tId))}</b></div>`;
                 }).join('');
               }
 
@@ -2972,6 +3019,8 @@
             };
 
             mp.onRaceStart = (data) => {
+              lastLap = 1;
+              raceEndHandled = false;
               if (tourneyModal) {
                 tourneyModal.style.display = 'none';
                 tourneyModal.classList.add('hidden');
@@ -2980,14 +3029,14 @@
                 mpCountdownOverlay.style.display = 'none';
                 mpCountdownOverlay.classList.add('hidden');
               }
-              const curTrack = parseInt(localStorage.getItem('zephyr_track') || '0', 10);
+              const curTrack = parseInt(zsGet('zephyr_track') || '0', 10);
               if (curTrack !== data.trackIndex) {
                 if (window.__zephyr?.loadTrack) {
                   window.__zephyr.loadTrack(data.trackIndex);
                 } else {
                   // Fallback: reload with correct track spline & theme
-                  localStorage.setItem('zephyr_track', String(data.trackIndex));
-                  sessionStorage.setItem('zephyr_mp_autojoin', JSON.stringify({
+                  zsSet('zephyr_track', String(data.trackIndex));
+                  zsSet('zephyr_mp_autojoin', JSON.stringify({
                     roomCode: mp.roomCode,
                     isHost: mp.isHost,
                     playerName: mp.playerName,
@@ -3060,7 +3109,7 @@
               const p = mp.players.find(pl => pl.slot === data.slot);
               const pName = p ? p.name : `Pilota ${data.slot + 1}`;
               if (window.__zephyr?.ui?.toast) {
-                window.__zephyr.ui.toast(`🏁 ${pName} ha tagliato il traguardo! (#${data.rank})`, 3.5);
+                window.__zephyr.ui.toast(`🏁 ${esc(pName)} ha tagliato il traguardo! (#${data.rank})`, 3.5);
               }
               if (window.__zephyr?.director?.racers?.[data.slot]) {
                 const r = window.__zephyr.director.racers[data.slot];
@@ -3073,6 +3122,8 @@
 
             mp.onRematch = (data) => {
               mp.state = 'RACING';
+              lastLap = 1;
+              raceEndHandled = false;
               mpModal?.classList.add('hidden');
               if (window.__zephyr) {
                 window.__zephyr.startMultiplayerRace(data.trackIndex ?? mp.trackIndex, mp.laps, mp.players, mp.mySlot);
@@ -3119,10 +3170,10 @@
                     <tr style="background: ${rowBg}; ${borderStyle} border-bottom: 1px solid rgba(255,255,255,0.06);">
                       <td style="padding: 10px 12px; font-weight: 800; font-size: 14px; color: ${i === 0 ? '#ffc857' : i === 1 ? '#e2e8f0' : i === 2 ? '#fb923c' : '#94a3b8'};">${medal}</td>
                       <td style="padding: 10px 12px; font-weight: 700; color: #ffffff;">
-                        <span style="margin-right: 6px;">${kartIcon}</span>${st.name} ${isMe ? '<span style="font-size: 10px; color: #76fff0; font-weight: 800;">(TU)</span>' : ''}
+                        <span style="margin-right: 6px;">${kartIcon}</span>${esc(st.name)} ${isMe ? '<span style="font-size: 10px; color: #76fff0; font-weight: 800;">(TU)</span>' : ''}
                       </td>
-                      <td style="padding: 10px 12px; text-align: center; color: #34d399; font-weight: 800;">${racePts}</td>
-                      <td style="padding: 10px 12px; text-align: right; font-weight: 900; font-size: 15px; color: #ffc857;">${st.totalPoints} PTS</td>
+                      <td style="padding: 10px 12px; text-align: center; color: #34d399; font-weight: 800;">${esc(racePts)}</td>
+                      <td style="padding: 10px 12px; text-align: right; font-weight: 900; font-size: 15px; color: #ffc857;">${esc(st.totalPoints)} PTS</td>
                     </tr>
                   `;
                 }).join('');
@@ -3168,7 +3219,7 @@
             mp.onTournamentComplete = (data) => {
               if (window.__zephyr?.ui?.toast) {
                 const winner = data.standings?.[0]?.name || 'Campione';
-                window.__zephyr.ui.toast(`🏆 Torneo completato! Vincitore: ${winner}!`, 4.5);
+                window.__zephyr.ui.toast(`🏆 Torneo completato! Vincitore: ${esc(winner)}!`, 4.5);
               }
             };
 
@@ -3245,8 +3296,10 @@
             hostView?.classList.remove('hidden');
             guestView?.classList.add('hidden');
             haptic(15);
-            if (mp && mp.state !== 'HOST_LOBBY') {
+            if (mp && mp.state === 'IDLE') {
               mp.createRoom();
+            } else if (mp && mp.state !== 'HOST_LOBBY') {
+              showToast('Sei connesso a una stanza: esci prima di crearne una nuova', 2.5);
             }
           });
 
@@ -3316,7 +3369,7 @@
             if (window.__zephyr?.ui?.toast) window.__zephyr.ui.toast(`Codice copiato: ${mp.roomCode}`, 2.0);
             haptic(25);
           }).catch(() => {
-            prompt('Copia il codice della stanza:', mp.roomCode);
+            showToast(`Copia manuale: ${mp.roomCode}`, 4.0);
           });
         });
 
@@ -3327,7 +3380,7 @@
             if (window.__zephyr?.ui?.toast) window.__zephyr.ui.toast(`Link invito copiato negli appunti! 🔗`, 2.5);
             haptic(25);
           }).catch(() => {
-            prompt('Copia il link d\'invito per i tuoi amici:', link);
+            showToast(`Copia manuale link: ${link}`, 4.5);
           });
         });
 
@@ -3369,6 +3422,10 @@
             return;
           }
           initMultiplayer();
+          if (!mp) {
+            showToast('⚠️ Multiplayer non disponibile: ricarica la pagina', 2.5);
+            return;
+          }
           if (guestKartSelect) mp.setSelectedKart(guestKartSelect.value);
           haptic(25);
 
@@ -3387,7 +3444,7 @@
             guestWaitingBox.classList.remove('hidden');
           }
           if (guestInfoEl) {
-            guestInfoEl.innerHTML = `⏳ Connessione alla stanza <b style="color: #ffc857; font-family: monospace;">${code}</b> in corso...`;
+            guestInfoEl.innerHTML = `⏳ Connessione alla stanza <b style="color: #ffc857; font-family: monospace;">${esc(code)}</b> in corso...`;
           }
 
           mp.joinRoom(code, guestNameInput?.value);
@@ -3435,6 +3492,9 @@
 
         // URL Hash & Session Storage Auto-Join
         const checkAutoJoin = () => {
+          // One-shot guard: registered twice (DOMContentLoaded + timeout) — must join only once
+          if (window.__zephyrAutojoinRan) return;
+          window.__zephyrAutojoinRan = true;
           // Check hash #room=ZEPH-XXXX
           const hash = window.location.hash;
           let roomParam = null;
@@ -3444,15 +3504,15 @@
           }
 
           // Check session storage for reload continuation
-          const savedSession = sessionStorage.getItem('zephyr_mp_autojoin');
+          const savedSession = zsGet('zephyr_mp_autojoin', true);
           if (savedSession) {
             try {
-              sessionStorage.removeItem('zephyr_mp_autojoin');
+              zsDel('zephyr_mp_autojoin', true);
               const session = JSON.parse(savedSession);
               initMultiplayer();
               if (session.action === 'start_race') {
                 setTimeout(() => {
-                  if (window.__zephyr) {
+                  if (window.__zephyr && mp) {
                     mp.roomCode = session.roomCode;
                     mp.isHost = session.isHost;
                     mp.players = session.players;
