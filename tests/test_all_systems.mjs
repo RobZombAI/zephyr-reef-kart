@@ -2251,7 +2251,7 @@ describe('=== UNIT & PROCESS TESTS: MINE IMPACT & COLLISION MECHANICS ===', () =
     assert.ok(bundle.includes('n.armTimer>0&&(n.armTimer-=t);'), 'armTimer decrements without continue blocking rivals');
     assert.ok(bundle.includes('i===n.owner&&n.armTimer>0'), 'owner immunity is restricted strictly to armTimer window');
     assert.ok(bundle.includes('r*r+o*o<11.5&&Math.abs(a)<3.4'), 'expanded mine collision radius (3.39m)');
-    assert.ok(bundle.includes('i.kart.physics.knockback(kx*7,kz*7,11,7.5)'), 'knockback pop applied to kart on mine hit');
+    assert.ok(bundle.includes('i.kart.physics.knockback(kx*6,kz*6,9,5.5)'), 'knockback pop applied to kart on mine hit (contained, stays in frame)');
     assert.ok(bundle.includes('this.onHit?.(i,"mine")'), 'explosion event triggered unconditionally');
     assert.ok(bundle.includes('break}}}}killBolt(t)'), 'closing braces balanced in updateBolts and class mv');
   });
@@ -4856,7 +4856,7 @@ describe('=== UNIT & PROCESS TESTS: SYSTEMIC ITEMS & POWERS AUDIT & REPAIR ===',
 
   it('4. Quantum Glitch shrinks racer, slows speed, and timer properly decrements', () => {
     assert.ok(bundle.includes('r.glitchTimer=5.0;'), 'Glitch sets 5-second timer');
-    assert.ok(bundle.includes('r.kart?.object?.scale?.setScalar?.(0.55);'), 'Rivals scaled down to 55%');
+    assert.ok(bundle.includes('r.kart?.object?.scale?.setScalar?.(r.isPlayer?0.78:0.55);'), 'Rivals scaled to 55%, player to softer 78% (character stays visible)');
     assert.ok(bundle.includes('r1.glitchTimer-=t;'), 'Glitch timer decrements by dt');
     assert.ok(bundle.includes('r1.glitchTimer<=0'), 'Glitch expiration check present');
     assert.ok(bundle.includes('r1.kart.object.scale.setScalar(1.0)'), 'Scale restored to 1.0 upon expiration');
@@ -4893,7 +4893,7 @@ describe('=== UNIT & PROCESS TESTS: SYSTEMIC ITEMS & POWERS AUDIT & REPAIR ===',
 
   it('7. Caltrop mines trigger within 3.39m (r2 < 11.5) and impart knockback', () => {
     assert.ok(bundle.includes('r*r+o*o<11.5&&Math.abs(a)<3.4'), 'Mine trigger radius is 3.39m');
-    assert.ok(bundle.includes('i.kart.physics.knockback(kx*7,kz*7,11,7.5)'), 'Mine knockback pop applied');
+    assert.ok(bundle.includes('i.kart.physics.knockback(kx*6,kz*6,9,5.5)'), 'Mine knockback pop applied (contained)');
   });
 });
 

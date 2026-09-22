@@ -3152,11 +3152,12 @@
                   break;
                 case 'glitch': {
                   // Effetto fedele al motore: tutti i rivali entro 20m dietro il
-                  // lanciatore (e chiunque davanti) si rimpiccioliscono e rallentano
+                  // lanciatore (e chiunque davanti) si rimpiccioliscono e rallentano.
+                  // Sul giocatore lo shrink e' piu' leggero (0.78) per restare leggibile.
                   for (const r of director.racers) {
                     if (r !== racer && r.progress.distance >= racer.progress.distance - 20) {
                       r.glitchTimer = 5.0;
-                      r.kart?.object?.scale?.setScalar?.(0.55);
+                      r.kart?.object?.scale?.setScalar?.(r.isPlayer ? 0.78 : 0.55);
                       r.state.speed *= 0.65;
                       r.hit(0.8);
                       r.dropCoins();
@@ -3727,20 +3728,37 @@
               background:radial-gradient(ellipse at center,rgba(0,0,0,0) 58%,rgba(0,10,20,0.28) 100%)}
             .z-grain{position:fixed;inset:0;pointer-events:none;z-index:9001;opacity:.05;mix-blend-mode:overlay;
               background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2"/></filter><rect width="180" height="180" filter="url(%23n)" opacity="0.6"/></svg>');
-              background-size:180px 180px}`;
+              background-size:180px 180px}
+            .z-statusfx{position:fixed;top:calc(env(safe-area-inset-top,0px) + 74px);left:50%;transform:translateX(-50%);
+              pointer-events:none;z-index:9500;font-weight:800;font-size:15px;letter-spacing:.5px;display:none;
+              padding:7px 16px;border-radius:10px;background:rgba(8,26,36,.82);backdrop-filter:blur(4px)}
+            .z-statusfx.glitch{display:block;color:#c084fc;border:1px solid #a855f7;text-shadow:0 0 12px rgba(168,85,247,.8)}
+            .z-statusfx.emp{display:block;color:#fca5a5;border:1px solid #ef4444;text-shadow:0 0 12px rgba(239,68,68,.7)}`;
           document.head.appendChild(st);
           const v = document.createElement('div'); v.className = 'z-vignette'; v.id = 'z-vignette';
           const n = document.createElement('div'); n.className = 'z-grain'; n.id = 'z-grain';
-          document.body.append(v, n);
+          const fx = document.createElement('div'); fx.className = 'z-statusfx'; fx.id = 'z-statusfx';
+          document.body.append(v, n, fx);
           const gl = document.getElementById('gl');
           if (gl && (navigator.hardwareConcurrency || 4) >= 6) gl.classList.add('z-light-hw');
+        }
+
+        // indicatore stato negativo sul giocatore (glitch / EMP-mine): chiarezza UX
+        function updateStatusFx() {
+          const fx = document.getElementById('z-statusfx');
+          const d = window.__zephyr?.director;
+          const p = d?.player || d?.racers?.find?.(r => r.isPlayer);
+          if (!fx || !p) return;
+          if (p.glitchTimer > 0) { fx.className = 'z-statusfx glitch'; fx.textContent = '🌐 QUANTUM GLITCH!'; }
+          else if (p.state?.spinTimer > 0 && p.invuln > 0) { fx.className = 'z-statusfx emp'; fx.textContent = '💥 COLPITO DA EMP!'; }
+          else if (fx.className !== 'z-statusfx') fx.className = 'z-statusfx';
         }
 
         let tries = 0;
         const iv = setInterval(() => {
           const z = window.__zephyr;
           if (!z?.scene) { if (++tries > 900) clearInterval(iv); return; }
-          try { installOverlays(); gradeScene(z); gradeKarts(z); } catch (e) { console.warn('[grade]', e); }
+          try { installOverlays(); gradeScene(z); gradeKarts(z); updateStatusFx(); } catch (e) { console.warn('[grade]', e); }
         }, 1200);
       })();
     </script>

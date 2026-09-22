@@ -52,6 +52,16 @@ const PATCHES = [
     'Pool item CTR-style (7 item: turbo, triple_turbo, drone, mine, matrix, glitch, vortex)',
     'lc=["bolt","mine","turbo","blast","shield","vortex","horn","triple_shield"];function dv(s,t,e){const n=$t(t<=1?0:(s-1)/(t-1)),i={bolt:Math.max(1,10-n*4),mine:Math.max(1,12-n*7),turbo:3+n*8,blast:1+n*7,shield:Math.max(1,9-n*6),vortex:1+n*9,horn:2+n*6,triple_shield:Math.max(1,8-n*6)};let r=0;for(const a of lc)r+=i[a]||1;let o=e()*r;for(const a of lc)if(o-=(i[a]||1),o<=0)return a;return"bolt"}',
     'lc=["turbo","triple_turbo","drone","mine","matrix","glitch","vortex"];function dv(s,t,e){const n=$t(t<=1?0:(s-1)/(t-1)),i={turbo:3+n*8,triple_turbo:1+n*4,drone:3+n*3,mine:Math.max(2,4-n*2),vortex:1+n*9,matrix:.6+n*2.4,glitch:.6+n*2.4};let r=0;for(const a of lc)r+=i[a]||1;let o=e()*r;for(const a of lc)if(o-=(i[a]||1),o<=0)return a;return"turbo"}'
+  ],
+  [
+    'Glitch: shrink piu\u2019 leggero sul giocatore (resta visibile, niente "personaggio sparito")',
+    'r.kart?.object?.scale?.setScalar?.(0.55);',
+    'r.kart?.object?.scale?.setScalar?.(r.isPlayer?0.78:0.55);'
+  ],
+  [
+    'Mina: knockback piu\u2019 contenuto (il kart resta inquadrato durante il volo)',
+    'i.kart.physics.knockback(kx*7,kz*7,11,7.5)',
+    'i.kart.physics.knockback(kx*6,kz*6,9,5.5)'
   ]
 ];
 
