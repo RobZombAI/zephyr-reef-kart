@@ -73,6 +73,13 @@ export class MultiplayerManager {
     this.rttSamples = new Map(); // Host: peerId -> ultimo rtt misurato
     this.lastRtt = 0;            // Guest: ultimo rtt misurato verso l'host
 
+    // Sync clock NTP-style (guest): stima di (orologio host - orologio guest) in ms,
+    // presa dal campione con RTT minimo su una finestra scorrevole. Serve perche'
+    // RACE_START_SYNC contiene un timestamp nel dominio Date.now() dell'host: senza
+    // questa stima un dispositivo con l'orologio sfasato partirebbe in ritardo/anticipo.
+    this.clockOffsetSamples = []; // [{ rtt, offset }]
+    this.clockOffset = null;
+
     this.initDOM();
   }
 
@@ -442,30 +449,54 @@ export class MultiplayerManager {
 
     this.initPeer(guestPeerId, () => {
       this.toast(`Connessione alla stanza ${this.roomCode}...`);
-      const conn = this.peer.connect(hostPeerId, { reliable: true });
-      this.hostConnection = conn;
+      this._joinAttempts = 0;
 
-      conn.on('open', () => {
-        this.toast('Connesso all\'Host! Invio dati pilota...');
-        this.state = 'GUEST_LOBBY';
-        this.notifyLobbyUpdate();
-        this.safeSend(conn, {
-          type: 'JOIN_REQUEST',
-          name: this.playerName,
-          kartId: this.selectedKart
-        }, false);
-      });
+      // Connessione alla stanza con watchdog: se la DataConnection non si apre
+      // entro 5s (drop del signaling, candidato ICE lento, primo tentativo
+      // morto), chiudi e riprova (max 3 tentativi, dentro il timeout UI del join).
+      const attemptJoin = () => {
+        if (this.state !== 'CONNECTING' || !this.peer || this.peer.destroyed) return;
+        if (this._joinWatchdog) clearTimeout(this._joinWatchdog);
 
-      conn.on('data', (data) => this.handleMessage(conn, data));
-      conn.on('close', () => {
-        this.toast('Disconnesso dalla stanza privata');
-        this.leaveRoom();
-      });
-      conn.on('error', (err) => {
-        console.error('Peer connection error:', err);
-        this.toast('Errore di connessione alla stanza');
-        this.leaveRoom();
-      });
+        const conn = this.peer.connect(hostPeerId, { reliable: true });
+        this.hostConnection = conn;
+
+        conn.on('open', () => {
+          if (this._joinWatchdog) { clearTimeout(this._joinWatchdog); this._joinWatchdog = null; }
+          this.toast('Connesso all\'Host! Invio dati pilota...');
+          this.state = 'GUEST_LOBBY';
+          this.notifyLobbyUpdate();
+          this.safeSend(conn, {
+            type: 'JOIN_REQUEST',
+            name: this.playerName,
+            kartId: this.selectedKart
+          }, false);
+        });
+
+        conn.on('data', (data) => this.handleMessage(conn, data));
+        conn.on('close', () => {
+          this.toast('Disconnesso dalla stanza privata');
+          this.leaveRoom();
+        });
+        conn.on('error', (err) => {
+          console.error('Peer connection error:', err);
+          this.toast('Errore di connessione alla stanza');
+          this.leaveRoom();
+        });
+
+        this._joinWatchdog = setTimeout(() => {
+          if (this.state === 'CONNECTING' && !conn.open) {
+            this._joinAttempts = (this._joinAttempts || 0) + 1;
+            console.warn(`[Multiplayer] Join retry #${this._joinAttempts} (DataConnection non aperta in 5s)`);
+            if (this._joinAttempts < 3) {
+              try { conn.close(); } catch (e) {}
+              attemptJoin();
+            }
+          }
+        }, 5000);
+      };
+
+      attemptJoin();
     });
   }
 
@@ -496,11 +527,14 @@ export class MultiplayerManager {
         if (onOpen) onOpen(id);
       });
 
-      // Signaling disconnesso: tenta un singolo reconnect (guard anti-loop)
+      // Signaling disconnesso: durante il join (CONNECTING) il signaling viene
+      // riconnesso a ogni drop (i tentativi restano limitati dal timeout UI del
+      // join): un drop del broker non deve uccidere il tentativo. Negli altri
+      // stati resta il singolo reconnect (guard anti-loop).
       this.peer.on('disconnected', () => {
         console.warn('[Multiplayer] Peer disconnesso dal signaling server.');
-        if (this._peerReconnectAttempted) return;
-        this._peerReconnectAttempted = true;
+        if (this.state !== 'CONNECTING' && this._peerReconnectAttempted) return;
+        if (this.state !== 'CONNECTING') this._peerReconnectAttempted = true;
         try {
           this.peer.reconnect();
         } catch (e) {
@@ -918,9 +952,14 @@ export class MultiplayerManager {
           this.countdownTimer = null;
         }
         this.state = 'RACING';
-        // Compensazione conservativa del RTT: il timestamp host e' stato stampato
-        // circa mezzo RTT prima dell'arrivo (max 150ms)
-        this.syncStartTime = (data.startTime || (Date.now() + 3000)) + Math.min((this.lastRtt || 0) / 2, 150);
+        // Converti il timestamp host nel dominio di clock locale: senza la stima
+        // offset (NTP-style via PING/PONG) un dispositivo con l'orologio sfasato
+        // partirebbe anticipato/ritardato rispetto agli altri. Fallback: la vecchia
+        // euristica rtt/2 finche' non arriva il primo PONG con hostTime.
+        const off = (this.clockOffset != null)
+          ? Math.max(-10000, Math.min(10000, this.clockOffset))
+          : -Math.min((this.lastRtt || 0) / 2, 150);
+        this.syncStartTime = (data.startTime || (Date.now() + 3000)) - off;
         this.trackIndex = data.trackIndex;
         this.laps = data.laps;
         this.players = data.players;
@@ -1074,7 +1113,7 @@ export class MultiplayerManager {
       }
 
       case 'PING': {
-        this.safeSend(conn, { type: 'PONG', t: data.t }, false);
+        this.safeSend(conn, { type: 'PONG', t: data.t, hostTime: Date.now() }, false);
         break;
       }
 
@@ -1084,6 +1123,15 @@ export class MultiplayerManager {
         if (p) p.ping = Math.max(1, rtt);
         this.lastRtt = rtt;
         if (this.isHost && conn?.peer) this.rttSamples.set(conn.peer, rtt);
+        // Stima offset orologio (guest): hostTime e' il Date.now() dell'host alla
+        // creazione del PONG, avvenuta ~rtt/2 fa per ipotesi di simmetria del percorso.
+        if (!this.isHost && typeof data.hostTime === 'number' && Number.isFinite(data.hostTime)) {
+          const sample = { rtt, offset: data.hostTime + rtt / 2 - Date.now() };
+          this.clockOffsetSamples.push(sample);
+          if (this.clockOffsetSamples.length > 10) this.clockOffsetSamples.shift();
+          const best = this.clockOffsetSamples.reduce((a, b) => (b.rtt < a.rtt ? b : a));
+          this.clockOffset = best.offset;
+        }
         // Durante gara/countdown il ping non deve ridisegnare la lobby
         if (this.state !== 'RACING' && this.state !== 'COUNTDOWN') {
           this.notifyLobbyUpdate();
@@ -1753,6 +1801,10 @@ export class MultiplayerManager {
     }
     if (this.pingInterval) clearInterval(this.pingInterval);
     this.pingInterval = null;
+    if (this._joinWatchdog) {
+      clearTimeout(this._joinWatchdog);
+      this._joinWatchdog = null;
+    }
 
     for (const conn of this.connections.values()) {
       try { conn.close(); } catch {}
@@ -1785,6 +1837,8 @@ export class MultiplayerManager {
     this.eventRateLimits.clear();
     this.rttSamples.clear();
     this.lastRtt = 0;
+    this.clockOffsetSamples.length = 0;
+    this.clockOffset = null;
     this.notifyLobbyUpdate();
   }
 

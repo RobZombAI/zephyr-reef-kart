@@ -32,6 +32,16 @@ const PATCHES = [
     'Guest: AI senza step fisico locale',
     'o.step(t,this.adapter);',
     'if(!(window.__multiplayerManager?.isGuestSim?.()&&o.kind==="ai"))o.step(t,this.adapter);'
+  ],
+  [
+    'No auto-pausa durante COUNTDOWN (visibilitychange)',
+    'if(document.hidden){if(window.__multiplayerManager&&window.__multiplayerManager.state==="RACING")return;this.onBlur();',
+    'if(document.hidden){if(window.__multiplayerManager&&(window.__multiplayerManager.state==="RACING"||window.__multiplayerManager.state==="COUNTDOWN"))return;this.onBlur();'
+  ],
+  [
+    'No auto-pausa durante COUNTDOWN (onBlur)',
+    'onBlur(){if(window.__multiplayerManager&&window.__multiplayerManager.state==="RACING")return;this.mode==="race"',
+    'onBlur(){if(window.__multiplayerManager&&(window.__multiplayerManager.state==="RACING"||window.__multiplayerManager.state==="COUNTDOWN"))return;this.mode==="race"'
   ]
 ];
 
