@@ -3803,11 +3803,169 @@
         }
         requestAnimationFrame(holoLoop);
 
+        // ── Character Studio: sembianze potenziate per-carattere ──
+        // Il motore costruisce teste senza volto; qui aggiungiamo occhi espressivi
+        // + un accessorio firma per ogni personaggio (corona, cappello, occhiali,
+        // benda...), agganciati al gruppo "head" cosi' animano con il pilota.
+        // I costruttori three.js vengono raccolti dalla scena viva (no import).
+        const CHARDONE = new WeakSet();
+        let GEO = null; // costruttori harvestati dalla scena
+        const CHARPALETTE = new Map();
+        function harvestGeo(z) {
+          if (GEO) return GEO;
+          GEO = {};
+          const mats = {};
+          z.scene?.traverse(o => {
+            if (o.geometry && !GEO[o.geometry.type]) GEO[o.geometry.type] = o.geometry.constructor;
+            if (o.isMesh && !GEO.mesh) GEO.mesh = o.constructor;
+            if (o.material && !Array.isArray(o.material)) { const t = o.material.type; if (!mats[t]) mats[t] = o.material.constructor; }
+          });
+          GEO.std = mats.MeshStandardMaterial || mats.MeshLambertMaterial || mats.MeshBasicMaterial;
+          GEO.Sphere = GEO.SphereGeometry || GEO.BufferGeometry;
+          GEO.Box = GEO.BoxGeometry || GEO.BufferGeometry;
+          GEO.Cylinder = GEO.CylinderGeometry || GEO.BufferGeometry;
+          GEO.Torus = GEO.TorusGeometry || GEO.SphereGeometry || GEO.BufferGeometry;
+          return GEO;
+        }
+        function pmat(hex, opts = {}) {
+          const key = hex + JSON.stringify(opts);
+          if (!CHARPALETTE.has(key)) {
+            CHARPALETTE.set(key, new GEO.std({ color: hex, roughness: opts.rough ?? 0.35, metalness: opts.metal ?? 0.1, emissive: opts.emissive ?? 0x000000, emissiveIntensity: opts.emissiveIntensity ?? 1 }));
+          }
+          return CHARPALETTE.get(key);
+        }
+        function sph(mat, r, w = 10, h = 8) { return new GEO.mesh(new GEO.Sphere(r, w, h), mat); }
+        function box(mat, x, y, z) { return new GEO.mesh(new GEO.Box(x, y, z), mat); }
+        function cyl(mat, rt, rb, h, seg = 12) { return new GEO.mesh(new GEO.Cylinder(rt, rb, h, seg), mat); }
+        function tor(mat, r, tube, seg = 18) { return new GEO.mesh(new GEO.Torus(r, tube, 8, seg), mat); }
+        function headRadius(head) {
+          let r = 0.5;
+          head.traverse(o => {
+            if (o.isMesh && o.geometry) {
+              if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere();
+              const k = Math.max(o.scale.x, o.scale.y, o.scale.z);
+              r = Math.max(r, o.geometry.boundingSphere.radius * k + o.position.length() * k);
+            }
+          });
+          return Math.min(r, 0.72);
+        }
+        function eyeSet(head, r, opts = {}) {
+          const white = pmat(opts.iris || 0xffffff, { rough: 0.2 });
+          const dark = pmat(opts.pupil || 0x101418, { rough: 0.3 });
+          const ex = r * (opts.spread ?? 0.34), ey = r * (opts.height ?? 0.14), ez = -r * 0.86;
+          for (const side of [-1, 1]) {
+            const w = sph(white, r * 0.155, 10, 8); w.scale.z = 0.5;
+            w.position.set(side * ex, ey, ez);
+            head.add(w);
+            const pupil = sph(dark, r * (opts.pupilR ?? 0.07), 8, 6); pupil.scale.z = 0.5;
+            pupil.position.set(side * ex, ey, ez - r * 0.1);
+            head.add(pupil);
+          }
+        }
+        function buildFace(head, id) {
+          if (!GEO?.Sphere || !GEO.mesh) return;
+          const r = headRadius(head);
+          const add = (mesh, x, y, z, sx = 1, sy = 1, sz = 1, rx = 0, ry = 0, rz = 0) => {
+            mesh.position.set(x, y, z); mesh.scale.set(sx, sy, sz); mesh.rotation.set(rx, ry, rz);
+            mesh.userData.zGraded = true; head.add(mesh); return mesh;
+          };
+          switch (id) {
+            case 'nix': { // lontra: muso, naso, baffi
+              eyeSet(head, r);
+              add(sph(pmat(0xe8b57e, { rough: 0.5 }), r * 0.3, 12, 9), 0, -r * 0.28, -r * 0.72);
+              add(sph(pmat(0x1a1d22, { rough: 0.3 }), r * 0.09, 8, 6), 0, -r * 0.2, -r * 0.98);
+              const whisk = pmat(0xf5efe0, { rough: 0.4 });
+              for (const side of [-1, 1]) for (let k = 0; k < 2; k++) {
+                const w = cyl(whisk, r * 0.008, r * 0.008, r * 0.5, 5);
+                add(w, side * r * 0.55, -r * 0.18 - k * r * 0.1, -r * 0.62, 1, 1, 1, 0, 0, side * (Math.PI / 2 - k * 0.25));
+              }
+              break;
+            }
+            case 'bruno': { // roccia: occhi di lava + sopracciglio ferro
+              eyeSet(head, r, { iris: 0xff7a1a, pupil: 0xffd166, emissive: 0xff7a1a, emissiveIntensity: 1.6, spread: 0.36, height: 0.1 });
+              add(box(pmat(0x4a4d55, { rough: 0.6, metal: 0.35 }), r * 0.95, r * 0.16, r * 0.22), 0, r * 0.42, -r * 0.72);
+              break;
+            }
+            case 'sable': { // notte: occhi ciano luminosi
+              eyeSet(head, r, { iris: 0x7cf9ff, pupil: 0x0b1030, emissive: 0x7cf9ff, emissiveIntensity: 1.4, height: 0.16 });
+              break;
+            }
+            case 'zuzu': { // pastello: occhioni + guance
+              eyeSet(head, r, { spread: 0.38, pupilR: 0.085, height: 0.1 });
+              for (const side of [-1, 1])
+                add(sph(pmat(0xff6fb5, { rough: 0.45 }), r * 0.11, 8, 6), side * r * 0.52, -r * 0.12, -r * 0.6, 1, 0.6, 0.4);
+              break;
+            }
+            case 'rustam': { // meccanico: occhiali da saldatore
+              eyeSet(head, r, { iris: 0x8affd0, pupil: 0x10331f, emissive: 0x8affd0, emissiveIntensity: 0.8, spread: 0.3, height: 0.16 });
+              const gold = pmat(0xffd166, { rough: 0.3, metal: 0.8 });
+              for (const side of [-1, 1])
+                add(tor(gold, r * 0.17, r * 0.035, 14), side * r * 0.3, r * 0.16, -r * 0.88);
+              add(box(pmat(0x35383f, { rough: 0.5, metal: 0.4 }), r * 1.05, r * 0.08, r * 0.06), 0, r * 0.16, r * 0.38);
+              break;
+            }
+            case 'marlow': { // corsaro: berretto da capitano + barba
+              eyeSet(head, r);
+              const navy = pmat(0x22304a, { rough: 0.5 });
+              add(cyl(navy, r * 0.55, r * 0.58, r * 0.28, 14), 0, r * 0.82, 0);
+              add(cyl(navy, r * 0.85, r * 0.85, r * 0.05, 16), 0, r * 0.68, -r * 0.12);
+              add(cyl(pmat(0xffd166, { rough: 0.3, metal: 0.8 }), r * 0.575, r * 0.575, r * 0.07, 14), 0, r * 0.72, 0);
+              add(sph(pmat(0xe8e4da, { rough: 0.6 }), r * 0.34, 10, 8), 0, -r * 0.42, -r * 0.5, 1.25, 0.7, 0.9);
+              break;
+            }
+            case 'princess': { // corona + gemma
+              eyeSet(head, r, { iris: 0xfff1c9, pupil: 0x1a1d22, spread: 0.32 });
+              const gold = pmat(0xffd166, { rough: 0.25, metal: 0.9 });
+              add(tor(gold, r * 0.4, r * 0.055, 18), 0, r * 0.78, 0, 1, 1, 1, Math.PI / 2, 0, 0);
+              for (let k = 0; k < 4; k++) {
+                const a = (k / 4) * Math.PI * 2 + Math.PI / 4;
+                add(box(gold, r * 0.09, r * 0.22, r * 0.09), Math.cos(a) * r * 0.4, r * 0.95, Math.sin(a) * r * 0.4, 1, 1, 1, 0, -a, 0);
+              }
+              add(sph(pmat(0xff4f7b, { rough: 0.2, emissive: 0xff4f7b, emissiveIntensity: 0.35 }), r * 0.07, 8, 6), 0, r * 0.78, -r * 0.4);
+              break;
+            }
+            case 'pirate': { // tricorno + benda + barba
+              eyeSet(head, r);
+              const blk = pmat(0x14161c, { rough: 0.45 });
+              add(sph(blk, r * 0.13, 8, 6), -r * 0.34, r * 0.14, -r * 0.88, 1.25, 0.85, 0.35);
+              add(box(blk, r * 1.02, r * 0.05, r * 0.05), 0, r * 0.22, 0, 1, 1, 1, 0, 0, -0.12);
+              add(cyl(blk, r * 0.6, r * 0.66, r * 0.1, 14), 0, r * 0.86, 0, 1, 1, 1, 0.16, 0, 0);
+              add(sph(blk, r * 0.38, 10, 8), 0, r * 0.95, -r * 0.05, 1.15, 0.5, 1.05);
+              add(sph(pmat(0xe8e4da, { rough: 0.6 }), r * 0.3, 10, 8), 0, -r * 0.4, -r * 0.52, 1.2, 0.75, 0.85);
+              break;
+            }
+            default: // generico: solo occhi
+              eyeSet(head, r);
+          }
+        }
+        function charStudio(z) {
+          const d = z.director;
+          harvestGeo(z);
+          if (!GEO.std || !GEO.mesh) return;
+          // kart del menu (stage): volto visibile in rotazione sul piedistallo
+          const stage = z.stageModel;
+          if (stage && !CHARDONE.has(stage)) {
+            const shead = stage.getObjectByName?.('head');
+            const sid = z.playerSpec?.id || stage.name?.replace?.('kart_', '');
+            if (shead && sid) { CHARDONE.add(stage); try { buildFace(shead, sid); } catch (e) {} }
+          }
+          if (!d?.racers) return;
+          for (const r of d.racers) {
+            const root = r.kart?.object;
+            if (!root || CHARDONE.has(root)) continue;
+            const head = root.getObjectByName?.('head');
+            const id = r.kart?.spec?.id;
+            if (!head || !id) continue;
+            CHARDONE.add(root);
+            try { buildFace(head, id); } catch (e) { console.warn('[charStudio]', id, e); }
+          }
+        }
+
         let tries = 0;
         const iv = setInterval(() => {
           const z = window.__zephyr;
           if (!z?.scene) { if (++tries > 900) clearInterval(iv); return; }
-          try { installOverlays(); gradeScene(z); gradeKarts(z); updateStatusFx(); } catch (e) { console.warn('[grade]', e); }
+          try { installOverlays(); gradeScene(z); gradeKarts(z); updateStatusFx(); charStudio(z); } catch (e) { console.warn('[grade]', e); }
         }, 1200);
       })();
     </script>
