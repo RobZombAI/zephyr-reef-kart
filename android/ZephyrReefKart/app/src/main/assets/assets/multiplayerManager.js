@@ -327,15 +327,23 @@ export class MultiplayerManager {
 
     if (this.isHost) {
       this.broadcastToAll(payload);
+      if (this.onTournamentStandings) {
+        this.onTournamentStandings(payload);
+      }
+      if (isFinalRace && this.onTournamentComplete) {
+        this.onTournamentComplete(payload);
+      }
     }
+    // Guest: lastRaceResults resta disponibile localmente (schermata risultati),
+    // ma la classifica torneo pubblicata e' solo quella sincronizzata dall'host
+    // via TOURNAMENT_STANDINGS_SYNC: pubblicare standings locali divergenti
+    // era la fonte del doppio flash e delle classifiche incoerenti.
+  }
 
-    if (this.onTournamentStandings) {
-      this.onTournamentStandings(payload);
-    }
-
-    if (isFinalRace && this.onTournamentComplete) {
-      this.onTournamentComplete(payload);
-    }
+  // True su un guest mentre countdown/gara sono attivi: il motore lo usa per
+  // NON simulare localmente le AI (host-authoritative, vedi apply_sync_fixes.js)
+  isGuestSim() {
+    return !this.isHost && (this.state === 'RACING' || this.state === 'COUNTDOWN');
   }
 
   advanceToNextRace(countdownSec = 5) {
@@ -929,6 +937,24 @@ export class MultiplayerManager {
           break;
         }
         const s = data.slot;
+        // Host: sanity check anti-teleport/anti-lap-cheat prima di applicare e
+        // relay-are lo stato. Un salto spaziale impossibile o un lap non plausibile
+        // scartano l'intero update (resta l'ultimo stato valido).
+        if (this.isHost) {
+          const prev = this.remoteStates.get(s);
+          if (prev && prev.lastUpdate) {
+            const jump = Math.hypot((data.x || 0) - prev.x, (data.z || 0) - prev.z);
+            const dtMs = performance.now() - prev.lastUpdate;
+            const maxJump = 120 + 0.12 * dtMs; // ~58 m/s di punta + margine per jitter di rete
+            const lapRaw = data.lap || 1;
+            const lapOk = Number.isFinite(lapRaw) && lapRaw >= 0 && lapRaw <= 99 &&
+              Math.abs(lapRaw - (prev.lap ?? 1)) <= 1;
+            if (jump > maxJump || !lapOk) {
+              console.warn('[MP] KART_STATE scartato per slot', s, '(jump=' + jump.toFixed(1) + 'm, lap=' + lapRaw + ')');
+              break;
+            }
+          }
+        }
         let rState = this.remoteStates.get(s);
         if (!rState) {
           rState = {
