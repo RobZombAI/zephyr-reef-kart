@@ -2172,23 +2172,24 @@ describe('=== UNIT & PROCESS TESTS: 50 ARCHITECTURAL IMPROVEMENTS ===', () => {
 
   it('6. Dynamic item roulette distribution scales with race position', () => {
     const bundle = fs.readFileSync(BUNDLE_PATH, 'utf-8');
+    assert.ok(bundle.includes('lc=["turbo","triple_turbo","drone","mine","matrix","glitch","vortex"]'), 'item pool restricted to the 7 approved items');
     assert.ok(bundle.includes('vortex:1+n*9'), 'vortex weight scales with trailing position');
-    assert.ok(bundle.includes('triple_shield:Math.max(1,8-n*6)'), 'defensive ward favoured in leading position');
+    assert.ok(bundle.includes('mine:Math.max(2,4-n*2)'), 'defensive mine favoured in leading position');
 
     // Test roulette weighting simulation
     const computeWeights = (rank, total) => {
       const n = (rank - 1) / (total - 1);
       return {
         vortex: 1 + n * 9,
-        triple_shield: Math.max(1, 8 - n * 6)
+        mine: Math.max(2, 4 - n * 2)
       };
     };
 
     const firstPlaceWeights = computeWeights(1, 6);
     const lastPlaceWeights = computeWeights(6, 6);
 
-    assert.ok(firstPlaceWeights.triple_shield > firstPlaceWeights.vortex, '1st place receives more shields than catch-up vortices');
-    assert.ok(lastPlaceWeights.vortex > lastPlaceWeights.triple_shield, '6th place receives more vortices than shields');
+    assert.ok(firstPlaceWeights.mine > firstPlaceWeights.vortex, '1st place receives more mines than catch-up vortices');
+    assert.ok(lastPlaceWeights.vortex > lastPlaceWeights.mine, '6th place receives more vortices than mines');
   });
 
   it('7. Audio synthesis for all newly added sound effects', () => {

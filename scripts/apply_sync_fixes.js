@@ -47,6 +47,11 @@ const PATCHES = [
     'Camera chase alzata (+0.65) per vedere piu\u2019 pista',
     'Ie.set(t.pos.x-us.x*(c+boostPush)+rightX*sway,t.pos.y+h,t.pos.z-us.z*(c+boostPush)+rightZ*sway)',
     'Ie.set(t.pos.x-us.x*(c+boostPush)+rightX*sway,t.pos.y+h+0.65,t.pos.z-us.z*(c+boostPush)+rightZ*sway)'
+  ],
+  [
+    'Pool item CTR-style (7 item: turbo, triple_turbo, drone, mine, matrix, glitch, vortex)',
+    'lc=["bolt","mine","turbo","blast","shield","vortex","horn","triple_shield"];function dv(s,t,e){const n=$t(t<=1?0:(s-1)/(t-1)),i={bolt:Math.max(1,10-n*4),mine:Math.max(1,12-n*7),turbo:3+n*8,blast:1+n*7,shield:Math.max(1,9-n*6),vortex:1+n*9,horn:2+n*6,triple_shield:Math.max(1,8-n*6)};let r=0;for(const a of lc)r+=i[a]||1;let o=e()*r;for(const a of lc)if(o-=(i[a]||1),o<=0)return a;return"bolt"}',
+    'lc=["turbo","triple_turbo","drone","mine","matrix","glitch","vortex"];function dv(s,t,e){const n=$t(t<=1?0:(s-1)/(t-1)),i={turbo:3+n*8,triple_turbo:1+n*4,drone:3+n*3,mine:Math.max(2,4-n*2),vortex:1+n*9,matrix:.6+n*2.4,glitch:.6+n*2.4};let r=0;for(const a of lc)r+=i[a]||1;let o=e()*r;for(const a of lc)if(o-=(i[a]||1),o<=0)return a;return"turbo"}'
   ]
 ];
 

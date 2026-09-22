@@ -2830,6 +2830,42 @@
             mp = new window.MultiplayerManager();
             window.__multiplayerManager = mp;
 
+            // Schermata risultati autorevole: il rank mostrato dal motore e'
+            // calcolato dal finishCounter LOCALE di ogni macchina e puo' divergere
+            // dall'ordine reale. Sul guest, sostituiamo i risultati locali con
+            // quelli pubblicati dall'host (TOURNAMENT_STANDINGS_SYNC.raceResults).
+            const installResultsWrapper = () => {
+              const ui = window.__zephyr?.ui;
+              if (!ui?.showResults || ui.__mpResultsWrapped) return;
+              ui.__mpResultsWrapped = true;
+              const origShowResults = ui.showResults.bind(ui);
+              ui.showResults = (entries, bestLap, totalTime, localRank) => {
+                const mpInst = window.__multiplayerManager;
+                if (!mpInst || mpInst.isHost || mpInst.state !== 'RESULTS' || !Array.isArray(entries) || entries.length === 0) {
+                  return origShowResults(entries, bestLap, totalTime, localRank);
+                }
+                const tryAuthoritative = (attempt) => {
+                  const auth = mpInst.authRaceResults;
+                  if (Array.isArray(auth) && auth.length) {
+                    const bySlot = new Map(auth.map(r => [r.slot, r]));
+                    const fixed = entries
+                      .map(e => {
+                        const a = bySlot.get(e.slot ?? e.id);
+                        return a ? { ...e, rank: a.rank, finishTime: a.finishTime || e.finishTime } : e;
+                      })
+                      .sort((x, y) => x.rank - y.rank);
+                    origShowResults(fixed, bestLap, totalTime, fixed.find(e => e.isPlayer)?.rank ?? localRank);
+                  } else if (attempt < 60) {
+                    setTimeout(() => tryAuthoritative(attempt + 1), 200); // max ~12s
+                  } else {
+                    origShowResults(entries, bestLap, totalTime, localRank);
+                  }
+                };
+                tryAuthoritative(0);
+              };
+            };
+            installResultsWrapper();
+
             // Wire callbacks
             mp.onToast = (msg) => {
               if (window.__zephyr?.ui?.toast) window.__zephyr.ui.toast(msg, 2.8);
@@ -3019,6 +3055,7 @@
             };
 
             mp.onRaceStart = (data) => {
+              installResultsWrapper();
               lastLap = 1;
               raceEndHandled = false;
               if (tourneyModal) {
@@ -3089,6 +3126,27 @@
                   racer.invuln = 6.5;
                   director.applyTurbo(racer);
                   break;
+                case 'vortex':
+                  director.items?.spawnVortex(racer, director.spline, director.racers);
+                  director.vfx?.burst?.(racer.pos.x, racer.pos.y + .6, racer.pos.z, 65535, 24, 10);
+                  director.events?.sfx?.('vortex', { volume: 0.6 });
+                  break;
+                case 'glitch': {
+                  // Effetto fedele al motore: tutti i rivali entro 20m dietro il
+                  // lanciatore (e chiunque davanti) si rimpiccioliscono e rallentano
+                  for (const r of director.racers) {
+                    if (r !== racer && r.progress.distance >= racer.progress.distance - 20) {
+                      r.glitchTimer = 5.0;
+                      r.kart?.object?.scale?.setScalar?.(0.55);
+                      r.state.speed *= 0.65;
+                      r.hit(0.8);
+                      r.dropCoins();
+                      director.vfx?.burst?.(r.pos.x, r.pos.y + .5, r.pos.z, 11141375, 20, 8);
+                    }
+                  }
+                  director.events?.sfx?.('hit', { volume: 0.7 });
+                  break;
+                }
                 case 'shield':
                   director.items?.raiseShield(racer);
                   director.events?.sfx?.('shield_up', { volume: 0.6 });
@@ -3455,7 +3513,7 @@
               if (window.__zephyr?.ui?.toast) window.__zephyr.ui.toast('Tempo di connessione scaduto. Riprova.', 2.5);
               mp.leaveRoom();
             }
-          }, 8000);
+          }, 14000);
         });
 
         // Leave Room (Guest)

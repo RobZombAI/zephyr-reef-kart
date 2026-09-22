@@ -3126,6 +3126,27 @@
                   racer.invuln = 6.5;
                   director.applyTurbo(racer);
                   break;
+                case 'vortex':
+                  director.items?.spawnVortex(racer, director.spline, director.racers);
+                  director.vfx?.burst?.(racer.pos.x, racer.pos.y + .6, racer.pos.z, 65535, 24, 10);
+                  director.events?.sfx?.('vortex', { volume: 0.6 });
+                  break;
+                case 'glitch': {
+                  // Effetto fedele al motore: tutti i rivali entro 20m dietro il
+                  // lanciatore (e chiunque davanti) si rimpiccioliscono e rallentano
+                  for (const r of director.racers) {
+                    if (r !== racer && r.progress.distance >= racer.progress.distance - 20) {
+                      r.glitchTimer = 5.0;
+                      r.kart?.object?.scale?.setScalar?.(0.55);
+                      r.state.speed *= 0.65;
+                      r.hit(0.8);
+                      r.dropCoins();
+                      director.vfx?.burst?.(r.pos.x, r.pos.y + .5, r.pos.z, 11141375, 20, 8);
+                    }
+                  }
+                  director.events?.sfx?.('hit', { volume: 0.7 });
+                  break;
+                }
                 case 'shield':
                   director.items?.raiseShield(racer);
                   director.events?.sfx?.('shield_up', { volume: 0.6 });
