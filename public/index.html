@@ -4033,14 +4033,16 @@
         // Se il device non tiene i 60fps, la risoluzione scende a gradini di
         // 0.125x (fino a 1.0x) e risale quando puAò: fluiditAà garantita con
         // la qualitAà massima che il device regge, e consumo GPU minimo.
-        let drsBad = 0, drsGood = 0;
+        let drsBad = 0, drsGood = 0, drsLast = 0;
         function drsTick(z) {
           if (z.mode !== 'race' || z.paused) { drsBad = 0; drsGood = 0; return; }
+          const now = performance.now();
           const sd = z._smoothDt || 0;
           const cur = z.renderer.getPixelRatio();
           const cap = Math.max(z.quality?.pixelRatioCap || 1.5, cur);
-          if (sd > 17.3) { drsBad++; drsGood = 0; }
-          else if (sd < 15.6 && cur < cap) { drsGood++; drsBad = 0; }
+          // isteresi ampia + cooldown 6s: la risoluzione non deve mai oscillare
+          if (sd > 18.5) { drsBad++; drsGood = 0; }
+          else if (sd < 15.4 && cur < cap) { drsGood++; drsBad = 0; }
           else { drsBad = 0; drsGood = 0; }
           const apply = (nr) => {
             nr = +nr.toFixed(3);
@@ -4048,11 +4050,11 @@
             z.composer?.setPixelRatio?.(nr);
             z.composer?.setSize?.(window.innerWidth, window.innerHeight);
           };
-          if (drsBad >= 3 && cur > 1) {
-            apply(Math.max(1, cur - 0.125)); drsBad = 0;
+          if (drsBad >= 4 && cur > 1 && now - drsLast > 6000) {
+            apply(Math.max(1, cur - 0.125)); drsBad = 0; drsLast = now;
             z.ui?.toast?.('\u26a1 Risoluzione adattiva ' + (+Math.max(1, cur - 0.125).toFixed(2)) + 'x', 1.4);
-          } else if (drsGood >= 4 && cur < cap) {
-            apply(Math.min(cap, cur + 0.125)); drsGood = 0;
+          } else if (drsGood >= 6 && cur < cap && now - drsLast > 6000) {
+            apply(Math.min(cap, cur + 0.125)); drsGood = 0; drsLast = now;
           }
         }
 

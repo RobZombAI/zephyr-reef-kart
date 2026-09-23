@@ -23,16 +23,6 @@ const INTERVAL_EXPR = '(' + MODE_EXPR + '?16.667:33.4)';
 // Patch di tipo 'removeBetween': { name, from, to, optional? } — escide da from (incluso) a to (escluso)
 const PATCHES = [
   {
-    name: 'Cap 30/60fps mode-aware (accumulator pacing unico)',
-    // sostituisce l'accumulatore ESISTENTE (non ne aggiunge uno nuovo: due
-    // accumulatori condividerebbero _capT/_capAcc e si bloccherebbero a vicenda)
-    find: 'this._capAcc=(this._capAcc||16.7)+(t-(this._capT||t));this._capT=t;if(this._capAcc<15.5)return;this._capAcc=Math.min(this._capAcc-16.667,33.4);const rawDt=',
-    replace: 'this._capAcc=(this._capAcc||16.7)+(t-(this._capT||t));this._capT=t;' +
-      'if(this._capAcc<' + MODE_EXPR + ')return;' +
-      'this._capAcc=Math.min(this._capAcc-' + INTERVAL_EXPR + ',66.8);' +
-      'const rawDt=Math.min(.05,Math.max(5e-4,(t-(this.lastTime||t))/1e3));this.lastTime=t;'
-  },
-  {
     name: 'Guest: AI senza comandi locali',
     find: 'aiDrivers[o.id];a&&(a.rubberBand=this.rubberBandFor(o)',
     replace: 'aiDrivers[o.id];a&&!window.__multiplayerManager?.isGuestSim?.()&&(a.rubberBand=this.rubberBandFor(o)'
@@ -75,11 +65,28 @@ const PATCHES = [
     from: 'case "glitch":',
     to: 'case "shield":'
   },
+
   {
     name: 'Mina: knockback piu\u2019 contenuto (il kart resta inquadrato durante il volo)',
     find: 'i.kart.physics.knockback(kx*7,kz*7,11,7.5)',
     replace: 'i.kart.physics.knockback(kx*6,kz*6,9,5.5)'
-  }
+  },
+
+
+  {
+    name: 'Accumulatore pacing: niente drift negativo (stabilita\u2019 su 90/120Hz)',
+    find: 'this._capAcc=Math.min(this._capAcc-(((window.__zephyr?window.__zephyr.mode:this.mode)==="race"||(window.__zephyr?window.__zephyr.mode:this.mode)==="results")?16.667:33.4),66.8);',
+    replace: 'this._capAcc=Math.max(0,Math.min(this._capAcc-(((window.__zephyr?window.__zephyr.mode:this.mode)==="race"||(window.__zephyr?window.__zephyr.mode:this.mode)==="results")?16.667:33.4),66.8));'
+  },
+  {
+    name: 'Curb rumble: solo sul bordo vero (0.965), piu\u2019 raro e piu\u2019 corto — niente vibrazione continua',
+    find: 'if(i.grounded&&Math.abs(i.lateral01)>0.88&&i.onRoad&&Math.abs(i.speed)>6){',
+    replace: 'if(i.grounded&&Math.abs(i.lateral01)>0.965&&i.onRoad&&Math.abs(i.speed)>6){',
+    find2: 'this._curbTick=0.14;',
+    replace2: 'this._curbTick=0.24;',
+    find3: 'window.navigator?.vibrate?.(18);',
+    replace3: 'window.navigator?.vibrate?.(10);'
+  },
 ];
 
 function countOccurrences(hay, needle) {
@@ -104,7 +111,25 @@ for (const P of PATCHES) {
     continue;
   }
   const find = P.altFind && !src.includes(P.find) && src.includes(P.altFind) ? P.altFind : P.find;
-  if (P.replace && src.includes(P.replace)) { console.log(`SKIP (gia' applicata): ${P.name}`); continue; }
+  const extrasApplied = (!P.find2 || src.includes(P.replace2)) && (!P.find3 || src.includes(P.replace3));
+  if (P.replace && src.includes(P.replace) && extrasApplied) { console.log(`SKIP (gia' applicata): ${P.name}`); continue; }
+  if (P.type === 'pacingTimegate') {
+    const segStart = src.indexOf('this._capAcc=(this._capAcc||16.7)');
+    const segEnd = src.indexOf('const rawDt=', segStart);
+    if (segStart === -1 || segEnd === -1) {
+      if (src.includes('this._capLast')) { console.log(`SKIP (gia' applicata): ${P.name}`); continue; }
+      console.error(`ERRORE: segmento pacing non trovato.`); process.exit(1);
+    }
+    const seg = src.slice(segStart, segEnd);
+    if (seg.includes('this._capLast')) { console.log(`SKIP (gia' applicata): ${P.name}`); continue; }
+    if (!/_capAcc<.*_capAcc=Math\.min/.test(seg)) { console.error(`ERRORE: pattern pacing non riconosciuto.`); process.exit(1); }
+    const G = '(window.__zephyr?window.__zephyr.mode:this.mode)';
+    const gate = 'if(t-(this._capLast||-1e9)<' + '((' + G + '==="race"||' + G + '==="results")?16.667:33.4))return;this._capLast=t;const rawDt=';
+    src = src.slice(0, segStart) + gate + src.slice(segEnd);
+    applied++;
+    console.log(`OK: ${P.name}`);
+    continue;
+  }
   const n = countOccurrences(src, find);
   if (n !== 1) {
     if (P.optional && n === 0 && !src.includes(P.replace)) { console.log(`SKIP (anchor gia' assente, stato ok): ${P.name}`); continue; }
@@ -113,10 +138,19 @@ for (const P of PATCHES) {
   }
   src = src.replace(find, P.replace);
   applied++;
+  for (const [f2, r2] of [['find2', 'replace2'], ['find3', 'replace3']]) {
+    if (P[f2]) {
+      const n2 = countOccurrences(src, P[f2]);
+      if (n2 !== 1) { console.error(`ERRORE: ${f2} per "${P.name}" trovato ${n2} volte.`); process.exit(1); }
+      src = src.replace(P[f2], P[r2]);
+      applied++;
+    }
+  }
   console.log(`OK: ${P.name}`);
 }
 
 if (applied > 0) {
+  try { new Function(src); } catch (e) { console.error('ERRORE: il bundle generato non e\u2019 sintatticamente valido: ' + e.message); process.exit(1); }
   writeFileSync(BUNDLE, src);
   console.log(`Scritte ${applied} patch su ${BUNDLE}`);
 } else {
