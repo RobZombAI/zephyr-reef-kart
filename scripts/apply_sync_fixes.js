@@ -14,15 +14,22 @@ import { dirname, join } from 'node:path';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const BUNDLE = join(ROOT, 'assets', 'index-C9rd31_W.js');
 
+// Espressione modalita' condivisa: il loop principale appartiene a una classe
+// diversa dal motore, quindi this.mode non sempre esiste: usa il globale.
+const MODE_EXPR = '((window.__zephyr?window.__zephyr.mode:this.mode)==="race"||(window.__zephyr?window.__zephyr.mode:this.mode)==="results")';
+const INTERVAL_EXPR = '(' + MODE_EXPR + '?16.667:33.4)';
+
 // Patch di tipo 'replace': [nome, find, replace, optional?]
 // Patch di tipo 'removeBetween': { name, from, to, optional? } — escide da from (incluso) a to (escluso)
 const PATCHES = [
   {
-    name: 'Cap render 60fps (accumulator pacing)',
-    find: 'const rawDt=Math.min(.05,Math.max(5e-4,(t-(this.lastTime||t))/1e3));this.lastTime=t;',
+    name: 'Cap 30/60fps mode-aware (accumulator pacing unico)',
+    // sostituisce l'accumulatore ESISTENTE (non ne aggiunge uno nuovo: due
+    // accumulatori condividerebbero _capT/_capAcc e si bloccherebbero a vicenda)
+    find: 'this._capAcc=(this._capAcc||16.7)+(t-(this._capT||t));this._capT=t;if(this._capAcc<15.5)return;this._capAcc=Math.min(this._capAcc-16.667,33.4);const rawDt=',
     replace: 'this._capAcc=(this._capAcc||16.7)+(t-(this._capT||t));this._capT=t;' +
-      'if(this._capAcc<15.5)return;' +
-      'this._capAcc=Math.min(this._capAcc-16.667,33.4);' +
+      'if(this._capAcc<' + MODE_EXPR + ')return;' +
+      'this._capAcc=Math.min(this._capAcc-' + INTERVAL_EXPR + ',66.8);' +
       'const rawDt=Math.min(.05,Math.max(5e-4,(t-(this.lastTime||t))/1e3));this.lastTime=t;'
   },
   {
@@ -56,11 +63,6 @@ const PATCHES = [
     replace: 'lc=["turbo","triple_turbo","drone","mine","matrix","vortex"];function dv(s,t,e){const n=$t(t<=1?0:(s-1)/(t-1)),i={turbo:3+n*8,triple_turbo:1+n*4,drone:3+n*3,mine:Math.max(2,4-n*2),vortex:1+n*9,matrix:.6+n*2.4};',
     // compatibile anche col bundle originale a 8 item
     altFind: 'lc=["bolt","mine","turbo","blast","shield","vortex","horn","triple_shield"];function dv(s,t,e){const n=$t(t<=1?0:(s-1)/(t-1)),i={bolt:Math.max(1,10-n*4),mine:Math.max(1,12-n*7),turbo:3+n*8,blast:1+n*7,shield:Math.max(1,9-n*6),vortex:1+n*9,horn:2+n*6,triple_shield:Math.max(1,8-n*6)};'
-  },
-  {
-    name: 'Risoluzione adattiva: 2.0x su flagship (niente piu\u2019 rendering a meta\u2019 risoluzione su telefono)',
-    find: 'pixelRatioCap:Math.min(1.5,t)',
-    replace: 'pixelRatioCap:(t>=2.5&&typeof navigator!=="undefined"&&navigator.hardwareConcurrency>=8?2:(t>=2&&typeof navigator!=="undefined"&&navigator.hardwareConcurrency>=6?1.75:Math.min(1.5,t)))'
   },
   {
     name: 'Anisotropy 16x: texture della pista nitide in prospettiva',
