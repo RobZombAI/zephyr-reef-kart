@@ -3878,6 +3878,85 @@
               eyeSet(head, r);
           }
         }
+        // registro occhi per blink e micro-sguardo (per racer/stage)
+        const EYEREG = new WeakMap();
+        function registerEyes(owner, head, r) {
+          const eyes = [], pupils = [];
+          head.traverse(o => {
+            if (!o.isMesh || o.geometry?.type !== 'Sphere') return;
+            const c = o.material?.color?.getHexString?.();
+            if (c === 'ffffff' || /ff(f1c9|7a1a|9ff|d166)/.test(c || '')) { if (o.position.z < -0.3) eyes.push(o); }
+            if (c && ['101418','0b1030','1a1d22','10331f','ffd166'].includes(c) && o.position.z < -0.35) pupils.push(o);
+          });
+          EYEREG.set(owner, { eyes, pupils, blinkAt: performance.now() + 1500 + Math.random() * 3000, lookT: Math.random() * 4 });
+        }
+        // ── Corpo: volante + colonna, mani con pollici, sopracciglia, bocca, stemma ──
+        function buildBody(drv, body, id, head) {
+          if (!GEO?.Sphere || !GEO.mesh) return;
+          const r = headRadius(head);
+          const add = (parent, mesh, x, y, z, sx = 1, sy = 1, sz = 1, rx = 0, ry = 0, rz = 0) => {
+            mesh.position.set(x, y, z); mesh.scale.set(sx, sy, sz); mesh.rotation.set(rx, ry, rz);
+            mesh.userData.zGraded = true; parent.add(mesh); return mesh;
+          };
+          const dark = pmat(0x191d24, { rough: 0.45, metal: 0.3 });
+          const gold = pmat(0xffd166, { rough: 0.3, metal: 0.85 });
+          // volante + colonna: le mani (giAà presenti a ~(\u00b10.35,0.04,-0.40) nel
+          // sottogruppo busto) finalmente afferrano qualcosa di reale
+          add(body, tor(dark, r * 0.3, r * 0.045, 16), 0, r * 0.14, -r * 0.82, 1, 1, 1, -0.55, 0, 0);
+          add(body, cyl(dark, r * 0.035, r * 0.05, r * 0.6, 8), 0, -r * 0.16, -r * 0.62, 1, 1, 1, -0.55, 0, 0);
+          // pollici sulle mani
+          for (const side of [-1, 1]) {
+            const hand = body.getObjectByName?.(side < 0 ? 'hand_L' : 'hand_R');
+            if (hand) {
+              add(hand, sph(pmat(0xe8b57e, { rough: 0.5 }), r * 0.055, 8, 6), side * -r * 0.06, r * 0.07, 0.02, 1, 0.75, 1);
+              const hs = hand.children?.[0];
+              if (hs && hs.geometry?.type === 'Sphere') hs.scale.setScalar(1.22);
+            }
+          }
+          // sopracciglia: carattere per personaggio (angolo e colore)
+          const browCfg = {
+            nix: [0x8a5a34, -0.18], bruno: [0x3a3d45, 0.42], sable: [0xb9ff4f, -0.3],
+            zuzu: [0xd95fae, -0.15], rustam: [0x6b4a23, 0.22], marlow: [0x8a6a4a, -0.22],
+            princess: [0xc98b3f, -0.26], pirate: [0x2a221a, 0.3]
+          }[id] || [0x555a63, -0.15];
+          const browMat = pmat(browCfg[0], { rough: 0.5 });
+          for (const side of [-1, 1])
+            add(head, box(browMat, r * 0.3, r * 0.07, r * 0.07), side * r * 0.33, r * 0.3, -r * 0.84, 1, 1, 1, 0, 0, side * browCfg[1]);
+          // bocca: sorriso per gli eroi, grin per i cattivi
+          const mouthY = id === 'nix' ? -r * 0.44 : -r * 0.34;
+          add(head, box(pmat(0x231a14, { rough: 0.5 }), r * 0.26, r * 0.045, r * 0.05), 0, mouthY, -r * 0.8, 1, 1, 1, 0.15, 0, 0);
+          // stemma sul petto: disco con nucleo colore personaggio
+          const emblemC = { nix: 0x2ec4b6, bruno: 0xff7a1a, sable: 0x7cf9ff, zuzu: 0xff9ad5, rustam: 0x8affd0, marlow: 0x22304a, princess: 0xff4f7b, pirate: 0x22304a }[id] || 0x2ec4b6;
+          add(body, cyl(pmat(gold ? 0xffd166 : 0xffffff, { rough: 0.35, metal: 0.6 }), r * 0.11, r * 0.11, r * 0.025, 14), 0, r * 0.02, -r * 0.36, 1, 1, 1, Math.PI / 2, 0, 0);
+          add(body, cyl(pmat(emblemC, { rough: 0.3, emissive: emblemC, emissiveIntensity: 0.25 }), r * 0.055, r * 0.055, r * 0.03, 12), 0, r * 0.02, -r * 0.37, 1, 1, 1, Math.PI / 2, 0, 0);
+        }
+
+        // ── Blink + micro-sguardo ──
+        function blinkLoop() {
+          try {
+            const now = performance.now();
+            EYEREG.forEach((e, owner) => {
+              // blink: chiusura/apertura ~130ms ogni 2.5-5.5s
+              if (now >= e.blinkAt && now < e.blinkAt + 130) {
+                const t = (now - e.blinkAt) / 130;
+                const c = t < 0.5 ? 1 - t * 2 : (t - 0.5) * 2;
+                const sy = Math.max(0.08, c);
+                for (const eye of e.eyes) eye.scale.y = eye.userData._sy === undefined ? (eye.userData._sy = eye.scale.y) : eye.userData._sy * sy;
+              } else if (now >= e.blinkAt + 130) {
+                for (const eye of e.eyes) if (eye.userData._sy !== undefined) eye.scale.y = eye.userData._sy;
+                e.blinkAt = now + 2500 + Math.random() * 3000;
+              }
+              // micro-sguardo: le pupille derivano lentamente
+              const ph = (now * 0.00035 + e.lookT) % (Math.PI * 2);
+              const dx = Math.sin(ph) * 0.018;
+              for (const p2 of e.pupils) if (p2.userData._px === undefined) p2.userData._px = p2.position.x;
+              for (const p2 of e.pupils) p2.position.x = p2.userData._px + dx;
+            });
+          } catch (err) { /* mai bloccare il rAF */ }
+          requestAnimationFrame(blinkLoop);
+        }
+        requestAnimationFrame(blinkLoop);
+
         function charStudio(z) {
           const d = z.director;
           harvestGeo(z);
@@ -3887,7 +3966,10 @@
           if (stage && !CHARDONE.has(stage)) {
             const shead = stage.getObjectByName?.('head');
             const sid = z.playerSpec?.id || stage.name?.replace?.('kart_', '');
-            if (shead && sid) { CHARDONE.add(stage); try { buildFace(shead, sid); } catch (e) {} }
+            if (shead && sid) {
+              CHARDONE.add(stage);
+              try { buildFace(shead, sid); registerEyes(stage, shead, 1); } catch (e) {}
+            }
           }
           if (!d?.racers) return;
           for (const r of d.racers) {
@@ -3897,7 +3979,14 @@
             const id = r.kart?.spec?.id;
             if (!head || !id) continue;
             CHARDONE.add(root);
-            try { buildFace(head, id); } catch (e) { console.warn('[charStudio]', id, e); }
+            try {
+              buildFace(head, id);
+              registerEyes(root, head, 1);
+              // corpo: gruppo driver + sottogruppo busto
+              let drv = null;
+              root.traverse(o => { if (!drv && o.name && String(o.name).startsWith('driver')) drv = o; });
+              if (drv && drv.children[0]) buildBody(drv, drv.children[0], id, head);
+            } catch (e) { console.warn('[charStudio]', id, e); }
           }
         }
 
