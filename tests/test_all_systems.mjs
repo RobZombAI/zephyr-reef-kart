@@ -4218,9 +4218,9 @@ describe('=== UNIT & PROCESS TESTS: PERMANENT MAXIMUM HIGH QUALITY GRAPHICS LOCK
     assert.ok(bundleCode.includes('antialias:this.quality.antialias'), 'WebGL initializes with antialiasing enabled');
   });
 
-  it('6. HTML boots with APP_VERSION zephyr-6.9.5 and sanitizes localStorage quality to high', () => {
-    assert.ok(indexHtml.includes("var APP_VERSION = 'zephyr-6.9.5';"), 'index.html defines APP_VERSION zephyr-6.9.5');
-    assert.ok(zephyrHtml.includes("var APP_VERSION = 'zephyr-6.9.5';"), 'zephyr.html defines APP_VERSION zephyr-6.9.5');
+  it('6. HTML boots with APP_VERSION zephyr-6.9.6 and sanitizes localStorage quality to high', () => {
+    assert.ok(indexHtml.includes("var APP_VERSION = 'zephyr-6.9.6';"), 'index.html defines APP_VERSION zephyr-6.9.6');
+    assert.ok(zephyrHtml.includes("var APP_VERSION = 'zephyr-6.9.6';"), 'zephyr.html defines APP_VERSION zephyr-6.9.6');
     assert.ok(indexHtml.includes("parsed.quality = 'high';"), 'index.html resets any non-high quality setting to high');
     assert.ok(zephyrHtml.includes("parsed.quality = 'high';"), 'zephyr.html resets any non-high quality setting to high');
   });
