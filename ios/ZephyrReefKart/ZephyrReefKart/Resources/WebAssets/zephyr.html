@@ -36,6 +36,13 @@
       // Clean legacy caches and service workers & force fresh load on version change
       (function() {
         var APP_VERSION = 'zephyr-6.9.6';
+        // ═══ CONFIG PUBBLICITÀ WEB (AdSense) ═══
+        // Su Android/iOS le ads sono gestite dall'app nativa (AdMob, ID test
+        // ufficiali Google già attivi). Sul web: crea l'account AdSense
+        // (google.com/adsense), inserisci qui il client (ca-pub-XXXX) e lo slot
+        // del banner title, e gli annunci appariranno sullo schermo title.
+        // Con client vuoto: nessun script caricato, nessun impatto.
+        window.ZEPHYR_ADS = { adsenseClient: '', bannerTitleSlot: '' };
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistrations().then(function(regs) {
             for (var r of regs) {
@@ -76,9 +83,9 @@
       })();
     </script>
     <script src="./assets/peerjs.min.js"></script>
-    <script type="module" src="./assets/multiplayerManager.js?v=zephyr-6.9.5"></script>
-    <script type="module" crossorigin src="./assets/index-C9rd31_W.js?v=zephyr-6.9.5"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DMliwuo_.css?v=zephyr-6.9.5">
+    <script type="module" src="./assets/multiplayerManager.js?v=zephyr-6.9.6"></script>
+    <script type="module" crossorigin src="./assets/index-C9rd31_W.js?v=zephyr-6.9.6"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DMliwuo_.css?v=zephyr-6.9.6">
     <style>
       /* Mobile Touch Controls Layer */
       .zephyr-touch-layer {
@@ -2207,6 +2214,7 @@
             const curLap = (typeof player.displayLap === 'function')
               ? player.displayLap(totalLaps)
               : Math.max(1, player.progress?.lap || 0);
+            if (curLap === 1 && window.__raceJustEnded) { window.__raceJustEnded = false; window.__adShownForRace = false; }
             if (curLap === totalLaps && lastLap < totalLaps) {
               lastLap = totalLaps;
               if (finalLapEl) {
@@ -2216,10 +2224,25 @@
               }
             }
 
+            // PubblicitAà (AdMob su Android): banner nei menu, niente in gara,
+            // interstitial quando la gara finisce. Su web/desktop: no-op.
+            try {
+              if (window.AndroidAds) {
+                const inRaceNow = window.__zephyr && window.__zephyr.mode === 'race' && !window.__zephyr.paused;
+                if (inRaceNow && window.__adsBannerShown) { window.AndroidAds.hideBanner(); window.__adsBannerShown = false; }
+                else if (!inRaceNow && !window.__adsBannerShown) { window.AndroidAds.showBanner(); window.__adsBannerShown = true; }
+                if (window.__raceJustEnded && !window.__adShownForRace) {
+                  window.AndroidAds.showInterstitial && window.AndroidAds.showInterstitial();
+                  window.__adShownForRace = true;
+                }
+              }
+            } catch (e) {}
+
             // Save track record & progression if player finishes (one-shot latch: this poll
             // keeps ticking after the finish, so writes + unlock toast must fire once)
             if (!raceEndHandled && player.progress && player.progress.finished && player.progress.finishTime > 0) {
               raceEndHandled = true;
+              window.__raceJustEnded = true;
               const curTrack = zsGet('zephyr_track') || '0';
               const curIdx = parseInt(curTrack, 10);
               const oldRecord = parseFloat(zsGet('zephyr_record_' + curTrack) || '9999');
@@ -4069,5 +4092,32 @@
         }, 1200);
       })();
     </script>
-  </body>
+  <script>
+    // Banner AdSense title-screen: attivo SOLO con client configurato
+    (function () {
+      const cfg = window.ZEPHYR_ADS || {};
+      if (!cfg.adsenseClient || !cfg.bannerTitleSlot) return;
+      if (/^appassets\./.test(location.hostname) || location.protocol === 'file:') return;
+      const ad = document.createElement('ins');
+      ad.className = 'adsbygoogle';
+      ad.style.display = 'block';
+      ad.style.position = 'fixed';
+      ad.style.bottom = '0';
+      ad.style.left = '0';
+      ad.style.right = '0';
+      ad.style.zIndex = '9002';
+      ad.setAttribute('data-ad-client', cfg.adsenseClient);
+      ad.setAttribute('data-ad-slot', cfg.bannerTitleSlot);
+      ad.setAttribute('data-ad-format', 'auto');
+      ad.setAttribute('data-full-width-responsive', 'true');
+      document.body.appendChild(ad);
+      const sc = document.createElement('script');
+      sc.async = true;
+      sc.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + cfg.adsenseClient;
+      sc.crossOrigin = 'anonymous';
+      document.head.appendChild(sc);
+      try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) {}
+    })();
+  </script>
+</body>
 </html>

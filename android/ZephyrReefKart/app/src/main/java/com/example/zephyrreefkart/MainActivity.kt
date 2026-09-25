@@ -12,11 +12,22 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
+import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
 import android.webkit.RenderProcessGoneDetail
+import android.widget.FrameLayout
+import com.google.android.gms.ads.AdError
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.AdSize
+import com.google.android.gms.ads.AdView
+import com.google.android.gms.ads.FullScreenContentCallback
+import com.google.android.gms.ads.LoadAdError
+import com.google.android.gms.ads.MobileAds
+import com.google.android.gms.ads.interstitial.InterstitialAd
+import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -30,6 +41,35 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
+
+// ═══ CONFIG ADS (AdMob) ═══════════════════════════════════════════════
+// ATTIVAZIONE ADS REALI: crea l'account su apps.admob.com, registra
+// l'app (package com.example.zephyrreefkart) e sostituisci i 3 ID qui sotto
+// con quelli del tuo account. Gli attuali sono i TEST ID ufficiali Google
+// (mostrano annunci "Test Ad" senza ricavi).
+object AdsConfig {
+    const val APP_ID = "ca-app-pub-3940256099942544~3347511713"
+    const val BANNER_UNIT_ID = "ca-app-pub-3940256099942544/6300978111"
+    const val INTERSTITIAL_UNIT_ID = "ca-app-pub-3940256099942544/1033173712"
+}
+// ══════════════════════════════════════════════════════════════════════
+
+class AndroidAds(private val activity: MainActivity) {
+    @JavascriptInterface
+    fun hideBanner() {
+        activity.runOnUiThread { activity.hideAdBanner() }
+    }
+
+    @JavascriptInterface
+    fun showBanner() {
+        activity.runOnUiThread { activity.showAdBanner() }
+    }
+
+    @JavascriptInterface
+    fun showInterstitial() {
+        activity.runOnUiThread { activity.showRaceEndInterstitial() }
+    }
+}
 
 class AndroidHaptics(private val context: Context) {
     @JavascriptInterface
@@ -61,6 +101,9 @@ class AndroidHaptics(private val context: Context) {
 class MainActivity : ComponentActivity() {
 
     private lateinit var webView: WebView
+    private lateinit var adContainer: FrameLayout
+    private lateinit var adBannerView: AdView
+    private var interstitialAd: InterstitialAd? = null
     private var lastBackPressedTime = 0L
     private var audioManager: AudioManager? = null
     private var focusRequest: AudioFocusRequest? = null
@@ -154,7 +197,28 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        setContentView(webView)
+        // Layout: WebView a schermo pieno + banner AdMob (visibile solo nei menu)
+        adContainer = FrameLayout(this)
+        adContainer.addView(webView, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+        adBannerView = AdView(this).apply {
+            adUnitId = AdsConfig.BANNER_UNIT_ID
+            setAdSize(AdSize.BANNER)
+            visibility = View.GONE
+        }
+        adContainer.addView(adBannerView, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT,
+            Gravity.BOTTOM))
+        setContentView(adContainer)
+
+        // Init AdMob + banner + interstitial (silenzioso se il device non ha
+        // Google Play Services: il gioco funziona identico senza annunci)
+        MobileAds.initialize(this) {}
+        adBannerView.loadAd(AdRequest.Builder().build())
+        loadInterstitial()
+
+        // Bridge JS per la shell (banner nei menu, interstitial tra le gare)
+        webView.addJavascriptInterface(AndroidAds(this), "AndroidAds")
 
         // Setup Audio Focus (Item 63)
         setupAudioFocus()
@@ -182,6 +246,42 @@ class MainActivity : ComponentActivity() {
                 }
             }
         })
+    }
+
+    fun showAdBanner() {
+        adBannerView.visibility = View.VISIBLE
+        if (!adBannerView.isLoading && adBannerView.adListener == null) {
+            adBannerView.loadAd(AdRequest.Builder().build())
+        }
+    }
+
+    fun hideAdBanner() {
+        adBannerView.visibility = View.GONE
+    }
+
+    private fun loadInterstitial() {
+        InterstitialAd.load(this, AdsConfig.INTERSTITIAL_UNIT_ID,
+            AdRequest.Builder().build(), object : InterstitialAdLoadCallback() {
+                override fun onAdLoaded(ad: InterstitialAd) {
+                    interstitialAd = ad
+                    ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+                        override fun onAdDismissedFullScreenContent() {
+                            interstitialAd = null
+                            loadInterstitial()
+                        }
+                        override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+                            interstitialAd = null
+                        }
+                    }
+                }
+                override fun onAdFailedToLoad(adError: LoadAdError) {
+                    interstitialAd = null
+                }
+            })
+    }
+
+    fun showRaceEndInterstitial() {
+        interstitialAd?.show(this)
     }
 
     private fun setupAudioFocus() {

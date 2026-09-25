@@ -67,6 +67,10 @@ kotlin {
 }
 
 dependencies {
+    // Google AdMob (pubblicita'): gli ID sono in MainActivity.kt (CONFIG ADS).
+    // Gli ID attuali sono i TEST ID ufficiali Google: visualizzano annunci
+    // "Test Ad" senza ricavi — sostituirli con gli ID reali dell'account AdMob.
+    implementation("com.google.android.gms:play-services-ads:23.6.0")
   val composeBom = platform(libs.androidx.compose.bom)
   implementation(composeBom)
   androidTestImplementation(composeBom)
