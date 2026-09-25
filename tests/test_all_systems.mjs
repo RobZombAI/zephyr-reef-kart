@@ -4989,6 +4989,14 @@ describe('=== UNIT & PROCESS TESTS: SYSTEMIC ELIMINATION OF CAR VIBRATION, DUPLI
     assert.ok(!bundle.includes('a.position.z+=(Math.random()-.5)*this.hitShake*.35'), 'Bundle eliminated random Z coordinate jitter');
     assert.ok(bundle.includes('this.hitShake>0.01&&o.chassis'), 'Bundle applies hitShake to chassis rotation smoothly');
   });
+
+  it('5. High-Refresh Fluidity: sub-step execution at 90/120Hz eliminates frozen frames and alternating leaps', () => {
+    assert.ok(bundle.includes('if(r===0&&this.accumulator>0.002){this.fixedStep(this.accumulator,e);this.accumulator=0;}'), 'Bundle guarantees continuous physics stepping at native display refresh rates');
+  });
+
+  it('6. Suspension Damping: wheel squat smoothly interpolated without step vibration', () => {
+    assert.ok(bundle.includes('this.sq=ne(this.sq||0,de(f*.0035,-.045,.045),14,e)'), 'Bundle exponentially damps wheel squat suspension');
+  });
 });
 
 
