@@ -956,6 +956,87 @@
         100% { transform: translate(-50%, -50%) scale(1.1); }
       }
 
+      /* Cinematic In-Race World Announcement Banner */
+      .z-world-banner {
+        position: fixed;
+        top: 72px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 10px 22px;
+        background: rgba(6, 19, 31, 0.90);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1.5px solid rgba(118, 255, 240, 0.45);
+        border-radius: 14px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.65), 0 0 20px rgba(118, 255, 240, 0.25);
+        pointer-events: none;
+        z-index: 10000;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        opacity: 1;
+        transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+        animation: z-world-slide 4.2s forwards;
+      }
+      .z-world-banner.hidden {
+        display: none !important;
+      }
+      .z-world-banner-icon {
+        font-size: 32px;
+        filter: drop-shadow(0 0 8px rgba(118, 255, 240, 0.6));
+        animation: z-icon-pulse 1.8s ease-in-out infinite;
+      }
+      .z-world-banner-text {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        text-align: left;
+      }
+      .z-world-banner-cup {
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: #ffc857;
+        text-shadow: 0 0 8px rgba(255, 200, 87, 0.4);
+      }
+      .z-world-banner-name {
+        font-size: 17px;
+        font-weight: 900;
+        color: #ffffff;
+        letter-spacing: 0.5px;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+      }
+      .z-world-banner-trait {
+        font-size: 11px;
+        font-weight: 700;
+        color: #76fff0;
+        margin-top: 1px;
+      }
+      .z-track-trait-badge {
+        display: inline-block;
+        font-size: 9px;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 4px;
+        background: rgba(118, 255, 240, 0.12);
+        border: 1px solid rgba(118, 255, 240, 0.3);
+        color: #76fff0;
+        margin-top: 3px;
+        letter-spacing: 0.2px;
+      }
+      @keyframes z-world-slide {
+        0% { opacity: 0; transform: translate(-50%, -24px) scale(0.92); }
+        12% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+        85% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+        100% { opacity: 0; transform: translate(-50%, -18px) scale(0.96); }
+      }
+      @keyframes z-icon-pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.14); }
+      }
+
       /* Title Screen Custom Track Badge */
       .z-title-badge {
         display: inline-flex;
@@ -1329,6 +1410,16 @@
       <div id="z-hud-wrong-way" class="z-banner z-banner-wrong hidden" aria-live="polite">⚠️ WRONG WAY! TURN AROUND! ⚠️</div>
       <div id="z-hud-final-lap" class="z-banner z-banner-lap hidden" aria-live="polite">🏁 FINAL LAP! 🏁</div>
 
+      <!-- World Announcement Banner -->
+      <div id="z-world-banner" class="z-world-banner hidden" aria-live="polite">
+        <div class="z-world-banner-icon" id="z-world-icon">🏛️</div>
+        <div class="z-world-banner-text">
+          <div class="z-world-banner-cup" id="z-world-cup">COPPA BREZZA</div>
+          <div class="z-world-banner-name" id="z-world-name">Sunken Atlantis Citadel</div>
+          <div class="z-world-banner-trait" id="z-world-trait">🌊 Correnti Marine • Bolle d'Abisso</div>
+        </div>
+      </div>
+
       <!-- In-race Pause Menu -->
       <div id="z-pause-modal" class="z-modal hidden" role="dialog" aria-modal="true">
         <div class="z-modal-card z-pause-card">
@@ -1421,6 +1512,7 @@
     <div style="flex: 1; min-width: 0; text-align: left;">
       <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Sunken Atlantis Citadel</div>
       <div style="font-size: 11px; color: #76fff0;">Cittadella Sommersa di Atlantide</div>
+      <div class="z-track-trait-badge">🌊 Correnti Marine • Bolle d'Abisso</div>
       <div id="z-record-0" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
     </div>
   </div>
@@ -1429,6 +1521,7 @@
     <div style="flex: 1; min-width: 0; text-align: left;">
       <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Zephyr Terminal Runway</div>
       <div style="font-size: 11px; color: #76fff0;">Aeroporto Transatlantico</div>
+      <div class="z-track-trait-badge">⚡ Asfalto Grip • Spinta Reattori</div>
       <div id="z-record-1" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
     </div>
   </div>
@@ -1437,6 +1530,7 @@
     <div style="flex: 1; min-width: 0; text-align: left;">
       <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Ancient Redwood Forest</div>
       <div style="font-size: 11px; color: #76fff0;">Foresta dei Giganti</div>
+      <div class="z-track-trait-badge">🌲 Fogliame Umido • Polline d'Oro</div>
       <div id="z-record-2" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
     </div>
   </div>
@@ -1445,6 +1539,7 @@
     <div style="flex: 1; min-width: 0; text-align: left;">
       <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Apex Big-Air Stadium</div>
       <div style="font-size: 11px; color: #76fff0;">Circuito dei Megasalti</div>
+      <div class="z-track-trait-badge">🦘 Megasalti Vert • Hangtime Boost</div>
       <div id="z-record-3" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
     </div>
   </div>
@@ -1457,6 +1552,7 @@
     <div style="flex: 1; min-width: 0; text-align: left;">
       <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Redrock Canyon & Mines</div>
       <div style="font-size: 11px; color: #76fff0;">Gola dei Minatori & Canyon</div>
+      <div class="z-track-trait-badge">🏜️ Polvere Rossa • Gola Stretta</div>
       <div id="z-record-4" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
     </div>
   </div>
@@ -1465,6 +1561,7 @@
     <div style="flex: 1; min-width: 0; text-align: left;">
       <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Glacier Frostbite Peaks</div>
       <div style="font-size: 11px; color: #76fff0;">Vette di Ghiaccio & Ghiacciai</div>
+      <div class="z-track-trait-badge">❄️ Ghiaccio Scivoloso • Tormenta Polare</div>
       <div id="z-record-5" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
     </div>
   </div>
@@ -1473,6 +1570,7 @@
     <div style="flex: 1; min-width: 0; text-align: left;">
       <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Neo Zephyr Cybercity</div>
       <div style="font-size: 11px; color: #76fff0;">Metropoli Neon Cyberpunk</div>
+      <div class="z-track-trait-badge">🏙️ Asfalto Sintetico • Griglia Cyberpunk</div>
       <div id="z-record-6" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
     </div>
   </div>
@@ -1481,6 +1579,7 @@
     <div style="flex: 1; min-width: 0; text-align: left;">
       <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Magma Caldera</div>
       <div style="font-size: 11px; color: #76fff0;">Caldera del Vulcano Magmatico</div>
+      <div class="z-track-trait-badge">🌋 Lapilli Fusi • Geotermia Pad Boost</div>
       <div id="z-record-7" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
     </div>
   </div>
@@ -1493,6 +1592,7 @@
     <div style="flex: 1; min-width: 0; text-align: left;">
       <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Nether Inferno Abyss</div>
       <div style="font-size: 11px; color: #76fff0;">Fauci dell'Inferno</div>
+      <div class="z-track-trait-badge">🔥 Fumo Vulcanico • Piattaforme Magma</div>
       <div id="z-record-8" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
     </div>
   </div>
@@ -1501,6 +1601,7 @@
     <div style="flex: 1; min-width: 0; text-align: left;">
       <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Cosmic Rainbow Orbit</div>
       <div style="font-size: 11px; color: #76fff0;">Nastro Spaziale Iperuranio</div>
+      <div class="z-track-trait-badge">🌌 Micro-Gravità • Polvere Stellare</div>
       <div id="z-record-9" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
     </div>
   </div>
@@ -1509,6 +1610,7 @@
     <div style="flex: 1; min-width: 0; text-align: left;">
       <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Kraken Spine</div>
       <div style="font-size: 11px; color: #76fff0;">Dorso del Kraken</div>
+      <div class="z-track-trait-badge">🦑 Dorso Tortuoso • Creste Abissali</div>
       <div id="z-record-10" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
     </div>
   </div>
@@ -1517,6 +1619,7 @@
     <div style="flex: 1; min-width: 0; text-align: left;">
       <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Bioluminescent Caves</div>
       <div style="font-size: 11px; color: #76fff0;">Grotte Luminescenti</div>
+      <div class="z-track-trait-badge">💎 Roccia Umida • Cristalli Bioluminescenti</div>
       <div id="z-record-11" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
     </div>
   </div>
@@ -1529,6 +1632,7 @@
     <div style="flex: 1; min-width: 0; text-align: left;">
       <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Sky Reef</div>
       <div style="font-size: 11px; color: #76fff0;">Arcipelago Celeste</div>
+      <div class="z-track-trait-badge">☁️ Hangtime Aereo • Banchi di Nuvole</div>
       <div id="z-record-12" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
     </div>
   </div>
@@ -1537,6 +1641,7 @@
     <div style="flex: 1; min-width: 0; text-align: left;">
       <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Nimbus Overpass</div>
       <div style="font-size: 11px; color: #76fff0;">Cavalcavia dei Nembi</div>
+      <div class="z-track-trait-badge">🌩️ Raffiche di Nimbus • Spinta Turbovento</div>
       <div id="z-record-13" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
     </div>
   </div>
@@ -1545,6 +1650,7 @@
     <div style="flex: 1; min-width: 0; text-align: left;">
       <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Stratos Hairpins</div>
       <div style="font-size: 11px; color: #76fff0;">Tornanti della Stratosfera</div>
+      <div class="z-track-trait-badge">🦅 Tornanti Stratosferici • Vento d'Alta Quota</div>
       <div id="z-record-14" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
     </div>
   </div>
@@ -1553,6 +1659,7 @@
     <div style="flex: 1; min-width: 0; text-align: left;">
       <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Vortex Zenith</div>
       <div style="font-size: 11px; color: #76fff0;">Zenith del Vortice</div>
+      <div class="z-track-trait-badge">🌪️ Ascensione Vortice • Correnti Ascensioni</div>
       <div id="z-record-15" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
     </div>
   </div>
@@ -1565,6 +1672,7 @@
     <div style="flex: 1; min-width: 0; text-align: left;">
       <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Temple of Nix</div>
       <div style="font-size: 11px; color: #76fff0;">Il Tempio Sommerso</div>
+      <div class="z-track-trait-badge">🏛️ Marmo Imperiale • Trazione Monumentale</div>
       <div id="z-record-16" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
     </div>
   </div>
@@ -1573,6 +1681,7 @@
     <div style="flex: 1; min-width: 0; text-align: left;">
       <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Sunken Acropolis</div>
       <div style="font-size: 11px; color: #76fff0;">Acropoli Sommersa</div>
+      <div class="z-track-trait-badge">🏺 Reliquie Sommerse • Nebbie Mistiche</div>
       <div id="z-record-17" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
     </div>
   </div>
@@ -1581,6 +1690,7 @@
     <div style="flex: 1; min-width: 0; text-align: left;">
       <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Leviathan's Roar</div>
       <div style="font-size: 11px; color: #76fff0;">Ruggito del Leviatano</div>
+      <div class="z-track-trait-badge">🐉 Fenditure Titaniche • Ruggito Sismico</div>
       <div id="z-record-18" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
     </div>
   </div>
@@ -1589,6 +1699,7 @@
     <div style="flex: 1; min-width: 0; text-align: left;">
       <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Prism Citadel</div>
       <div style="font-size: 11px; color: #76fff0;">Cittadella dei Prismi</div>
+      <div class="z-track-trait-badge">🔮 Prisma Spettrale • Deriva Cristallina</div>
       <div id="z-record-19" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
     </div>
   </div>
@@ -1601,6 +1712,7 @@
     <div style="flex: 1; min-width: 0; text-align: left;">
       <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Solar Forge Caldera</div>
       <div style="font-size: 11px; color: #76fff0;">Caldera della Forgia Solare</div>
+      <div class="z-track-trait-badge">☀️ Onde di Plasma • Super-Boost Solare</div>
       <div id="z-record-20" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
     </div>
   </div>
@@ -1609,6 +1721,7 @@
     <div style="flex: 1; min-width: 0; text-align: left;">
       <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Cosmic Warpway</div>
       <div style="font-size: 11px; color: #76fff0;">Autostrada Iperspaziale</div>
+      <div class="z-track-trait-badge">🚀 Salto Iperspazio • Bassa Gravità Cosmica</div>
       <div id="z-record-21" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
     </div>
   </div>
@@ -1617,6 +1730,7 @@
     <div style="flex: 1; min-width: 0; text-align: left;">
       <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Quantum Singularity</div>
       <div style="font-size: 11px; color: #76fff0;">Singolarità Quantistica</div>
+      <div class="z-track-trait-badge">⚛️ Curvatura Spaziale • Singolarità Neutra</div>
       <div id="z-record-22" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
     </div>
   </div>
@@ -1625,6 +1739,7 @@
     <div style="flex: 1; min-width: 0; text-align: left;">
       <div style="font-weight: 800; color: #ffffff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Zephyr Omega Finale</div>
       <div style="font-size: 11px; color: #76fff0;">Gran Finale Zephyr Omega</div>
+      <div class="z-track-trait-badge">👑 Circuito Apex Supremo • Pad Boost Massimi</div>
       <div id="z-record-23" style="font-size: 10px; color: #ffc857; margin-top: 2px;">Record: --:--</div>
     </div>
   </div>
@@ -2428,6 +2543,7 @@
               window.__zephyr.loadTrack(trackIdx);
               document.querySelectorAll('.z-track-item').forEach(el => el.classList.toggle('active', el.dataset.index === item.dataset.index));
               if (trackModal) trackModal.classList.add('hidden');
+              if (typeof showWorldBanner === 'function') showWorldBanner(trackIdx);
             } else {
               // Smooth reload
               document.body.style.opacity = '0';
@@ -3696,41 +3812,155 @@
         const GRADED = new WeakSet();
         const LIGHTS_OFF = new WeakSet();
         let envApplied = false;
+        let lastGradedTrack = -1;
+        let currentEnvTex = null;
+        let lastAnnouncedTrack = -1;
 
-        function buildEquirectTexture(TexCtor) {
+        const TRACK_WORLD_METADATA = [
+          { cup: "Coppa Brezza", name: "Sunken Atlantis Citadel", icon: "🏛️", trait: "🌊 Correnti Marine • Bolle d'Abisso" },
+          { cup: "Coppa Brezza", name: "Zephyr Terminal Runway", icon: "✈️", trait: "⚡ Asfalto Grip • Spinta Reattori" },
+          { cup: "Coppa Brezza", name: "Ancient Redwood Forest", icon: "🌲", trait: "🌲 Fogliame Umido • Polline d'Oro" },
+          { cup: "Coppa Brezza", name: "Apex Big-Air Stadium", icon: "🦘", trait: "🦘 Megasalti Vert • Hangtime Boost" },
+          { cup: "Coppa Canyon", name: "Redrock Canyon & Mines", icon: "🏜️", trait: "🏜️ Polvere Rossa • Gola Stretta" },
+          { cup: "Coppa Canyon", name: "Glacier Frostbite Peaks", icon: "❄️", trait: "❄️ Ghiaccio Scivoloso • Tormenta Polare" },
+          { cup: "Coppa Canyon", name: "Neo Zephyr Cybercity", icon: "🏙️", trait: "🏙️ Asfalto Sintetico • Griglia Cyberpunk" },
+          { cup: "Coppa Canyon", name: "Magma Caldera", icon: "🌋", trait: "🌋 Lapilli Fusi • Geotermia Pad Boost" },
+          { cup: "Coppa Abissi", name: "Nether Inferno Abyss", icon: "🔥", trait: "🔥 Fumo Vulcanico • Piattaforme Magma" },
+          { cup: "Coppa Abissi", name: "Cosmic Rainbow Orbit", icon: "🌌", trait: "🌌 Micro-Gravità • Polvere Stellare" },
+          { cup: "Coppa Abissi", name: "Kraken Spine", icon: "🦑", trait: "🦑 Dorso Tortuoso • Creste Abissali" },
+          { cup: "Coppa Abissi", name: "Bioluminescent Caves", icon: "💎", trait: "💎 Roccia Umida • Cristalli Bioluminescenti" },
+          { cup: "Coppa Cielo", name: "Sky Reef", icon: "☁️", trait: "☁️ Hangtime Aereo • Banchi di Nuvole" },
+          { cup: "Coppa Cielo", name: "Nimbus Overpass", icon: "🌩️", trait: "🌩️ Raffiche di Nimbus • Spinta Turbovento" },
+          { cup: "Coppa Cielo", name: "Stratos Hairpins", icon: "🦅", trait: "🦅 Tornanti Stratosferici • Vento d'Alta Quota" },
+          { cup: "Coppa Cielo", name: "Vortex Zenith", icon: "🌪️", trait: "🌪️ Ascensione Vortice • Correnti Ascensioni" },
+          { cup: "Coppa Antica", name: "Temple of Nix", icon: "🏛️", trait: "🏛️ Marmo Imperiale • Trazione Monumentale" },
+          { cup: "Coppa Antica", name: "Sunken Acropolis", icon: "🏺", trait: "🏺 Reliquie Sommerse • Nebbie Mistiche" },
+          { cup: "Coppa Antica", name: "Leviathan's Roar", icon: "🐉", trait: "🐉 Fenditure Titaniche • Ruggito Sismico" },
+          { cup: "Coppa Antica", name: "Prism Citadel", icon: "🔮", trait: "🔮 Prisma Spettrale • Deriva Cristallina" },
+          { cup: "Coppa Nova", name: "Solar Forge Caldera", icon: "☀️", trait: "☀️ Onde di Plasma • Super-Boost Solare" },
+          { cup: "Coppa Nova", name: "Cosmic Warpway", icon: "🚀", trait: "🚀 Salto Iperspazio • Bassa Gravità Cosmica" },
+          { cup: "Coppa Nova", name: "Quantum Singularity", icon: "⚛️", trait: "⚛️ Curvatura Spaziale • Singolarità Neutra" },
+          { cup: "Coppa Nova", name: "Zephyr Omega Finale", icon: "👑", trait: "👑 Circuito Apex Supremo • Pad Boost Massimi" }
+        ];
+        window.__TRACK_WORLD_METADATA = TRACK_WORLD_METADATA;
+
+        function showWorldBanner(trackIdx) {
+          const banner = document.getElementById('z-world-banner');
+          if (!banner) return;
+          const idx = Math.max(0, Math.min(23, parseInt(trackIdx) || 0));
+          const meta = TRACK_WORLD_METADATA[idx] || TRACK_WORLD_METADATA[0];
+          const iconEl = document.getElementById('z-world-icon');
+          const cupEl = document.getElementById('z-world-cup');
+          const nameEl = document.getElementById('z-world-name');
+          const traitEl = document.getElementById('z-world-trait');
+          if (iconEl) iconEl.textContent = meta.icon;
+          if (cupEl) cupEl.textContent = meta.cup;
+          if (nameEl) nameEl.textContent = meta.name;
+          if (traitEl) traitEl.textContent = meta.trait;
+          banner.classList.remove('hidden');
+          banner.style.animation = 'none';
+          void banner.offsetWidth; // reflow
+          banner.style.animation = 'z-world-slide 4.2s forwards';
+          setTimeout(() => {
+            banner.classList.add('hidden');
+          }, 4300);
+        }
+        window.__showWorldBanner = showWorldBanner;
+        window.addEventListener('zephyr:trackchange', (e) => {
+          const tIdx = e.detail?.track !== undefined ? e.detail.track : (window.__CURRENT_TRACK_INDEX || 0);
+          showWorldBanner(tIdx);
+          if (window.__zephyr) gradeScene(window.__zephyr);
+        });
+
+        function buildWorldEquirectTexture(TexCtor, trackIdx = 0) {
           const c = document.createElement('canvas');
           c.width = 1024; c.height = 512;
           const g = c.getContext('2d');
+
+          let skyTop = '#0a2540', skyMid = '#1b6d8c', skyBot = '#7fd8d8';
+          let sunCore = 'rgba(255,250,230,0.95)', sunGlow = 'rgba(255,220,160,0.35)';
+          let horColor = 'rgba(255,190,120,0.35)';
+          let grTop = '#134a52', grBot = '#03141c';
+
+          const t = parseInt(trackIdx) || 0;
+          if (t === 5) {
+            // Ice / Glaciers
+            skyTop = '#021226'; skyMid = '#1e5f8a'; skyBot = '#8ce8ff';
+            sunCore = 'rgba(240,252,255,0.98)'; sunGlow = 'rgba(180,240,255,0.4)';
+            horColor = 'rgba(200,245,255,0.45)';
+            grTop = '#16425b'; grBot = '#051b2c';
+          } else if (t === 7 || t === 8 || t === 20) {
+            // Magma / Nether Inferno / Solar Forge
+            skyTop = '#180404'; skyMid = '#8a1200'; skyBot = '#ff6d00';
+            sunCore = 'rgba(255,200,80,0.95)'; sunGlow = 'rgba(255,80,0,0.5)';
+            horColor = 'rgba(255,120,0,0.4)';
+            grTop = '#2b0d06'; grBot = '#0d0302';
+          } else if (t === 9 || t === 21 || t === 22) {
+            // Cosmic Rainbow / Warpway / Quantum Singularity
+            skyTop = '#02010c'; skyMid = '#3b0764'; skyBot = '#9d174d';
+            sunCore = 'rgba(255,255,255,0.98)'; sunGlow = 'rgba(168,85,247,0.5)';
+            horColor = 'rgba(192,132,252,0.35)';
+            grTop = '#090314'; grBot = '#020005';
+          } else if (t === 6) {
+            // Neo Zephyr Cybercity
+            skyTop = '#050818'; skyMid = '#581c87'; skyBot = '#06b6d4';
+            sunCore = 'rgba(6,182,212,0.92)'; sunGlow = 'rgba(217,70,239,0.45)';
+            horColor = 'rgba(34,211,238,0.35)';
+            grTop = '#0a0f24'; grBot = '#02040a';
+          } else if (t >= 12 && t <= 15) {
+            // Sky Reef & Stratosphere
+            skyTop = '#08183a'; skyMid = '#1d4ed8'; skyBot = '#60a5fa';
+            sunCore = 'rgba(255,255,255,0.98)'; sunGlow = 'rgba(254,240,138,0.4)';
+            horColor = 'rgba(239,246,255,0.4)';
+            grTop = '#bfdbfe'; grBot = '#1e3a8a';
+          } else if (t === 2 || t === 11 || (t >= 16 && t <= 19)) {
+            // Ancient Redwoods, Crystal Caves, Nix & Sunken Temples
+            skyTop = '#041612'; skyMid = '#064e3b'; skyBot = '#fbbf24';
+            sunCore = 'rgba(254,243,199,0.95)'; sunGlow = 'rgba(52,211,153,0.35)';
+            horColor = 'rgba(251,191,36,0.3)';
+            grTop = '#0b2e23'; grBot = '#020d09';
+          }
+
           const sky = g.createLinearGradient(0, 0, 0, 300);
-          sky.addColorStop(0, '#0a2540');
-          sky.addColorStop(0.55, '#1b6d8c');
-          sky.addColorStop(1, '#7fd8d8');
+          sky.addColorStop(0, skyTop);
+          sky.addColorStop(0.55, skyMid);
+          sky.addColorStop(1, skyBot);
           g.fillStyle = sky; g.fillRect(0, 0, 1024, 300);
+
           const sun = g.createRadialGradient(640, 120, 8, 640, 120, 220);
-          sun.addColorStop(0, 'rgba(255,250,230,0.95)');
-          sun.addColorStop(0.25, 'rgba(255,220,160,0.35)');
-          sun.addColorStop(1, 'rgba(255,220,160,0)');
+          sun.addColorStop(0, sunCore);
+          sun.addColorStop(0.25, sunGlow);
+          sun.addColorStop(1, 'rgba(0,0,0,0)');
           g.fillStyle = sun; g.fillRect(0, 0, 1024, 300);
+
           const hor = g.createLinearGradient(0, 240, 0, 320);
-          hor.addColorStop(0, 'rgba(255,200,120,0)');
-          hor.addColorStop(1, 'rgba(255,190,120,0.35)');
+          hor.addColorStop(0, 'rgba(0,0,0,0)');
+          hor.addColorStop(1, horColor);
           g.fillStyle = hor; g.fillRect(0, 240, 1024, 80);
+
           const gr = g.createLinearGradient(0, 300, 0, 512);
-          gr.addColorStop(0, '#134a52');
-          gr.addColorStop(1, '#03141c');
+          gr.addColorStop(0, grTop);
+          gr.addColorStop(1, grBot);
           g.fillStyle = gr; g.fillRect(0, 300, 1024, 212);
+
           const tex = new TexCtor(c);
           tex.mapping = 302;       // EquirectangularReflectionMapping
           tex.colorSpace = 3001;   // SRGBColorSpace
           return tex;
         }
+        window.__buildWorldEquirectTexture = buildWorldEquirectTexture;
+
+        function buildEquirectTexture(TexCtor) {
+          const curIdx = window.__CURRENT_TRACK_INDEX !== undefined ? window.__CURRENT_TRACK_INDEX : (parseInt(zsGet('zephyr_track') || '0', 10) || 0);
+          return buildWorldEquirectTexture(TexCtor, curIdx);
+        }
 
         function gradeScene(z) {
           const S = z.scene;
           if (!S) return;
-          // env map una tantum; luci/bloom/esposure ri-applicate a ogni tick
-          // (il motore ripristina intensita' a ogni load pista/theme)
-          if (!envApplied) {
+          const curTrack = window.__CURRENT_TRACK_INDEX !== undefined ? window.__CURRENT_TRACK_INDEX : (parseInt(zsGet('zephyr_track') || '0', 10) || 0);
+
+          if (curTrack !== lastGradedTrack || !S.environment) {
             let TexCtor = null;
             S.traverse(o => {
               if (!TexCtor && o.material) {
@@ -3740,10 +3970,17 @@
             });
             if (TexCtor) {
               try {
-                S.environment = buildEquirectTexture(TexCtor);
-                if ('environmentIntensity' in S) S.environmentIntensity = 0.55;
+                if (currentEnvTex && typeof currentEnvTex.dispose === 'function') {
+                  currentEnvTex.dispose();
+                }
+                currentEnvTex = buildWorldEquirectTexture(TexCtor, curTrack);
+                S.environment = currentEnvTex;
+                if ('environmentIntensity' in S) {
+                  S.environmentIntensity = (curTrack === 5 || curTrack === 19) ? 0.72 : (curTrack === 9 || curTrack === 21 || curTrack === 22) ? 0.68 : (curTrack === 7 || curTrack === 8 || curTrack === 20) ? 0.60 : 0.55;
+                }
                 envApplied = true;
-              } catch (e) { console.warn('[grade] env map non applicata:', e); }
+                lastGradedTrack = curTrack;
+              } catch (e) { console.warn('[grade] env map error:', e); }
             }
           }
           S.traverse(o => {
@@ -3754,8 +3991,28 @@
             }
             if (o.isHemisphereLight && o.intensity > 0.6) o.intensity = 0.55; // riequilibra con IBL
           });
-          if (z.bloom) { z.bloom.strength = 0.62; z.bloom.radius = 0.55; z.bloom.threshold = 0.76; }
-          if (z.renderer) z.renderer.toneMappingExposure = 1.08;
+          if (z.bloom) {
+            if (curTrack === 6 || curTrack === 9 || curTrack === 21 || curTrack === 22) {
+              z.bloom.strength = 0.78; z.bloom.radius = 0.65; z.bloom.threshold = 0.68;
+            } else if (curTrack === 7 || curTrack === 8 || curTrack === 20) {
+              z.bloom.strength = 0.72; z.bloom.radius = 0.60; z.bloom.threshold = 0.70;
+            } else if (curTrack === 5 || curTrack === 19) {
+              z.bloom.strength = 0.65; z.bloom.radius = 0.58; z.bloom.threshold = 0.72;
+            } else {
+              z.bloom.strength = 0.62; z.bloom.radius = 0.55; z.bloom.threshold = 0.76;
+            }
+          }
+          if (z.renderer) {
+            if (curTrack === 9 || curTrack === 21 || curTrack === 22) {
+              z.renderer.toneMappingExposure = 1.15;
+            } else if (curTrack === 7 || curTrack === 8 || curTrack === 20) {
+              z.renderer.toneMappingExposure = 1.12;
+            } else if (curTrack === 5) {
+              z.renderer.toneMappingExposure = 1.14;
+            } else {
+              z.renderer.toneMappingExposure = 1.08;
+            }
+          }
         }
 
         function gradeKarts(z) {
@@ -4166,7 +4423,20 @@
         const iv = setInterval(() => {
           const z = window.__zephyr;
           if (!z?.scene) { if (++tries > 900) clearInterval(iv); return; }
-          try { installOverlays(); detectSoftGpu(z); gradeScene(z); gradeKarts(z); updateStatusFx(); charStudio(z); drsTick(z); } catch (e) { console.warn('[grade]', e); }
+          try {
+            const curTrk = window.__CURRENT_TRACK_INDEX !== undefined ? window.__CURRENT_TRACK_INDEX : (parseInt(zsGet('zephyr_track') || '0', 10) || 0);
+            if (curTrk !== lastAnnouncedTrack && (z.mode === 'race' || z.director?.phase === 'countdown' || z.director?.phase === 'racing')) {
+              lastAnnouncedTrack = curTrk;
+              showWorldBanner(curTrk);
+            }
+            installOverlays();
+            detectSoftGpu(z);
+            gradeScene(z);
+            gradeKarts(z);
+            updateStatusFx();
+            charStudio(z);
+            drsTick(z);
+          } catch (e) { console.warn('[grade]', e); }
         }, 1200);
       })();
     </script>

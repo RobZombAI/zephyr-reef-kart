@@ -102,6 +102,37 @@ const PATCHES = [
     find: 'const D=this.squash*.18,squat=de(f*.0035,-.06,.06),droop=!t.grounded?-.08:0',
     replace: 'this.sq=ne(this.sq||0,de(f*.0035,-.045,.045),14,e);const D=this.squash*.18,squat=this.sq,droop=!t.grounded?-.08:0'
   },
+  {
+    name: 'Fisica per-mondo: handling, grip e pad boost unici per tutte le coppe',
+    find: 'let G=(o.drifting?r.driftGrip:r.grip)*i;if(window.__CURRENT_TRACK_INDEX===5&&o.drifting)G*=.82;(o.boostTime>0||o.padBoostTime>0)&&(G=Math.max(G,r.boostGrip)),o.grounded?(o.onRoad||(o.boostTime>0||o.padBoostTime>0)?G:G*.72):G*=.08,x*=Math.exp(-G*t);const H=o.boostTime>0||o.padBoostTime>0;let z=(r.maxSpeed+(H?o.boostPower:0))*(o.onRoad||H?1:0.58);if((window.__CURRENT_TRACK_INDEX===7||window.__CURRENT_TRACK_INDEX===8||window.__CURRENT_TRACK_INDEX===20)&&o.padBoostTime>0)z*=1.06;',
+    replace: 'let G=(o.drifting?r.driftGrip:r.grip)*i;if(window.__CURRENT_TRACK_INDEX===5&&o.drifting)G*=.82;if(window.__CURRENT_TRACK_INDEX===11&&o.drifting)G*=.88;if(window.__CURRENT_TRACK_INDEX===6)G*=1.07;if(window.__CURRENT_TRACK_INDEX===1)G*=1.05;if(window.__CURRENT_TRACK_INDEX===16)G*=1.06;if(window.__CURRENT_TRACK_INDEX===19&&o.drifting)G*=.86;(o.boostTime>0||o.padBoostTime>0)&&(G=Math.max(G,r.boostGrip)),o.grounded?(o.onRoad||(o.boostTime>0||o.padBoostTime>0)?G:G*.72):G*=.08,x*=Math.exp(-G*t);const H=o.boostTime>0||o.padBoostTime>0;let z=(r.maxSpeed+(H?o.boostPower:0))*(o.onRoad||H?1:0.58);if((window.__CURRENT_TRACK_INDEX===7||window.__CURRENT_TRACK_INDEX===8||window.__CURRENT_TRACK_INDEX===20)&&o.padBoostTime>0)z*=1.06;if(window.__CURRENT_TRACK_INDEX===21&&o.padBoostTime>0)z*=1.12;if(window.__CURRENT_TRACK_INDEX===3&&o.padBoostTime>0)z*=1.08;if(window.__CURRENT_TRACK_INDEX===23&&o.padBoostTime>0)z*=1.10;'
+  },
+  {
+    name: 'Gravita cosmica e megasalti per mondi spaziali ed aerei',
+    find: 'const isCosmic=(window.__CURRENT_TRACK_INDEX===9||window.__CURRENT_TRACK_INDEX===21||window.__CURRENT_TRACK_INDEX===22);const isBigAir=(window.__CURRENT_TRACK_INDEX===3||window.__CURRENT_TRACK_INDEX===12);const grav=isCosmic?22:(isBigAir?25:30);',
+    altFind: 'const isCosmic=(window.__CURRENT_TRACK_INDEX===9||window.__CURRENT_TRACK_INDEX===21||window.__CURRENT_TRACK_INDEX===22);const grav=isCosmic?24:30;',
+    replace: 'const isCosmic=(window.__CURRENT_TRACK_INDEX===9||window.__CURRENT_TRACK_INDEX===21||window.__CURRENT_TRACK_INDEX===22);let grav=isCosmic?24:30;if(window.__CURRENT_TRACK_INDEX===3||window.__CURRENT_TRACK_INDEX===12)grav=25;'
+  },
+  {
+    name: 'Meteo e atmosfera particellare specifica per bioma in updateRace',
+    find: 'if(this.world.update(t,this.elapsed,n,this.director.player.pos),this.vfx.update(t),this.ui.update(e)',
+    replace: 'const _curTrk=window.__CURRENT_TRACK_INDEX||0,_pp=this.director?.player?.pos;if(_pp&&this.vfx){if((_curTrk===7||_curTrk===8||_curTrk===20)&&Math.random()<.35){this.vfx.spark(_pp.x+(Math.random()-.5)*22,_pp.y+Math.random()*4,_pp.z+(Math.random()-.5)*22,(Math.random()-.5)*1.5,2.5+Math.random()*2,(Math.random()-.5)*1.5,Math.random()<.6?16738816:16755200,.7,.4,3,1.2);}else if(_curTrk===5&&Math.random()<.45){this.vfx.spark(_pp.x+(Math.random()-.5)*25,_pp.y+4+Math.random()*6,_pp.z+(Math.random()-.5)*25,(Math.random()-.5)*2,-1.8-Math.random()*1.5,(Math.random()-.5)*2,15724543,.6,.45,4,.8);}else if((_curTrk===9||_curTrk===21||_curTrk===22)&&Math.random()<.4){this.vfx.spark(_pp.x+(Math.random()-.5)*24,_pp.y+1+Math.random()*5,_pp.z+(Math.random()-.5)*24,(Math.random()-.5)*.8,(Math.random()-.5)*.8,(Math.random()-.5)*.8,Math.random()<.5?65535:16719871,.8,.5,2,1.5);}else if(_curTrk===6&&Math.random()<.3){this.vfx.spark(_pp.x+(Math.random()-.5)*20,_pp.y+.5+Math.random()*4,_pp.z+(Math.random()-.5)*20,0,1.2,0,Math.random()<.5?61439:16711935,.4,.25,2,1.8);}else if(_curTrk===2&&Math.random()<.3){this.vfx.spark(_pp.x+(Math.random()-.5)*22,_pp.y+2+Math.random()*5,_pp.z+(Math.random()-.5)*22,(Math.random()-.5)*1.2,-.6-Math.random()*.8,(Math.random()-.5)*1.2,16766464,.65,.35,3,.9);}else if((_curTrk>=12&&_curTrk<=15)&&Math.random()<.35){this.vfx.puff(_pp.x+(Math.random()-.5)*26,_pp.y+1+Math.random()*4,_pp.z+(Math.random()-.5)*26,-Math.sin(this.director.player.state.yaw)*4,.5,-Math.cos(this.director.player.state.yaw)*4,15132922,.8,.5,2,-1,1);}else if((_curTrk===0||_curTrk===17)&&Math.random()<.25){this.vfx.spark(_pp.x+(Math.random()-.5)*18,_pp.y+.2,_pp.z+(Math.random()-.5)*18,(Math.random()-.5)*.5,2.2+Math.random()*1.5,(Math.random()-.5)*.5,9434879,.5,.3,2,1);}}if(this.world.update(t,this.elapsed,n,this.director.player.pos),this.vfx.update(t),this.ui.update(e)'
+  },
+  {
+    name: 'Notifica evento zephyr:trackchange per World Banner in startRace',
+    find: 'this.aiSpecsCache=fc(this.playerSpec.id,5),this.buildRace(),this.setMode("race"),this.audio.play("engine_start")',
+    replace: 'this.aiSpecsCache=fc(this.playerSpec.id,5),this.buildRace(),this.setMode("race"),this.audio.play("engine_start");try{window.dispatchEvent(new CustomEvent("zephyr:trackchange",{detail:{track:window.__CURRENT_TRACK_INDEX||0}}))}catch{}'
+  },
+  {
+    name: 'Notifica evento zephyr:trackchange per World Banner in startMultiplayerRace',
+    find: 'this.buildRace(p0Spec,otherSpecs),this.director?.setupMultiplayer?.(players,slot),this.setMode("race"),this.audio.play("engine_start")',
+    replace: 'this.buildRace(p0Spec,otherSpecs),this.director?.setupMultiplayer?.(players,slot),this.setMode("race"),this.audio.play("engine_start");try{window.dispatchEvent(new CustomEvent("zephyr:trackchange",{detail:{track:window.__CURRENT_TRACK_INDEX||0}}))}catch{}'
+  },
+  {
+    name: 'Notifica evento zephyr:trackchange per World Banner in loadTrack',
+    find: 'if(this.ui){if(this.ui.attachMinimap)this.ui.attachMinimap(this.world.spline);if(this.mode==="race")this.ui.setScreen("race");}',
+    replace: 'if(this.ui){if(this.ui.attachMinimap)this.ui.attachMinimap(this.world.spline);if(this.mode==="race")this.ui.setScreen("race");};try{window.dispatchEvent(new CustomEvent("zephyr:trackchange",{detail:{track:idx}}))}catch{}'
+  },
 ];
 
 function countOccurrences(hay, needle) {

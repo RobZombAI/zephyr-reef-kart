@@ -4999,4 +4999,91 @@ describe('=== UNIT & PROCESS TESTS: SYSTEMIC ELIMINATION OF CAR VIBRATION, DUPLI
   });
 });
 
+describe('=== UNIT & PROCESS TESTS: REVOLUTIONARY BIOME DIVERSITY, WORLD IDENTITIES & CINEMATIC HUD ===', () => {
+  const indexHtml = fs.readFileSync(path.join(REPO_ROOT, 'index.html'), 'utf8');
+  const zephyrHtml = fs.readFileSync(path.join(REPO_ROOT, 'zephyr.html'), 'utf8');
+  const bundleCode = fs.readFileSync(BUNDLE_PATH, 'utf8');
+
+  it('1. Architecture & Metadata: All 24 Tracks have unique world metadata defined with cup, icon, name and trait', () => {
+    for (const [name, html] of [['index.html', indexHtml], ['zephyr.html', zephyrHtml]]) {
+      assert.ok(html.includes('TRACK_WORLD_METADATA = ['), `${name} defines TRACK_WORLD_METADATA`);
+      assert.ok(html.includes('Sunken Atlantis Citadel'), `${name} includes track 0`);
+      assert.ok(html.includes('Glacier Frostbite Peaks'), `${name} includes track 5`);
+      assert.ok(html.includes('Neo Zephyr Cybercity'), `${name} includes track 6`);
+      assert.ok(html.includes('Magma Caldera'), `${name} includes track 7`);
+      assert.ok(html.includes('Cosmic Rainbow Orbit'), `${name} includes track 9`);
+      assert.ok(html.includes('Bioluminescent Caves'), `${name} includes track 11`);
+      assert.ok(html.includes('Sky Reef'), `${name} includes track 12`);
+      assert.ok(html.includes('Temple of Nix'), `${name} includes track 16`);
+      assert.ok(html.includes('Prism Citadel'), `${name} includes track 19`);
+      assert.ok(html.includes('Solar Forge Caldera'), `${name} includes track 20`);
+      assert.ok(html.includes('Cosmic Warpway'), `${name} includes track 21`);
+      assert.ok(html.includes('Quantum Singularity'), `${name} includes track 22`);
+      assert.ok(html.includes('Zephyr Omega Finale'), `${name} includes track 23`);
+
+      // Verify all 24 track modal items have .z-track-trait-badge
+      const badgeCount = (html.match(/class="z-track-trait-badge"/g) || []).length;
+      assert.strictEqual(badgeCount, 24, `${name} has exactly 24 .z-track-trait-badge elements`);
+    }
+  });
+
+  it('2. Visual & IBL: buildWorldEquirectTexture generates distinct sky and lighting gradients per biome', () => {
+    for (const [name, html] of [['index.html', indexHtml], ['zephyr.html', zephyrHtml]]) {
+      assert.ok(html.includes('function buildWorldEquirectTexture(TexCtor, trackIdx'), `${name} defines buildWorldEquirectTexture`);
+      assert.ok(html.includes("t === 5"), `${name} handles arctic ice palette`);
+      assert.ok(html.includes("t === 7 || t === 8 || t === 20"), `${name} handles magma caldera palette`);
+      assert.ok(html.includes("t === 9 || t === 21 || t === 22"), `${name} handles cosmic deep space palette`);
+      assert.ok(html.includes("t === 6"), `${name} handles neon cybercity palette`);
+      assert.ok(html.includes("t >= 12 && t <= 15"), `${name} handles stratosphere cloud sea palette`);
+      assert.ok(html.includes("t === 2 || t === 11 || (t >= 16 && t <= 19)"), `${name} handles ancient and crystal palette`);
+    }
+  });
+
+  it('3. Post-Processing Grade: gradeScene applies biome-specific bloom threshold/radius and tone mapping exposure', () => {
+    for (const [name, html] of [['index.html', indexHtml], ['zephyr.html', zephyrHtml]]) {
+      assert.ok(html.includes('curTrack !== lastGradedTrack || !S.environment'), `${name} invalidates and regenerates IBL on track change`);
+      assert.ok(html.includes('z.bloom.strength = 0.78'), `${name} boosts bloom for Cyber & Cosmic worlds`);
+      assert.ok(html.includes('z.bloom.strength = 0.72'), `${name} warms bloom for Lava Calderas`);
+      assert.ok(html.includes('z.bloom.strength = 0.65'), `${name} tunes bloom for Glaciers & Prism Citadels`);
+      assert.ok(html.includes('z.renderer.toneMappingExposure = 1.15'), `${name} sets high exposure for Cosmic space tracks`);
+      assert.ok(html.includes('z.renderer.toneMappingExposure = 1.14'), `${name} sets bright exposure for Arctic glaciers`);
+    }
+  });
+
+  it('4. Atmosphere & Particles: Engine updateRace spawns biome-specific weather systems (embers, snow, stardust, pollen, vapor)', () => {
+    assert.ok(bundleCode.includes('_curTrk===7||_curTrk===8||_curTrk===20'), 'Spawns volcanic molten embers on magma tracks');
+    assert.ok(bundleCode.includes('_curTrk===5&&Math.random()<.45'), 'Spawns falling polar snow flurry on glacier tracks');
+    assert.ok(bundleCode.includes('_curTrk===9||_curTrk===21||_curTrk===22'), 'Spawns cosmic stardust motes on space tracks');
+    assert.ok(bundleCode.includes('_curTrk===6&&Math.random()<.3'), 'Spawns digital cyber motes on Neo Zephyr');
+    assert.ok(bundleCode.includes('_curTrk===2&&Math.random()<.3'), 'Spawns golden canopy pollen on Redwood Forest');
+    assert.ok(bundleCode.includes('_curTrk>=12&&_curTrk<=15'), 'Spawns cloud vapor puffs in Stratosphere');
+    assert.ok(bundleCode.includes('_curTrk===0||_curTrk===17'), 'Spawns underwater aquatic bubbles in Sunken Citadels');
+  });
+
+  it('5. Track Driving Dynamics: In-engine physics modifiers differentiate grip, handling and pad boost for all Cups', () => {
+    assert.ok(bundleCode.includes('window.__CURRENT_TRACK_INDEX===5&&o.drifting)G*=.82'), 'Ice track 5 reduces drift grip for gliding slide');
+    assert.ok(bundleCode.includes('window.__CURRENT_TRACK_INDEX===11&&o.drifting)G*=.88'), 'Crystal Caves track 11 gives slippery wet rock handling');
+    assert.ok(bundleCode.includes('window.__CURRENT_TRACK_INDEX===6)G*=1.07'), 'Cybercity track 6 gives high-precision synthetic grip');
+    assert.ok(bundleCode.includes('window.__CURRENT_TRACK_INDEX===1)G*=1.05'), 'Runway track 1 gives tarmac racing grip');
+    assert.ok(bundleCode.includes('window.__CURRENT_TRACK_INDEX===16)G*=1.06'), 'Temple of Nix track 16 provides imperial marble traction');
+    assert.ok(bundleCode.includes('window.__CURRENT_TRACK_INDEX===19&&o.drifting)G*=.86'), 'Prism Citadel track 19 provides crystalline drift dynamic');
+    assert.ok(bundleCode.includes('window.__CURRENT_TRACK_INDEX===21&&o.padBoostTime>0)z*=1.12'), 'Cosmic Warpway track 21 pad boost yields hyper-velocity +12%');
+    assert.ok(bundleCode.includes('window.__CURRENT_TRACK_INDEX===3&&o.padBoostTime>0)z*=1.08'), 'Big-Air Stadium track 3 pad boost grants vert launch boost');
+    assert.ok(bundleCode.includes('window.__CURRENT_TRACK_INDEX===23&&o.padBoostTime>0)z*=1.10'), 'Omega Finale track 23 provides ultimate pad thrust');
+    assert.ok(bundleCode.includes('grav=25'), 'High-altitude and stadium vert tracks grant extended hangtime gravity');
+  });
+
+  it('6. Cinematic HUD & Lifecycle: In-race #z-world-banner and zephyr:trackchange notifications active on race start and track switches', () => {
+    for (const [name, html] of [['index.html', indexHtml], ['zephyr.html', zephyrHtml]]) {
+      assert.ok(html.includes('id="z-world-banner"'), `${name} has #z-world-banner element`);
+      assert.ok(html.includes('.z-world-banner'), `${name} has .z-world-banner CSS`);
+      assert.ok(html.includes('@keyframes z-world-slide'), `${name} has z-world-slide animation`);
+      assert.ok(html.includes("window.addEventListener('zephyr:trackchange'"), `${name} listens for zephyr:trackchange`);
+    }
+
+    assert.ok(bundleCode.includes('new CustomEvent("zephyr:trackchange"'), 'Bundle dispatches zephyr:trackchange event');
+  });
+});
+
+
 
