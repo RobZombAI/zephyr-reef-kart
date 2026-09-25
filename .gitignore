@@ -18,5 +18,6 @@ xcuserdata/
 dist/
 *.apk
 *.ipa
+*.aab
 temp_ipa_update/
 og-image.png

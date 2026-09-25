@@ -5228,5 +5228,90 @@ describe('=== UNIT & PROCESS TESTS: AUTHENTIC ARCADE GRID POSITIONS & LAST-PLACE
   });
 });
 
+describe('=== UNIT & PROCESS TESTS: GOOGLE ADS (ADMOB), GDPR CONSENT & GOOGLE PLAY STORE COMPLIANCE ===', () => {
+  it('1. Native Android: Full Google AdMob & UMP SDK integration with Rewarded Ads and Better Ads cooldown', () => {
+    const mainActivityPath = path.join(REPO_ROOT, 'android/ZephyrReefKart/app/src/main/java/com/robzomb/zephyrreefkart/MainActivity.kt');
+    assert.ok(fs.existsSync(mainActivityPath), 'MainActivity.kt exists in com.robzomb.zephyrreefkart package');
+    const kt = fs.readFileSync(mainActivityPath, 'utf8');
+
+    // Package & Imports
+    assert.ok(kt.includes('package com.robzomb.zephyrreefkart'), 'Uses production package');
+    assert.ok(kt.includes('com.google.android.gms.ads.MobileAds'), 'Imports MobileAds');
+    assert.ok(kt.includes('com.google.android.gms.ads.interstitial.InterstitialAd'), 'Imports InterstitialAd');
+    assert.ok(kt.includes('com.google.android.gms.ads.rewarded.RewardedAd'), 'Imports RewardedAd');
+    assert.ok(kt.includes('com.google.android.ump.UserMessagingPlatform'), 'Imports Google UMP SDK');
+
+    // AdsConfig & Cooldown
+    assert.ok(kt.includes('BANNER_UNIT_ID'), 'Configures Banner unit');
+    assert.ok(kt.includes('INTERSTITIAL_UNIT_ID'), 'Configures Interstitial unit');
+    assert.ok(kt.includes('REWARDED_UNIT_ID'), 'Configures Rewarded unit');
+    assert.ok(kt.includes('MIN_INTERSTITIAL_COOLDOWN_MS'), 'Enforces Better Ads minimum cooldown interval');
+
+    // UMP Consent & GDPR
+    assert.ok(kt.includes('setupConsentAndAds()'), 'Requests consent info update before ads');
+    assert.ok(kt.includes('showPrivacyOptions()'), 'Provides in-game privacy options form for GDPR');
+
+    // Rewarded Ads implementation
+    assert.ok(kt.includes('loadRewardedAd()'), 'Preloads rewarded video ads');
+    assert.ok(kt.includes('showRewardedAd('), 'Shows rewarded ads and triggers JS callback');
+
+    // Security Hardening
+    assert.ok(kt.includes('allowFileAccess = false'), 'WebView disables raw file access');
+    assert.ok(kt.includes('allowContentAccess = false'), 'WebView disables raw content access');
+    assert.ok(kt.includes('MIXED_CONTENT_NEVER_ALLOW'), 'WebView blocks mixed HTTP content');
+    assert.ok(kt.includes('safeBrowsingEnabled = true'), 'Google Play Safe Browsing enabled');
+  });
+
+  it('2. AndroidManifest & Gradle: Production Application ID, AD_ID Permission and Release Keystore', () => {
+    const manifestPath = path.join(REPO_ROOT, 'android/ZephyrReefKart/app/src/main/AndroidManifest.xml');
+    const manifest = fs.readFileSync(manifestPath, 'utf8');
+    assert.ok(manifest.includes('android.permission.INTERNET'), 'Declares INTERNET permission');
+    assert.ok(manifest.includes('com.google.android.gms.permission.AD_ID'), 'Declares AD_ID permission for Android 13+');
+    assert.ok(manifest.includes('android:allowBackup="false"'), 'Disables insecure backup extraction');
+    assert.ok(manifest.includes('android:usesCleartextTraffic="false"'), 'Prohibits cleartext HTTP traffic');
+    assert.ok(manifest.includes('com.google.android.gms.ads.APPLICATION_ID'), 'Declares AdMob Application ID');
+
+    const gradlePath = path.join(REPO_ROOT, 'android/ZephyrReefKart/app/build.gradle.kts');
+    const gradle = fs.readFileSync(gradlePath, 'utf8');
+    assert.ok(gradle.includes('applicationId = "com.robzomb.zephyrreefkart"'), 'Application ID is non-example production ID');
+    assert.ok(gradle.includes('targetSdk = 35'), 'Target SDK satisfies Google Play requirements');
+    assert.ok(gradle.includes('zephyr-release.keystore'), 'Release signing configured with dedicated keystore');
+
+    const keystorePath = path.join(REPO_ROOT, 'android/ZephyrReefKart/zephyr-release.keystore');
+    assert.ok(fs.existsSync(keystorePath), 'Dedicated zephyr-release.keystore exists in repository');
+  });
+
+  it('3. In-Game HTML & JS: Rewarded Ad Callback and GDPR Privacy Options Button', () => {
+    const indexHtml = fs.readFileSync(path.join(REPO_ROOT, 'index.html'), 'utf8');
+    const zephyrHtml = fs.readFileSync(path.join(REPO_ROOT, 'zephyr.html'), 'utf8');
+    for (const [name, html] of [['index.html', indexHtml], ['zephyr.html', zephyrHtml]]) {
+      assert.ok(html.includes('id="z-opt-privacy"'), `${name} contains GDPR privacy options button`);
+      assert.ok(html.includes('window.onZephyrAdReward'), `${name} defines global onZephyrAdReward callback`);
+      assert.ok(html.includes("window.AndroidAds.showRewarded"), `${name} connects rewarded video ad unlock`);
+      assert.ok(html.includes("window.AndroidAds.showPrivacyOptions"), `${name} connects GDPR privacy options modal`);
+    }
+  });
+
+  it('4. Public Privacy Policy and Store Listing Documentation', () => {
+    const privacyHtml = fs.readFileSync(path.join(REPO_ROOT, 'public/privacy-policy.html'), 'utf8');
+    assert.ok(privacyHtml.includes('Informativa sulla Privacy di Zephyr Reef Kart'), 'Public privacy policy has title');
+    assert.ok(privacyHtml.includes('Google AdMob'), 'Discloses Google AdMob and Advertising ID');
+    assert.ok(privacyHtml.includes('GDPR'), 'Discloses European Union GDPR / UMP compliance');
+    assert.ok(privacyHtml.includes('COPPA'), 'Discloses COPPA children protection policy');
+
+    const listingDoc = fs.readFileSync(path.join(REPO_ROOT, 'PLAYSTORE_LISTING.md'), 'utf8');
+    assert.ok(listingDoc.includes('com.robzomb.zephyrreefkart'), 'Listing doc has production package name');
+    assert.ok(listingDoc.includes('Data Safety Form'), 'Listing doc includes Data Safety answers');
+    assert.ok(listingDoc.includes('Zephyr Reef: 3D Kart Racing'), 'Listing doc has valid 30-char title');
+  });
+
+  it('5. Native Packaging Pipeline: Supports Android App Bundle (.aab) generation', () => {
+    const pkgNative = fs.readFileSync(path.join(REPO_ROOT, 'scripts/package_native.js'), 'utf8');
+    assert.ok(pkgNative.includes('bundleRelease'), 'package_native.js executes bundleRelease');
+    assert.ok(pkgNative.includes('ZephyrReefKart.aab'), 'package_native.js produces ZephyrReefKart.aab');
+  });
+});
+
+
 
 

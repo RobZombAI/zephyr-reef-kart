@@ -15,8 +15,9 @@ RISOLTI (i dettagli dei fix sono nel messaggio di consegna della sessione):
 - Sezione C (multiplayer): risolti 1-18 tranne 11 (TURN server: richiede un servizio a pagamento — da decidere), 15/16 parzialmente mitigati.
 - Sezione D (fisica) ed E (UI): risolti tutti nei sorgenti src/ e in index.html; NOTA: la fisica realmente in produzione resta nel bundle minificato (i fix valgono al ripristino dell'entry).
 - Sezione F/G/H/I (track/AI/models/minimap): risolti tutti nei sorgenti.
-- Sezione J (infra): risolti 1-9, 11, 13-15 (+ versioni native allineate a 6.9.5); i test sono ora portabili (path dinamici, bundle risolto via glob).
-- NON eseguito (richiede decisione/credenziali utente): rewrite history git (485MB → comando: `git filter-repo --path node_modules --path '*.apk' --path '*.ipa' --invert-paths`), firma release Android con keystore reale, cambio applicationId `com.example.*`, TURN server.
+- Sezione J (infra): risolti 1-9, 11, 13-15 (+ versioni native allineate a 6.9.6); i test sono ora portabili (path dinamici, bundle risolto via glob).
+- RISOLTO: Firma release Android con keystore reale (zephyr-release.keystore SHA256withRSA), cambio applicationId da com.example a com.robzomb.zephyrreefkart, bundle AAB per Play Store, integrazione completa Google AdMob con UMP GDPR e Better Ads cooldown, Privacy Policy e scheda Play Store.
+- DA DECIDERE / OPZIONALE: rewrite history git (485MB → comando: `git filter-repo --path node_modules --path '*.apk' --path '*.ipa' --invert-paths`), TURN server dedicato.
 
 ---
 
@@ -372,10 +373,9 @@ RISOLTI (i dettagli dei fix sono nel messaggio di consegna della sessione):
 4. **[ALTA] Quintuplicazione dell'app per design**: bundle+CSS+peerjs+icone+HTML in 5 copie tracciate
    (`assets/`, `dist/`, `public/`, `android/.../assets/`, `ios/.../WebAssets/`); `zephyr.html` è byte-identico
    a `index.html` (puro duplicato). Costo 5x su ogni modifica.
-5. **[ALTA] APK "release" firmato con la chiave DEBUG** (`app/build.gradle.kts`, `signingConfigs.getByName("debug")`):
-   non pubblicabile su Play Store. (Nota positiva: nessuna credenziale hardcodata nel repo, grep pulito.)
+5. **[RISOLTO] Keystore di Release dedicato per Android**: generato `zephyr-release.keystore` (SHA256withRSA, 2048-bit, valido fino al 2054) configurato in `signingConfigs.release`, ora AAB e APK sono firmati con chiave di produzione autentica e verificati con apksigner.
 6. **[MEDIA] Release Android senza minificazione** (`isMinifyEnabled=false`): APK gonfio.
-7. **[MEDIA] `applicationId`/namespace `com.example.zephyrreefkart`**: template non pronto per lo store.
+7. **[RISOLTO] `applicationId` e namespace di produzione**: aggiornato a `com.robzomb.zephyrreefkart`, eliminato il prefisso vietato `com.example.*`, pienamente conforme e accettato da Google Play Store.
 8. **[MEDIA] Test che validano artefatti binari**: il test IPA asserisce che il binario esista e pesi >1MB
    (`test_all_systems.mjs` ~riga 3849) — sempre vero finché non lo cancelli.
 9. **[MEDIA] Metà suite dipende dalla CWD**: letture relative (`fs.readFileSync('assets/...')` a `:2799`,

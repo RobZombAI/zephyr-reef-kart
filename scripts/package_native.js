@@ -76,6 +76,18 @@ try {
   fs.copyFileSync(targetApk, path.join(artifactsDir, 'ZephyrReefKart.apk'));
   console.log('Successfully built, signed, aligned and verified ZephyrReefKart.apk');
 
+  // 1b. Build & verify signed ZephyrReefKart.aab (Google Play Bundle) via Gradle
+  console.log('--> Building properly signed ZephyrReefKart.aab (Google Play Bundle)...');
+  run('./gradlew bundleRelease --no-daemon', { cwd: androidDir, env });
+  const builtAab = path.join(androidDir, 'app/build/outputs/bundle/release/app-release.aab');
+  if (!fs.existsSync(builtAab)) {
+    throw new Error(`Built AAB not found at ${builtAab}`);
+  }
+  const targetAab = path.join(REPO_ROOT, 'ZephyrReefKart.aab');
+  fs.copyFileSync(builtAab, targetAab);
+  fs.copyFileSync(targetAab, path.join(artifactsDir, 'ZephyrReefKart.aab'));
+  console.log('Successfully built and signed ZephyrReefKart.aab for Google Play Store');
+
   // 2. Build ZephyrReefKart.ipa via build_ios.sh
   console.log('--> Building ZephyrReefKart.ipa via scripts/build_ios.sh...');
   run('bash scripts/build_ios.sh', { cwd: REPO_ROOT });

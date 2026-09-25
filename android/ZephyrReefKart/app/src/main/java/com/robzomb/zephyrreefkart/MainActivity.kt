@@ -1,4 +1,4 @@
-package com.example.zephyrreefkart
+package com.robzomb.zephyrreefkart
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -18,21 +18,12 @@ import android.view.WindowManager
 import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
 import android.webkit.RenderProcessGoneDetail
-import android.widget.FrameLayout
-import com.google.android.gms.ads.AdError
-import com.google.android.gms.ads.AdRequest
-import com.google.android.gms.ads.AdSize
-import com.google.android.gms.ads.AdView
-import com.google.android.gms.ads.FullScreenContentCallback
-import com.google.android.gms.ads.LoadAdError
-import com.google.android.gms.ads.MobileAds
-import com.google.android.gms.ads.interstitial.InterstitialAd
-import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
+import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
@@ -41,18 +32,38 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
+import com.google.android.gms.ads.AdError
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.AdSize
+import com.google.android.gms.ads.AdView
+import com.google.android.gms.ads.FullScreenContentCallback
+import com.google.android.gms.ads.LoadAdError
+import com.google.android.gms.ads.MobileAds
+import com.google.android.gms.ads.RequestConfiguration
+import com.google.android.gms.ads.interstitial.InterstitialAd
+import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
+import com.google.android.gms.ads.rewarded.RewardedAd
+import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
+import com.google.android.ump.ConsentInformation
+import com.google.android.ump.ConsentRequestParameters
+import com.google.android.ump.UserMessagingPlatform
 
-// ═══ CONFIG ADS (AdMob) ═══════════════════════════════════════════════
-// ATTIVAZIONE ADS REALI: crea l'account su apps.admob.com, registra
-// l'app (package com.example.zephyrreefkart) e sostituisci i 3 ID qui sotto
-// con quelli del tuo account. Gli attuali sono i TEST ID ufficiali Google
-// (mostrano annunci "Test Ad" senza ricavi).
+// ═══ CONFIG ADS (Google AdMob, UMP Consent & Better Ads Policy) ═══════════
+// ATTIVAZIONE ADS REALI SU GOOGLE PLAY:
+// Crea l'account su https://apps.admob.com, registra l'applicazione con package
+// 'com.robzomb.zephyrreefkart' e sostituisci gli ID qui sotto.
+// Gli ID attuali sono i TEST ID ufficiali di Google: mostrano annunci demo
+// senza generare click invalidi, violazioni o ban dell'account sviluppatore.
 object AdsConfig {
     const val APP_ID = "ca-app-pub-3940256099942544~3347511713"
     const val BANNER_UNIT_ID = "ca-app-pub-3940256099942544/6300978111"
     const val INTERSTITIAL_UNIT_ID = "ca-app-pub-3940256099942544/1033173712"
+    const val REWARDED_UNIT_ID = "ca-app-pub-3940256099942544/5224354917"
+
+    // Cooldown minimo di 120s tra interstitial per conformità a Better Ads Experience di Google Play
+    const val MIN_INTERSTITIAL_COOLDOWN_MS = 120_000L
 }
-// ══════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════
 
 class AndroidAds(private val activity: MainActivity) {
     @JavascriptInterface
@@ -68,6 +79,21 @@ class AndroidAds(private val activity: MainActivity) {
     @JavascriptInterface
     fun showInterstitial() {
         activity.runOnUiThread { activity.showRaceEndInterstitial() }
+    }
+
+    @JavascriptInterface
+    fun isRewardedReady(): Boolean {
+        return activity.isRewardedAdAvailable()
+    }
+
+    @JavascriptInterface
+    fun showRewarded(rewardKey: String) {
+        activity.runOnUiThread { activity.showRewardedAd(rewardKey) }
+    }
+
+    @JavascriptInterface
+    fun showPrivacyOptions() {
+        activity.runOnUiThread { activity.showPrivacyOptions() }
     }
 }
 
@@ -104,9 +130,15 @@ class MainActivity : ComponentActivity() {
     private lateinit var adContainer: FrameLayout
     private lateinit var adBannerView: AdView
     private var interstitialAd: InterstitialAd? = null
+    private var rewardedAd: RewardedAd? = null
+    private var isRewardedLoading = false
+    private var isBannerLoaded = false
+    private var lastInterstitialTime = 0L
     private var lastBackPressedTime = 0L
     private var audioManager: AudioManager? = null
     private var focusRequest: AudioFocusRequest? = null
+    private lateinit var consentInformation: ConsentInformation
+    private var isMobileAdsInitialized = false
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -116,7 +148,7 @@ class MainActivity : ComponentActivity() {
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        // Notch & punch-hole cutout display support (Item 61)
+        // Notch & punch-hole cutout display support
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             window.attributes.layoutInDisplayCutoutMode =
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
@@ -125,7 +157,7 @@ class MainActivity : ComponentActivity() {
         // Fullscreen edge-to-edge immersive sticky
         hideSystemBars()
 
-        // Create & configure WebView
+        // Create & configure WebView with strict Google Play security compliance
         webView = WebView(this).apply {
             setLayerType(View.LAYER_TYPE_HARDWARE, null)
             setBackgroundColor(0xFF000000.toInt())
@@ -139,22 +171,18 @@ class MainActivity : ComponentActivity() {
                 domStorageEnabled = true
                 databaseEnabled = true
                 mediaPlaybackRequiresUserGesture = false
-                allowFileAccess = true
-                allowContentAccess = true
+                // Google Play Security Best Practices: disabilita file:// e content://
+                // Tutti gli asset sono serviti in modo protetto via WebViewAssetLoader virtual HTTPS
+                allowFileAccess = false
+                allowContentAccess = false
                 useWideViewPort = true
                 loadWithOverviewMode = true
                 cacheMode = WebSettings.LOAD_DEFAULT
-                mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                // Il gioco gestisce da solo la dimensione del testo nell'HUD:
-                // il font scale di sistema romperebbe il layout di gara
+                mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
                 textZoom = 100
-                // App solo locale: niente controlli safe browsing (boot piu' rapido)
-                @Suppress("DEPRECATION")
-                safeBrowsingEnabled = false
+                safeBrowsingEnabled = true
             }
 
-            // Renderer WebGL esplicitamente legato alla visibilita' dell'app e
-            // riavviabile in anticipo: evita degradi/kill del GPU renderer in gara
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 setRendererPriorityPolicy(
                     WebView.RENDERER_PRIORITY_BOUND,
@@ -163,7 +191,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // Add Native Haptics Bridge (Item 62)
+        // Native Haptics Bridge
         webView.addJavascriptInterface(AndroidHaptics(this), "AndroidHaptics")
 
         // Setup WebViewAssetLoader
@@ -179,11 +207,8 @@ class MainActivity : ComponentActivity() {
                 return assetLoader.shouldInterceptRequest(request.url)
             }
 
-            // Il renderer WebGL di WebView puo' essere ucciso dal sistema su
-            // device con poca memoria durante una gara: senza questo handler
-            // l'utente resterebbe su schermo nero. Ricreiamo l'attivita' puliti.
             override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
-                Log.w("ZephyrKart", "Renderer WebGL terminato: riavvio dell'app")
+                Log.w("ZephyrKart", "Renderer WebGL terminato dal sistema: riavvio pulito")
                 view.destroy()
                 recreate()
                 return true
@@ -197,7 +222,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // Layout: WebView a schermo pieno + banner AdMob (visibile solo nei menu)
+        // Layout: WebView full-screen + Banner AdMob in basso
         adContainer = FrameLayout(this)
         adContainer.addView(webView, FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
@@ -211,22 +236,19 @@ class MainActivity : ComponentActivity() {
             Gravity.BOTTOM))
         setContentView(adContainer)
 
-        // Init AdMob + banner + interstitial (silenzioso se il device non ha
-        // Google Play Services: il gioco funziona identico senza annunci)
-        MobileAds.initialize(this) {}
-        adBannerView.loadAd(AdRequest.Builder().build())
-        loadInterstitial()
-
-        // Bridge JS per la shell (banner nei menu, interstitial tra le gare)
+        // Bridge JS per la gestione Ads (Banner, Interstitial, Rewarded, GDPR Privacy)
         webView.addJavascriptInterface(AndroidAds(this), "AndroidAds")
 
-        // Setup Audio Focus (Item 63)
+        // Inizializzazione UMP (GDPR / Consenso Privacy UE) e Google Mobile Ads
+        setupConsentAndAds()
+
+        // Setup Audio Focus
         setupAudioFocus()
 
-        // Load Zephyr Reef via asset loader
+        // Carica Zephyr Reef via asset loader virtual HTTPS
         webView.loadUrl("https://appassets.androidplatform.net/assets/zephyr.html")
 
-        // Handle Back button with in-race pause and exit confirmation
+        // Back button: gestione pausa in gara e conferma uscita
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 val now = System.currentTimeMillis()
@@ -234,24 +256,85 @@ class MainActivity : ComponentActivity() {
                     "(function() { if (window.__zephyr && window.__zephyr.mode === 'race' && !window.__zephyr.paused) { window.__zephyr.setPaused(true); document.getElementById('z-pause-modal')?.classList.remove('hidden'); return 'paused'; } return 'not_in_race'; })()"
                 ) { result ->
                     if (result != null && result.contains("paused")) {
-                        // Race was running and is now paused cleanly
                         return@evaluateJavascript
                     }
                     if (now - lastBackPressedTime < 2000) {
                         finish()
                     } else {
                         lastBackPressedTime = now
-                        Toast.makeText(this@MainActivity, "Press again to exit Zephyr Reef Grand Prix", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@MainActivity, "Premi di nuovo per uscire da Zephyr Reef Grand Prix", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
         })
     }
 
+    // ═══ GESTIONE CONSENSO PRIVACY (UMP SDK / GDPR) ════════════════════════
+    private fun setupConsentAndAds() {
+        val params = ConsentRequestParameters.Builder()
+            .setTagForUnderAgeOfConsent(false)
+            .build()
+
+        consentInformation = UserMessagingPlatform.getConsentInformation(this)
+        consentInformation.requestConsentInfoUpdate(
+            this,
+            params,
+            {
+                UserMessagingPlatform.loadAndShowConsentFormIfRequired(this) { formError ->
+                    if (formError != null) {
+                        Log.w("ZephyrAds", "Consent form error: ${formError.message} (${formError.errorCode})")
+                    }
+                    if (consentInformation.canRequestAds()) {
+                        initializeMobileAds()
+                    }
+                }
+            },
+            { requestConsentError ->
+                Log.w("ZephyrAds", "Consent info update error: ${requestConsentError.message}")
+                if (consentInformation.canRequestAds()) {
+                    initializeMobileAds()
+                }
+            }
+        )
+
+        // Se il consenso era già presente o non richiesto (es. fuori da EEA)
+        if (consentInformation.canRequestAds()) {
+            initializeMobileAds()
+        }
+    }
+
+    private fun initializeMobileAds() {
+        if (isMobileAdsInitialized) return
+        isMobileAdsInitialized = true
+
+        // Protezione account AdMob: configura test device id per evitare invalid traffic
+        val testConfig = RequestConfiguration.Builder()
+            .setTestDeviceIds(listOf(AdRequest.DEVICE_ID_EMULATOR))
+            .build()
+        MobileAds.setRequestConfiguration(testConfig)
+
+        MobileAds.initialize(this) { initStatus ->
+            Log.d("ZephyrAds", "MobileAds initialized: $initStatus")
+            runOnUiThread {
+                loadBanner()
+                loadInterstitial()
+                loadRewardedAd()
+            }
+        }
+    }
+
+    // ═══ BANNER ADS ════════════════════════════════════════════════════════
+    private fun loadBanner() {
+        if (isBannerLoaded) return
+        val adRequest = AdRequest.Builder().build()
+        adBannerView.loadAd(adRequest)
+        isBannerLoaded = true
+    }
+
     fun showAdBanner() {
         adBannerView.visibility = View.VISIBLE
-        if (!adBannerView.isLoading && adBannerView.adListener == null) {
-            adBannerView.loadAd(AdRequest.Builder().build())
+        if (!isBannerLoaded) {
+            loadBanner()
         }
     }
 
@@ -259,9 +342,13 @@ class MainActivity : ComponentActivity() {
         adBannerView.visibility = View.GONE
     }
 
+    // ═══ INTERSTITIAL ADS (CON COOLDOWN BETTER ADS) ════════════════════════
     private fun loadInterstitial() {
-        InterstitialAd.load(this, AdsConfig.INTERSTITIAL_UNIT_ID,
-            AdRequest.Builder().build(), object : InterstitialAdLoadCallback() {
+        InterstitialAd.load(
+            this,
+            AdsConfig.INTERSTITIAL_UNIT_ID,
+            AdRequest.Builder().build(),
+            object : InterstitialAdLoadCallback() {
                 override fun onAdLoaded(ad: InterstitialAd) {
                     interstitialAd = ad
                     ad.fullScreenContentCallback = object : FullScreenContentCallback() {
@@ -271,17 +358,91 @@ class MainActivity : ComponentActivity() {
                         }
                         override fun onAdFailedToShowFullScreenContent(adError: AdError) {
                             interstitialAd = null
+                            loadInterstitial()
                         }
                     }
                 }
-                override fun onAdFailedToLoad(adError: LoadAdError) {
+                override fun onAdFailedToLoad(loadAdError: LoadAdError) {
                     interstitialAd = null
                 }
-            })
+            }
+        )
     }
 
     fun showRaceEndInterstitial() {
-        interstitialAd?.show(this)
+        val now = System.currentTimeMillis()
+        if (now - lastInterstitialTime < AdsConfig.MIN_INTERSTITIAL_COOLDOWN_MS) {
+            Log.d("ZephyrAds", "Interstitial throttled per policy Better Ads: cooldown rimanente ${(AdsConfig.MIN_INTERSTITIAL_COOLDOWN_MS - (now - lastInterstitialTime)) / 1000}s")
+            return
+        }
+        val ad = interstitialAd
+        if (ad != null) {
+            lastInterstitialTime = now
+            ad.show(this)
+        } else {
+            loadInterstitial()
+        }
+    }
+
+    // ═══ REWARDED VIDEO ADS (PREMI & SBLOCCHI) ═════════════════════════════
+    private fun loadRewardedAd() {
+        if (isRewardedLoading || rewardedAd != null) return
+        isRewardedLoading = true
+        RewardedAd.load(
+            this,
+            AdsConfig.REWARDED_UNIT_ID,
+            AdRequest.Builder().build(),
+            object : RewardedAdLoadCallback() {
+                override fun onAdLoaded(ad: RewardedAd) {
+                    rewardedAd = ad
+                    isRewardedLoading = false
+                    ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+                        override fun onAdDismissedFullScreenContent() {
+                            rewardedAd = null
+                            loadRewardedAd()
+                        }
+                        override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+                            rewardedAd = null
+                            loadRewardedAd()
+                        }
+                    }
+                }
+                override fun onAdFailedToLoad(loadAdError: LoadAdError) {
+                    rewardedAd = null
+                    isRewardedLoading = false
+                }
+            }
+        )
+    }
+
+    fun isRewardedAdAvailable(): Boolean = rewardedAd != null
+
+    fun showRewardedAd(rewardKey: String) {
+        val ad = rewardedAd
+        if (ad != null) {
+            ad.show(this) { rewardItem ->
+                val amount = rewardItem.amount
+                val type = rewardItem.type
+                Log.d("ZephyrAds", "Utente ha guadagnato ricompensa: $amount $type ($rewardKey)")
+                webView.evaluateJavascript(
+                    "if (typeof window.onZephyrAdReward === 'function') { window.onZephyrAdReward('$rewardKey', $amount); }",
+                    null
+                )
+            }
+        } else {
+            Toast.makeText(this, "Caricamento video in corso, attendi qualche secondo...", Toast.LENGTH_SHORT).show()
+            loadRewardedAd()
+        }
+    }
+
+    // ═══ MODULO PRIVACY & CONSENSO (GDPR OPZIONI) ══════════════════════════
+    fun showPrivacyOptions() {
+        UserMessagingPlatform.showPrivacyOptionsForm(this) { formError ->
+            if (formError != null) {
+                Log.w("ZephyrAds", "Errore visualizzazione opzioni privacy: ${formError.message}")
+                Toast.makeText(this, "Opzioni privacy non disponibili al momento", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun setupAudioFocus() {
