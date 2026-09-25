@@ -1332,6 +1332,15 @@
       @media (orientation: portrait) {
         #z-rotate { display: flex; }
       }
+      @keyframes rankpop {
+        0% { transform: scale(1.38); filter: drop-shadow(0 0 24px #ffc857); }
+        50% { transform: scale(1.16); filter: drop-shadow(0 0 32px #ffffff); }
+        100% { transform: scale(1); filter: none; }
+      }
+      .hud__rank-num.rank-pop {
+        display: inline-block;
+        animation: rankpop 0.38s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+      }
     </style>
   </head>
   <body>

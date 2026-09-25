@@ -133,6 +133,36 @@ const PATCHES = [
     find: 'if(this.ui){if(this.ui.attachMinimap)this.ui.attachMinimap(this.world.spline);if(this.mode==="race")this.ui.setScreen("race");}',
     replace: 'if(this.ui){if(this.ui.attachMinimap)this.ui.attachMinimap(this.world.spline);if(this.mode==="race")this.ui.setScreen("race");};try{window.dispatchEvent(new CustomEvent("zephyr:trackchange",{detail:{track:idx}}))}catch{}'
   },
+  {
+    name: 'Griglia di partenza: sfalsamento autentico a colonne alternate (dual-column staggered)',
+    find: 'gridSlot(t,e){const n=this.startS-Rg*(Math.floor(t/2)+1);this.frameAt(n,e);const i=(t%2===0?-1:1)*Cg;',
+    replace: 'gridSlot(t,e){const n=this.startS-(Rg+t*4.5);this.frameAt(n,e);const i=(t%2===0?-1:1)*Cg;'
+  },
+  {
+    name: 'Single Player: Giocatore parte sempre ultimo sulla griglia',
+    find: 'for(let n=0;n<this.racers.length;n++)this.racers[n].resetOnGrid(this.spline,n),this.racers[n].updateProgress(this.gates);',
+    replace: 'const isSinglePlayer=!(window.__multiplayerManager&&(window.__multiplayerManager.state==="RACING"||window.__multiplayerManager.state==="COUNTDOWN"||window.__multiplayerManager.state==="ROOM_SYNC"||window.__multiplayerManager.state==="MATCHMAKING"));for(let n=0;n<this.racers.length;n++){const slotIdx=isSinglePlayer?(n===0?this.racers.length-1:n-1):n;this.racers[n].resetOnGrid(this.spline,slotIdx),this.racers[n].updateProgress(this.gates);}'
+  },
+  {
+    name: 'Classifica iniziale: Giocatore parte ultimo con posizione 6/6',
+    find: 'for(const n of this.racers)n.rank=n.id+1,n.resetProximityFade?.(),n.kart.setGroundNormal(0,1,0),n.kart.syncVisual(.016);',
+    replace: 'for(let n=0;n<this.racers.length;n++){const r=this.racers[n];r.rank=isSinglePlayer?(n===0?this.racers.length:n):n+1;r.resetProximityFade?.(),r.kart.setGroundNormal(0,1,0),r.kart.syncVisual(.016);}'
+  },
+  {
+    name: 'Multiplayer: preservazione rigorosa slot assegnati dalla room',
+    find: 'if(window.__multiplayerManager?.syncStartTime){this.countdown=Math.max(0,(window.__multiplayerManager.syncStartTime-Date.now())/1000)}this.camera.snap(this.player.state,this.spline)}',
+    replace: 'for(let i=0;i<this.racers.length;i++){this.racers[i].resetOnGrid(this.spline,i);this.racers[i].updateProgress(this.gates);}this.computeStandings();if(window.__multiplayerManager?.syncStartTime){this.countdown=Math.max(0,(window.__multiplayerManager.syncStartTime-Date.now())/1000)}this.camera.snap(this.player.state,this.spline)}'
+  },
+  {
+    name: 'Sorpassi dinamici: audio feedback e particelle alla scalata delle posizioni',
+    find: 'computeStandings(){const t=[...this.racers];t.sort((e,n)=>e.progress.finished&&n.progress.finished?e.progress.finishRank-n.progress.finishRank:e.progress.finished?-1:n.progress.finished?1:e.progress.lap!==n.progress.lap?n.progress.lap-e.progress.lap:e.progress.checkpoint!==n.progress.checkpoint?n.progress.checkpoint-e.progress.checkpoint:n.progress.distance-e.progress.distance);for(let e=0;e<t.length;e++)t[e].rank=e+1}',
+    replace: 'computeStandings(){const prevRank=this.player?.rank;const t=[...this.racers];t.sort((e,n)=>e.progress.finished&&n.progress.finished?e.progress.finishRank-n.progress.finishRank:e.progress.finished?-1:n.progress.finished?1:e.progress.lap!==n.progress.lap?n.progress.lap-e.progress.lap:e.progress.checkpoint!==n.progress.checkpoint?n.progress.checkpoint-e.progress.checkpoint:n.progress.distance-e.progress.distance);for(let e=0;e<t.length;e++)t[e].rank=e+1;const newRank=this.player?.rank;if(this.phase==="racing"&&prevRank&&newRank&&newRank<prevRank){this.events?.sfx?.(newRank===1?"mini_turbo":"drafting",{volume:.75});this.vfx?.spark?.(this.player.pos.x,this.player.pos.y+.5,this.player.pos.z,0,1.8,0,16762967,.45,.25,4,1.4);if(newRank===1)this.events?.sfx?.("boost_start",{volume:.9});}}'
+  },
+  {
+    name: 'HUD Position: animazione reattiva pop al guadagno di posizione',
+    find: 'this.elRank.innerHTML=`${t.rank}<small>/${t.total}</small>`,',
+    replace: '(this._prevRk&&t.rank<this._prevRk?(this.elRank.classList.remove("rank-pop"),void this.elRank.offsetWidth,this.elRank.classList.add("rank-pop")):null),this._prevRk=t.rank,this.elRank.innerHTML=`${t.rank}<small>/${t.total}</small>`,'
+  },
 ];
 
 function countOccurrences(hay, needle) {
