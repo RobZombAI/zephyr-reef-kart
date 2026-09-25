@@ -4961,4 +4961,34 @@ describe('=== UNIT & PROCESS TESTS: AUDIT REMEDIATION, GAMEPLAY POLISH & VISUAL 
   });
 });
 
+describe('=== UNIT & PROCESS TESTS: SYSTEMIC ELIMINATION OF CAR VIBRATION, DUPLICATION & GLITCHES ===', () => {
+  const bundle = fs.readFileSync(BUNDLE_PATH, 'utf-8');
+  const indexHtml = fs.readFileSync(path.join(REPO_ROOT, 'index.html'), 'utf-8');
+  const zephyrHtml = fs.readFileSync(path.join(REPO_ROOT, 'zephyr.html'), 'utf-8');
+
+  it('1. Shadows: shadowLoop forces autoUpdate = true in race mode to prevent 30Hz shadow strobing', () => {
+    for (const [name, html] of [['index.html', indexHtml], ['zephyr.html', zephyrHtml]]) {
+      assert.ok(html.includes("z.mode === 'race' || z.paused || document.hidden"), `${name} sets autoUpdate in race mode`);
+    }
+  });
+
+  it('2. Character Studio: buildFace guards against duplicate facial geometry when head already has features', () => {
+    for (const [name, html] of [['index.html', indexHtml], ['zephyr.html', zephyrHtml]]) {
+      assert.ok(html.includes('if (head.children.length > 1) return;'), `${name} protects against duplicate facial geometry`);
+    }
+  });
+
+  it('3. Character Studio: buildBody guards head eyebrows and mouth to prevent mid-air floating features', () => {
+    for (const [name, html] of [['index.html', indexHtml], ['zephyr.html', zephyrHtml]]) {
+      assert.ok(html.includes('if (head.children.length <= 1) {'), `${name} guards head attachments in buildBody`);
+    }
+  });
+
+  it('4. Chassis Visuals: hitShake applies smooth chassis oscillation without random X/Z position noise', () => {
+    assert.ok(!bundle.includes('a.position.x+=(Math.random()-.5)*this.hitShake*.35'), 'Bundle eliminated random X coordinate jitter');
+    assert.ok(!bundle.includes('a.position.z+=(Math.random()-.5)*this.hitShake*.35'), 'Bundle eliminated random Z coordinate jitter');
+    assert.ok(bundle.includes('this.hitShake>0.01&&o.chassis'), 'Bundle applies hitShake to chassis rotation smoothly');
+  });
+});
+
 

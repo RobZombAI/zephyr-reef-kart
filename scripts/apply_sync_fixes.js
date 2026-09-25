@@ -87,6 +87,11 @@ const PATCHES = [
     find3: 'window.navigator?.vibrate?.(18);',
     replace3: 'window.navigator?.vibrate?.(10);'
   },
+  {
+    name: 'HitShake: oscillazione chassis fluida senza jitter casuale di posizione a 60Hz',
+    find: 'this.hitShake=this.hitShake>0.001?this.hitShake*Math.exp(-8*e):0;if(this.hitShake>0.01){a.position.x+=(Math.random()-.5)*this.hitShake*.35;a.position.z+=(Math.random()-.5)*this.hitShake*.35;}',
+    replace: 'this.hitShake=this.hitShake>0.001?this.hitShake*Math.exp(-8*e):0;if(this.hitShake>0.01&&o.chassis){o.chassis.rotation.z+=Math.sin(performance.now()*.035)*this.hitShake*.04;}'
+  },
 ];
 
 function countOccurrences(hay, needle) {
