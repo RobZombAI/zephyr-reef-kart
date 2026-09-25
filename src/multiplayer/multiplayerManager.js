@@ -1074,9 +1074,12 @@ export class MultiplayerManager {
 
       case 'RACER_HIT': {
         if (this.isHost) {
-          if (!this.isSlotAuthentic(conn, data)) { this.handleSlotViolation(conn); break; }
           if (!this.checkEventRateLimit(conn?.peer, 'RACER_HIT')) break;
-          data.slot = this.getSenderSlot(conn, data);
+          // data.slot specifies the victim racer, while getSenderSlot is the attacker.
+          const victimSlot = Math.max(0, Math.min(5, parseInt(data.slot, 10) || 0));
+          data.slot = victimSlot;
+          data.attackerSlot = this.getSenderSlot(conn, data);
+          data.duration = Math.max(0.3, Math.min(3.0, parseFloat(data.duration) || 1.0));
         }
         if (this.onRacerHit) this.onRacerHit(data);
         if (this.isHost) {
@@ -1459,6 +1462,7 @@ export class MultiplayerManager {
   updateRemoteRacers(dt, director, scene, camera) {
     if ((this.state !== 'RACING' && this.state !== 'COUNTDOWN') || !director || !director.racers) {
       this.clearAllNametags();
+      this.updateHudPing();
       return;
     }
 
@@ -1474,20 +1478,29 @@ export class MultiplayerManager {
       const remote = this.remoteStates.get(slot);
       if (!racer || !remote) continue;
 
+      // Dead Reckoning: extrapolate remote position along velocity vector based on packet age
+      const packetAgeSec = Math.max(0, Math.min(0.12, (now - (remote.lastUpdate || now)) * 0.001));
+      const vx = -Math.sin(remote.yaw) * (remote.speed || 0);
+      const vz = -Math.cos(remote.yaw) * (remote.speed || 0);
+      const targetX = remote.x + vx * packetAgeSec;
+      const targetZ = remote.z + vz * packetAgeSec;
+
       // Distance snap check: if distance > 20m, snap directly without flying across map
-      const dx = remote.x - racer.pos.x;
-      const dz = remote.z - racer.pos.z;
-      const distSq = dx * dx + dz * dz;
+      const dxRaw = remote.x - racer.pos.x;
+      const dzRaw = remote.z - racer.pos.z;
+      const distSq = dxRaw * dxRaw + dzRaw * dzRaw;
       if (distSq > 400) {
         racer.pos.x = remote.x;
         racer.pos.y = remote.y;
         racer.pos.z = remote.z;
         racer.state.yaw = remote.yaw;
       } else {
-        // Smooth Position Lerp
-        const posLerpRate = Math.min(1.0, dt * 20.0);
-        racer.pos.x += dx * posLerpRate;
-        racer.pos.z += dz * posLerpRate;
+        // Frame-rate independent exponential smoothing (critically damped)
+        const dx = targetX - racer.pos.x;
+        const dz = targetZ - racer.pos.z;
+        const posBlend = 1.0 - Math.exp(-24.0 * dt);
+        racer.pos.x += dx * posBlend;
+        racer.pos.z += dz * posBlend;
       }
 
       // Height Clamping: Opponents MUST NEVER float in the sky!
@@ -1510,11 +1523,12 @@ export class MultiplayerManager {
         racer.pos.y += (remote.y - racer.pos.y) * Math.min(1.0, dt * 18.0);
       }
 
-      // Angular Yaw Lerp
+      // Angular Yaw Lerp (critically damped exponential smoothing)
       let deltaYaw = (remote.yaw - racer.state.yaw) % (Math.PI * 2);
       if (deltaYaw > Math.PI) deltaYaw -= Math.PI * 2;
       if (deltaYaw < -Math.PI) deltaYaw += Math.PI * 2;
-      racer.state.yaw += deltaYaw * Math.min(1.0, dt * 16.0);
+      const yawBlend = 1.0 - Math.exp(-20.0 * dt);
+      racer.state.yaw += deltaYaw * yawBlend;
 
       // State flags
       racer.state.speed = remote.speed;
@@ -1557,6 +1571,35 @@ export class MultiplayerManager {
     }
 
     this.updateEmoteBubbles(now, director, camera);
+    this.updateHudPing();
+  }
+
+  // --- LIVE MULTIPLAYER LATENCY & HUD PING ---
+  getLatencyInfo() {
+    const rtt = Math.max(1, Math.round(this.lastRtt || 18));
+    let status = 'good';
+    if (rtt > 125) status = 'bad';
+    else if (rtt > 65) status = 'medium';
+    return { rtt, status };
+  }
+
+  updateHudPing() {
+    if (typeof document === 'undefined') return;
+    const badge = document.getElementById('z-hud-ping');
+    if (!badge) return;
+    const isMp = (this.state === 'RACING' || this.state === 'COUNTDOWN' || this.state === 'ROOM_SYNC') &&
+                 this.players && this.players.length > 1;
+    if (!isMp) {
+      badge.classList.add('hidden');
+      return;
+    }
+    badge.classList.remove('hidden');
+    const { rtt, status } = this.getLatencyInfo();
+    const valEl = badge.querySelector('.z-ping-val');
+    if (valEl) valEl.textContent = `${rtt} ms`;
+    badge.classList.remove('ping-med', 'ping-bad');
+    if (status === 'bad') badge.classList.add('ping-bad');
+    else if (status === 'medium') badge.classList.add('ping-med');
   }
 
   // --- DOM NAMETAG PROJECTION ---
@@ -1835,6 +1878,7 @@ export class MultiplayerManager {
     }
 
     this.clearAllNametags();
+    this.updateHudPing();
 
     this.state = 'IDLE';
     this.roomCode = '';

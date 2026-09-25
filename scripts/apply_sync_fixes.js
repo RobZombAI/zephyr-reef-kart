@@ -163,6 +163,11 @@ const PATCHES = [
     find: 'this.elRank.innerHTML=`${t.rank}<small>/${t.total}</small>`,',
     replace: '(this._prevRk&&t.rank<this._prevRk?(this.elRank.classList.remove("rank-pop"),void this.elRank.offsetWidth,this.elRank.classList.add("rank-pop")):null),this._prevRk=t.rank,this.elRank.innerHTML=`${t.rank}<small>/${t.total}</small>`,'
   },
+  {
+    name: 'Camera setAspect: ricalcolo aspect ratio e FOV su rotazione o resize',
+    find: 'setAspect(t){this.camera.aspect=t,this.camera.updateProjectionMatrix()}',
+    replace: 'setAspect(t){this.camera.aspect=t;const _aspCorr=t<1.65?(1.65-t)*18:0;this.camera.fov=this.tuning.fovBase+_aspCorr;this.camera.updateProjectionMatrix()}'
+  },
 ];
 
 function countOccurrences(hay, needle) {
