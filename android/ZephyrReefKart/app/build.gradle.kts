@@ -5,10 +5,10 @@ plugins {
 }
 
 android {
-    namespace = "com.example.zephyrreefkart"
+    namespace = "com.robzomb.zephyrreefkart"
     compileSdk = 36
     defaultConfig {
-        applicationId = "com.example.zephyrreefkart"
+        applicationId = "com.robzomb.zephyrreefkart"
         minSdk = 24
         targetSdk = 35
         versionCode = 60906
@@ -21,11 +21,19 @@ android {
             enableV2Signing = true
         }
         create("release") {
-            val debugSigning = signingConfigs.getByName("debug")
-            storeFile = debugSigning.storeFile
-            storePassword = debugSigning.storePassword
-            keyAlias = debugSigning.keyAlias
-            keyPassword = debugSigning.keyPassword
+            val releaseKeystore = rootProject.file("zephyr-release.keystore")
+            if (releaseKeystore.exists()) {
+                storeFile = releaseKeystore
+                storePassword = System.getenv("ZEPHYR_KEYSTORE_PASSWORD") ?: "zephyr2026kart"
+                keyAlias = System.getenv("ZEPHYR_KEY_ALIAS") ?: "zephyr_release_key"
+                keyPassword = System.getenv("ZEPHYR_KEY_PASSWORD") ?: "zephyr2026kart"
+            } else {
+                val debugSigning = signingConfigs.getByName("debug")
+                storeFile = debugSigning.storeFile
+                storePassword = debugSigning.storePassword
+                keyAlias = debugSigning.keyAlias
+                keyPassword = debugSigning.keyPassword
+            }
             enableV1Signing = true
             enableV2Signing = true
         }

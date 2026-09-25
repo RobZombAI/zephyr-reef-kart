@@ -1502,6 +1502,7 @@
               </select>
             </div>
           </div>
+          <button id="z-opt-privacy" class="z-mini" style="margin-top: 8px; width: 100%; border-color: rgba(118, 255, 240, 0.4); font-size: 11px; padding: 6px;">🛡️ CONSENSO PRIVACY & ANNUNCI (GDPR)</button>
           <button id="z-settings-close" class="z-mini z-settings-close-btn">SALVA & CHIUDI</button>
         </div>
       </div>
@@ -2418,6 +2419,23 @@
               }
             } catch (e) {}
 
+            // Callback globale annunci con ricompensa (Rewarded Video)
+            if (!window.onZephyrAdReward) {
+              window.onZephyrAdReward = (rewardKey, amount) => {
+                if (rewardKey && rewardKey.startsWith('unlock_track_')) {
+                  const targetIdx = parseInt(rewardKey.replace('unlock_track_', ''), 10);
+                  const curMax = getUnlockedMax();
+                  if (targetIdx > curMax && targetIdx < 24) {
+                    zsSet('zephyr_max_unlocked_track', String(targetIdx));
+                    updateRecordDisplays();
+                    showToast(`🎬 Video completato! Pista ${targetIdx + 1} sbloccata!`, 3.5);
+                  }
+                } else if (rewardKey === 'bonus_boost') {
+                  showToast('⚡ Bonus turbo attivato!', 2.5);
+                }
+              };
+            }
+
             // Save track record & progression if player finishes (one-shot latch: this poll
             // keeps ticking after the finish, so writes + unlock toast must fire once)
             if (!raceEndHandled && player.progress && player.progress.finished && player.progress.finishTime > 0) {
@@ -2534,13 +2552,22 @@
               item.classList.add('shake');
               setTimeout(() => item.classList.remove('shake'), 400);
               const toastEl = document.getElementById('z-toast-msg');
-              const msg = `🔒 Pista bloccata! Devi arrivare 1° nella Pista ${trackIdx} per sbloccarla!`;
+              const canWatchAd = !!(window.AndroidAds && typeof window.AndroidAds.showRewarded === 'function');
+              if (item._adPrompted && canWatchAd) {
+                item._adPrompted = false;
+                window.AndroidAds.showRewarded('unlock_track_' + trackIdx);
+                return;
+              }
+              if (canWatchAd) item._adPrompted = true;
+              const msg = canWatchAd
+                ? `🔒 Pista bloccata! Tocca di nuovo per sbloccarla guardando un video!`
+                : `🔒 Pista bloccata! Devi arrivare 1° nella Pista ${trackIdx} per sbloccarla!`;
               if (toastEl) {
                 toastEl.textContent = msg;
                 toastEl.classList.add('show');
-                setTimeout(() => toastEl.classList.remove('show'), 2800);
+                setTimeout(() => { toastEl.classList.remove('show'); item._adPrompted = false; }, 3200);
               } else if (window.__zephyr?.ui?.toast) {
-                window.__zephyr.ui.toast(msg, 2.8);
+                window.__zephyr.ui.toast(msg, 3.2);
               }
               return;
             }
@@ -2653,6 +2680,18 @@
         const settingsClose = document.getElementById('z-settings-close');
         const optAutogas = document.getElementById('z-opt-autogas');
         const optGyro = document.getElementById('z-opt-gyro');
+        const optPrivacy = document.getElementById('z-opt-privacy');
+
+        if (optPrivacy) {
+          optPrivacy.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (window.AndroidAds && typeof window.AndroidAds.showPrivacyOptions === 'function') {
+              window.AndroidAds.showPrivacyOptions();
+            } else {
+              window.open('privacy-policy.html', '_blank');
+            }
+          });
+        }
 
         if (optAutogas) {
           optAutogas.checked = zsGet('zephyr_opt_autogas') === '1';
