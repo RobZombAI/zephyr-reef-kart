@@ -1,26 +1,59 @@
 import * as THREE from 'three';
 
+// -------------------------------------------------------------
+// Shared materials (module level): identical across every kart, created once
+// and reused by ALL instances. Never disposed by the per-kart dispose().
+// -------------------------------------------------------------
+const tireMat = new THREE.MeshStandardMaterial({ color: 0x16181d, roughness: 0.85 });
+const rimMat = new THREE.MeshStandardMaterial({ color: 0xd8e2dc, metalness: 0.85, roughness: 0.2 });
+const chromeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.95, roughness: 0.1 });
+const glassMat = new THREE.MeshStandardMaterial({ color: 0x88ccff, transparent: true, opacity: 0.65, roughness: 0.1, side: THREE.DoubleSide });
+const headTuriMat = new THREE.MeshStandardMaterial({ color: 0xe0a98b });
+const coppolaMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+const sirenBlueMat = new THREE.MeshBasicMaterial({ color: 0x0055ff });
+const sirenRedMat = new THREE.MeshBasicMaterial({ color: 0xff0022 });
+const neonMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc });
+const subBoxMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+const orangeMat = new THREE.MeshStandardMaterial({ color: 0xff6600 });
+const exhaustMat = new THREE.MeshStandardMaterial({ color: 0x33ff00 });
+const hazmatMat = new THREE.MeshStandardMaterial({ color: 0xffea00 });
+const visorMat = new THREE.MeshBasicMaterial({ color: 0x00ff88 });
+const basketMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, wireframe: true });
+const headTrapMat = new THREE.MeshStandardMaterial({ color: 0xd29b76 });
+const headZiaMat = new THREE.MeshStandardMaterial({ color: 0xeec1a6 });
+const hairBunMat = new THREE.MeshStandardMaterial({ color: 0xdddddd });
+const wingMat = new THREE.MeshStandardMaterial({ color: 0x0a2244, metalness: 0.9, roughness: 0.1 });
+const headEcoMat = new THREE.MeshStandardMaterial({ color: 0xf0c5aa });
+const flameMat = new THREE.MeshBasicMaterial({
+  color: 0x00f5ff,
+  transparent: true,
+  opacity: 0.9
+});
+
+// Body / accent colors depend on the racer config: cached per color so karts
+// with the same palette share one material instead of duplicating it.
+const colorMaterialCache = new Map();
+function sharedColorMaterial(key, factory) {
+  if (!colorMaterialCache.has(key)) colorMaterialCache.set(key, factory());
+  return colorMaterialCache.get(key);
+}
+
 export function createKartMesh(racerConfig) {
   const root = new THREE.Group();
   const wheels = [];
   const frontPivots = [];
   const allSpinners = [];
 
-  // Common materials
-  const tireMat = new THREE.MeshStandardMaterial({ color: 0x16181d, roughness: 0.85 });
-  const rimMat = new THREE.MeshStandardMaterial({ color: 0xd8e2dc, metalness: 0.85, roughness: 0.2 });
-  const chromeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.95, roughness: 0.1 });
-  const glassMat = new THREE.MeshStandardMaterial({ color: 0x88ccff, transparent: true, opacity: 0.65, roughness: 0.1 });
-  const bodyMat = new THREE.MeshStandardMaterial({
+  const bodyMat = sharedColorMaterial(`body:${racerConfig.kartColor}`, () => new THREE.MeshStandardMaterial({
     color: racerConfig.kartColor,
     metalness: 0.4,
     roughness: 0.35
-  });
-  const accentMat = new THREE.MeshStandardMaterial({
+  }));
+  const accentMat = sharedColorMaterial(`accent:${racerConfig.accentColor}`, () => new THREE.MeshStandardMaterial({
     color: racerConfig.accentColor,
     metalness: 0.5,
     roughness: 0.25
-  });
+  }));
 
   // Helper to create wheel with steering pivot and rotation spinner
   function makeWheel(radius, width, isFront = false) {
@@ -87,11 +120,11 @@ export function createKartMesh(racerConfig) {
     wRearR.position.set(1.05, 0.42, -1.0);
     root.add(wRearR);
 
-    const driverHead = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 12), new THREE.MeshStandardMaterial({ color: 0xe0a98b }));
+    const driverHead = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 12), headTuriMat);
     driverHead.position.set(0, 1.4, 0.3);
     root.add(driverHead);
 
-    const coppola = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.35, 0.15, 12), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+    const coppola = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.35, 0.15, 12), coppolaMat);
     coppola.position.set(0, 1.62, 0.3);
     coppola.rotation.x = 0.1;
     root.add(coppola);
@@ -111,10 +144,10 @@ export function createKartMesh(racerConfig) {
     winFront.position.set(0, 1.6, 0.76);
     root.add(winFront);
 
-    const sirenL = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.2, 8), new THREE.MeshBasicMaterial({ color: 0x0055ff }));
+    const sirenL = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.2, 8), sirenBlueMat);
     sirenL.position.set(-0.5, 2.1, -0.2);
     root.add(sirenL);
-    const sirenR = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.2, 8), new THREE.MeshBasicMaterial({ color: 0xff0022 }));
+    const sirenR = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.2, 8), sirenRedMat);
     sirenR.position.set(0.5, 2.1, -0.2);
     root.add(sirenR);
 
@@ -135,11 +168,11 @@ export function createKartMesh(racerConfig) {
     body.castShadow = true;
     root.add(body);
 
-    const neon = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.05, 2.8), new THREE.MeshBasicMaterial({ color: 0x00ffcc }));
+    const neon = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.05, 2.8), neonMat);
     neon.position.set(0, 0.18, 0);
     root.add(neon);
 
-    const subBox = new THREE.Mesh(new THREE.BoxGeometry(1.7, 1.3, 1.1), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+    const subBox = new THREE.Mesh(new THREE.BoxGeometry(1.7, 1.3, 1.1), subBoxMat);
     subBox.position.set(0, 1.25, -0.85);
     root.add(subBox);
 
@@ -160,7 +193,7 @@ export function createKartMesh(racerConfig) {
       root.add(wRear);
     });
 
-    const driverHead = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 12), new THREE.MeshStandardMaterial({ color: 0xd29b76 }));
+    const driverHead = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 12), headTrapMat);
     driverHead.position.set(0, 1.15, 0.3);
     root.add(driverHead);
 
@@ -184,7 +217,7 @@ export function createKartMesh(racerConfig) {
       root.add(ring);
     });
 
-    const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 1.2, 8), new THREE.MeshStandardMaterial({ color: 0x33ff00 }));
+    const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 1.2, 8), exhaustMat);
     exhaust.position.set(0, 1.8, -0.9);
     root.add(exhaust);
 
@@ -198,11 +231,11 @@ export function createKartMesh(racerConfig) {
       root.add(wRear);
     });
 
-    const hazmat = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 12), new THREE.MeshStandardMaterial({ color: 0xffea00 }));
+    const hazmat = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 12), hazmatMat);
     hazmat.position.set(0, 1.45, 0.4);
     root.add(hazmat);
 
-    const visor = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8), new THREE.MeshBasicMaterial({ color: 0x00ff88 }));
+    const visor = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8), visorMat);
     visor.position.set(0, 1.45, 0.65);
     root.add(visor);
 
@@ -212,16 +245,17 @@ export function createKartMesh(racerConfig) {
     chassis.position.set(0, 0.45, 0);
     root.add(chassis);
 
-    const basket = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.1, 1.7), new THREE.MeshStandardMaterial({
-      color: 0xcccccc,
-      wireframe: true
-    }));
+    const basket = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.1, 1.7), basketMat);
     basket.position.set(0, 1.1, 0.2);
     root.add(basket);
 
+    // Deterministic orange placement: fixed 2x4 grid inside the basket
+    // (no Math.random(): every "zia" kart loads its oranges identically).
     for (let i = 0; i < 8; i++) {
-      const orange = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8), new THREE.MeshStandardMaterial({ color: 0xff6600 }));
-      orange.position.set((Math.random() - 0.5) * 0.9, 0.8 + Math.random() * 0.3, 0.2 + (Math.random() - 0.5) * 0.9);
+      const col = i % 4;
+      const row = Math.floor(i / 4);
+      const orange = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8), orangeMat);
+      orange.position.set(-0.45 + col * 0.3, 0.82 + row * 0.16, -0.02 + row * 0.44);
       root.add(orange);
     }
 
@@ -242,11 +276,11 @@ export function createKartMesh(racerConfig) {
       root.add(wRear);
     });
 
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 12), new THREE.MeshStandardMaterial({ color: 0xeec1a6 }));
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 12), headZiaMat);
     head.position.set(0, 1.5, -0.2);
     root.add(head);
 
-    const hairBun = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 8), new THREE.MeshStandardMaterial({ color: 0xdddddd }));
+    const hairBun = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 8), hairBunMat);
     hairBun.position.set(0, 1.75, -0.32);
     root.add(hairBun);
 
@@ -257,11 +291,7 @@ export function createKartMesh(racerConfig) {
     root.add(frame);
 
     [-1.1, 1.1].forEach(x => {
-      const wing = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.08, 1.4), new THREE.MeshStandardMaterial({
-        color: 0x0a2244,
-        metalness: 0.9,
-        roughness: 0.1
-      }));
+      const wing = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.08, 1.4), wingMat);
       wing.position.set(x, 0.85, -0.3);
       root.add(wing);
     });
@@ -276,7 +306,7 @@ export function createKartMesh(racerConfig) {
       root.add(wRear);
     });
 
-    const ecoHead = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 12), new THREE.MeshStandardMaterial({ color: 0xf0c5aa }));
+    const ecoHead = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 12), headEcoMat);
     ecoHead.position.set(0, 1.3, 0.1);
     root.add(ecoHead);
 
@@ -288,6 +318,11 @@ export function createKartMesh(racerConfig) {
   // -------------------------------------------------------------
   // VISUAL SHIELD & NITRO EXHAUST FLAMES
   // -------------------------------------------------------------
+  // Rear bumper from the kart's bounding box (computed BEFORE the shield bubble is
+  // added, otherwise the shield radius would inflate the box): flames trail the tail.
+  const rearZ = new THREE.Box3().setFromObject(root).min.z;
+
+  // Per-instance material: update() animates its opacity for THIS kart only
   const shieldMat = new THREE.MeshStandardMaterial({
     color: 0xffe066,
     emissive: 0xffaa00,
@@ -303,16 +338,11 @@ export function createKartMesh(racerConfig) {
   shieldMesh.visible = false;
   root.add(shieldMesh);
 
-  const flameMat = new THREE.MeshBasicMaterial({
-    color: 0x00f5ff,
-    transparent: true,
-    opacity: 0.9
-  });
   const flames = [];
   [-0.45, 0.45].forEach(x => {
     const flame = new THREE.Mesh(new THREE.ConeGeometry(0.22, 1.3, 8), flameMat);
     flame.rotation.x = -Math.PI / 2;
-    flame.position.set(x, 0.45, -1.75);
+    flame.position.set(x, 0.45, rearZ - 0.45);
     flame.scale.set(0.001, 0.001, 0.001);
     flame.visible = false;
     root.add(flame);
@@ -325,15 +355,24 @@ export function createKartMesh(racerConfig) {
     frontPivots,
     shieldMesh,
     flames,
+    dispose: () => {
+      // Free the per-kart GPU resources: every geometry of this kart plus the
+      // per-instance shield material. Module-level shared materials (tire, glass,
+      // flames, ...) and the per-color cache are intentionally NOT disposed.
+      root.traverse((obj) => {
+        if (obj.isMesh && obj.geometry) obj.geometry.dispose();
+      });
+      shieldMat.dispose();
+    },
     update: (speed, dt, steerAngle = 0, isBoosting = false, isShielded = false) => {
       // 1. Wheel spin proportional to linear speed & radius
       allSpinners.forEach(({ spinner, radius }) => {
         spinner.rotation.x += (speed / (radius || 0.4)) * dt;
       });
 
-      // 2. Front wheel steering
+      // 2. Front wheel steering (alpha clamped so huge frames cannot overshoot)
       frontPivots.forEach(p => {
-        p.rotation.y = THREE.MathUtils.lerp(p.rotation.y, steerAngle * 0.55, dt * 14.0);
+        p.rotation.y = THREE.MathUtils.lerp(p.rotation.y, steerAngle * 0.55, Math.min(1, dt * 14.0));
       });
 
       // 3. Shield pulsation

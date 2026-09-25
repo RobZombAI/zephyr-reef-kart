@@ -13,3 +13,10 @@ xcuserdata/
 *.xcuserstate
 
 *.idsig
+
+# Build output & release artifacts (kept on disk, not tracked)
+dist/
+*.apk
+*.ipa
+temp_ipa_update/
+og-image.png

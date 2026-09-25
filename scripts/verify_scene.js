@@ -1,4 +1,10 @@
 import puppeteer from 'puppeteer';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const artifactsDir = path.join(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'), 'build', 'artifacts');
+fs.mkdirSync(artifactsDir, { recursive: true });
 
 async function main() {
   const browser = await puppeteer.launch({
@@ -33,7 +39,7 @@ async function main() {
 
   // Wait 1.5s for initial fade and render
   await new Promise(r => setTimeout(r, 1500));
-  await page.screenshot({ path: '/Users/robzomb/.gemini/antigravity/brain/0394039c-7986-43d7-9058-02535fa2c8fe/scratch/test_0s.png' });
+  await page.screenshot({ path: path.join(artifactsDir, 'test_0s.png') });
   console.log('Saved test_0s.png');
 
   // Seek timeline to 0.2 (12s)
@@ -42,7 +48,7 @@ async function main() {
     window.app.composer.render();
   });
   await new Promise(r => setTimeout(r, 500));
-  await page.screenshot({ path: '/Users/robzomb/.gemini/antigravity/brain/0394039c-7986-43d7-9058-02535fa2c8fe/scratch/test_12s.png' });
+  await page.screenshot({ path: path.join(artifactsDir, 'test_12s.png') });
   console.log('Saved test_12s.png');
 
   // Seek timeline to 0.5 (30s)
@@ -51,7 +57,7 @@ async function main() {
     window.app.composer.render();
   });
   await new Promise(r => setTimeout(r, 500));
-  await page.screenshot({ path: '/Users/robzomb/.gemini/antigravity/brain/0394039c-7986-43d7-9058-02535fa2c8fe/scratch/test_30s.png' });
+  await page.screenshot({ path: path.join(artifactsDir, 'test_30s.png') });
   console.log('Saved test_30s.png');
 
   // Seek timeline to 0.67 (40s)
@@ -60,7 +66,7 @@ async function main() {
     window.app.composer.render();
   });
   await new Promise(r => setTimeout(r, 500));
-  await page.screenshot({ path: '/Users/robzomb/.gemini/antigravity/brain/0394039c-7986-43d7-9058-02535fa2c8fe/scratch/test_40s.png' });
+  await page.screenshot({ path: path.join(artifactsDir, 'test_40s.png') });
   console.log('Saved test_40s.png');
 
   // Seek timeline to 0.95 (57s)
@@ -69,14 +75,14 @@ async function main() {
     window.app.composer.render();
   });
   await new Promise(r => setTimeout(r, 500));
-  await page.screenshot({ path: '/Users/robzomb/.gemini/antigravity/brain/0394039c-7986-43d7-9058-02535fa2c8fe/scratch/test_57s.png' });
+  await page.screenshot({ path: path.join(artifactsDir, 'test_57s.png') });
   console.log('Saved test_57s.png');
 
   // Click on the pond to test ripples
   console.log('Clicking on canvas to test interactive ripples...');
   await page.mouse.click(800, 600);
   await new Promise(r => setTimeout(r, 600));
-  await page.screenshot({ path: '/Users/robzomb/.gemini/antigravity/brain/0394039c-7986-43d7-9058-02535fa2c8fe/scratch/test_ripple.png' });
+  await page.screenshot({ path: path.join(artifactsDir, 'test_ripple.png') });
   console.log('Saved test_ripple.png');
 
   await browser.close();

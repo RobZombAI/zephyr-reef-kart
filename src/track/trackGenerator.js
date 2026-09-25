@@ -1,5 +1,14 @@
 import * as THREE from 'three';
 
+// Shared confetti materials: one per colour, created once at module level and
+// reused by every burst (never disposed per-instance).
+const CONFETTI_MATERIALS = [0xff0055, 0x00f7ff, 0xffd700, 0x00ff66, 0x9900ff, 0xff8800]
+  .map((color) => {
+    const mat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide });
+    mat.userData.shared = true;
+    return mat;
+  });
+
 export class AugustaTrack {
   constructor(trackDef, config) {
     this.trackDef = trackDef;
@@ -8,9 +17,13 @@ export class AugustaTrack {
     this.width = config.trackWidth || 16.0;
     this.theme = trackDef.theme || 'refinery';
 
-    // Build closed centripetal Catmull-Rom spline
-    this.curve = new THREE.CatmullRomCurve3(this.waypoints, true, 'centripetal', 0.5);
-    this.totalLength = this.curve.getLength();
+    // Build closed centripetal Catmull-Rom spline.
+    // NOTE: the 'centripetal' type computes its own parameterization, so the old
+    // tension argument (0.5) was ignored — it is omitted here on purpose.
+    this.curve = new THREE.CatmullRomCurve3(this.waypoints, true, 'centripetal');
+    // 360 divisions to match the 360 path samples (default is 200 -> length mismatch)
+    this.totalLength = this.curve.getLength(360);
+    this.elapsed = 0; // animated clock fed by update(dt), replaces Date.now()
 
     this.group = new THREE.Group();
     this.segments = 360;
@@ -49,10 +62,21 @@ export class AugustaTrack {
       const u = i / numSegs;
       const pt = this.curve.getPointAt(u % 1.0);
       const tangent = this.curve.getTangentAt(u % 1.0).normalize();
-      
+
+      // Banking from the real curvature: signed turn between the incoming and
+      // outgoing segment directions (cross product of the horizontal deltas,
+      // normalized by their lengths -> ~sin of the turn angle in [-1, 1]).
+      const prevPt = this.curve.getPointAt(((u - 1 / numSegs) % 1.0 + 1.0) % 1.0);
+      const nextPt = this.curve.getPointAt((u + 1 / numSegs) % 1.0);
+      const dx1 = pt.x - prevPt.x, dz1 = pt.z - prevPt.z;
+      const dx2 = nextPt.x - pt.x, dz2 = nextPt.z - pt.z;
+      const len1 = Math.sqrt(dx1 * dx1 + dz1 * dz1) || 1e-6;
+      const len2 = Math.sqrt(dx2 * dx2 + dz2 * dz2) || 1e-6;
+      const cross = (dx1 * dz2 - dz1 * dx2) / (len1 * len2);
+      const curvature = THREE.MathUtils.clamp(cross * 12, -1, 1);
+
       let up = new THREE.Vector3(0, 1, 0);
-      const curvature = tangent.x * 0.35;
-      up.x -= curvature;
+      up.x -= curvature * 0.35;
       up.normalize();
 
       const normal = new THREE.Vector3().crossVectors(tangent, up).normalize();
@@ -67,14 +91,18 @@ export class AugustaTrack {
       uvs.push(0, repeatV);
       uvs.push(1, repeatV);
 
-      this.pathSamples.push({
-        u,
-        position: pt,
-        tangent,
-        normal,
-        left: leftPt,
-        right: rightPt
-      });
+      // pathSamples keep u in [0, 1): the i == numSegs row only closes the road
+      // mesh (same point as i == 0) and must not shadow the u=0 sample in projectPoint.
+      if (i < numSegs) {
+        this.pathSamples.push({
+          u,
+          position: pt,
+          tangent,
+          normal,
+          left: leftPt,
+          right: rightPt
+        });
+      }
     }
 
     for (let i = 0; i < numSegs; i++) {
@@ -126,6 +154,7 @@ export class AugustaTrack {
     }
 
     const roadTexture = new THREE.CanvasTexture(canvas);
+    roadTexture.colorSpace = THREE.SRGBColorSpace;
     roadTexture.wrapS = THREE.RepeatWrapping;
     roadTexture.wrapT = THREE.RepeatWrapping;
 
@@ -147,13 +176,16 @@ export class AugustaTrack {
     const railPointsRightTop = [];
     const railPointsRightBot = [];
 
-    const postGroup = new THREE.Group();
     const postGeom = new THREE.CylinderGeometry(0.12, 0.12, 1.4, 8);
     const postMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8, roughness: 0.3 });
 
+    // Collect post positions first: they become a single InstancedMesh instead
+    // of ~180 separate Mesh objects (one draw call, same geometry/material).
+    const postPositions = [];
+
     for (let i = 0; i <= numSegs; i++) {
-      const sample = this.pathSamples[i];
-      
+      const sample = this.pathSamples[i % numSegs];
+
       const pLTop = sample.left.clone().add(new THREE.Vector3(0, 0.85, 0));
       const pLBot = sample.left.clone().add(new THREE.Vector3(0, 0.38, 0));
       const pRTop = sample.right.clone().add(new THREE.Vector3(0, 0.85, 0));
@@ -166,17 +198,24 @@ export class AugustaTrack {
 
       // Add vertical posts every 4 segments
       if (i % 4 === 0 && i < numSegs) {
-        const postL = new THREE.Mesh(postGeom, postMat);
-        postL.position.copy(sample.left).add(new THREE.Vector3(0, 0.65, 0));
-        postGroup.add(postL);
-
-        const postR = new THREE.Mesh(postGeom, postMat);
-        postR.position.copy(sample.right).add(new THREE.Vector3(0, 0.65, 0));
-        postGroup.add(postR);
+        postPositions.push(
+          sample.left.clone().add(new THREE.Vector3(0, 0.65, 0)),
+          sample.right.clone().add(new THREE.Vector3(0, 0.65, 0))
+        );
       }
     }
 
-    this.group.add(postGroup);
+    if (postPositions.length > 0) {
+      const postMesh = new THREE.InstancedMesh(postGeom, postMat, postPositions.length);
+      const postMatrix = new THREE.Matrix4();
+      postPositions.forEach((pos, idx) => {
+        postMatrix.makeTranslation(pos.x, pos.y, pos.z);
+        postMesh.setMatrixAt(idx, postMatrix);
+      });
+      postMesh.instanceMatrix.needsUpdate = true;
+      postMesh.castShadow = true;
+      this.group.add(postMesh);
+    }
 
     const railMat = new THREE.MeshStandardMaterial({
       color: 0x94a3b8,
@@ -244,6 +283,7 @@ export class AugustaTrack {
     ctx.fillText(this.trackDef.subtitle.toUpperCase(), 512, 190);
 
     const bannerTex = new THREE.CanvasTexture(canvas);
+    bannerTex.colorSpace = THREE.SRGBColorSpace;
     const bannerMat = new THREE.MeshBasicMaterial({ map: bannerTex });
     const bannerMesh = new THREE.Mesh(new THREE.PlaneGeometry(postDist * 1.8, 2.2), bannerMat);
     bannerMesh.position.set(0, postHeight - 0.2, 0.8);
@@ -305,6 +345,7 @@ export class AugustaTrack {
     pCtx.fill();
 
     const padTex = new THREE.CanvasTexture(padCanvas);
+    padTex.colorSpace = THREE.SRGBColorSpace;
     const padMat = new THREE.MeshStandardMaterial({
       map: padTex,
       emissive: 0xf43f5e,
@@ -341,11 +382,14 @@ export class AugustaTrack {
     sCtx.fillRect(0, 0, 128, 128);
 
     const slickTex = new THREE.CanvasTexture(slickCanvas);
+    slickTex.colorSpace = THREE.SRGBColorSpace;
     const slickMat = new THREE.MeshBasicMaterial({
       map: slickTex,
       transparent: true,
       depthWrite: false
     });
+    // Reused by dropOilSlick for the runtime traps (no per-drop texture creation)
+    this.oilMaterial = slickMat;
 
     oilPositionsU.forEach((u, idx) => {
       const pt = this.curve.getPointAt(u);
@@ -361,7 +405,7 @@ export class AugustaTrack {
 
       this.oilSlicks.push({
         position: slickPos,
-        radius: 2.8
+        radius: 2.25 // half of the 4.5 plane: visual size == hitbox
       });
     });
 
@@ -383,6 +427,7 @@ export class AugustaTrack {
     qCtx.fillText('?', 64, 68);
 
     const qTex = new THREE.CanvasTexture(qCanvas);
+    qTex.colorSpace = THREE.SRGBColorSpace;
     const boxMat = new THREE.MeshStandardMaterial({
       map: qTex,
       color: 0xffffff,
@@ -616,6 +661,7 @@ export class AugustaTrack {
       bCtx.fillText(lines[1], 256, 170);
 
       const bTex = new THREE.CanvasTexture(bCanvas);
+      bTex.colorSpace = THREE.SRGBColorSpace;
       const bMat = new THREE.MeshBasicMaterial({ map: bTex });
       const board = new THREE.Mesh(new THREE.PlaneGeometry(16, 8), bMat);
       
@@ -687,24 +733,13 @@ export class AugustaTrack {
     }
   }
 
-  dropOilSlick(pos, radius = 3.5) {
-    if (!this.slickMat) {
-      const canvas = document.createElement('canvas');
-      canvas.width = 128; canvas.height = 128;
-      const ctx = canvas.getContext('2d');
-      const g = ctx.createRadialGradient(64, 64, 10, 64, 64, 60);
-      g.addColorStop(0, 'rgba(12, 10, 15, 0.95)');
-      g.addColorStop(0.6, 'rgba(40, 20, 50, 0.85)');
-      g.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = g; ctx.fillRect(0, 0, 128, 128);
-      this.slickMat = new THREE.MeshBasicMaterial({
-        map: new THREE.CanvasTexture(canvas),
-        transparent: true,
-        depthWrite: false
-      });
-    }
+  dropOilSlick(pos, radius = 3.5, owner = null) {
+    // Reuse the static oil material built in buildInteractiveElements: same look,
+    // zero runtime texture/material allocation per drop.
+    const material = this.oilMaterial;
+    if (!material) return;
 
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(radius * 1.8, radius * 1.8), this.slickMat);
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(radius * 2, radius * 2), material);
     mesh.rotation.x = -Math.PI / 2;
     mesh.position.copy(pos).add(new THREE.Vector3(0, 0.08, 0));
     this.group.add(mesh);
@@ -713,7 +748,9 @@ export class AugustaTrack {
       mesh,
       position: pos.clone(),
       radius,
-      life: 45.0
+      life: 45.0,
+      time: 0,   // seconds since the drop (drives the dropper's immunity window)
+      owner
     };
     this.oilSlicks.push(slickObj);
     this.droppedOilSlicks.push(slickObj);
@@ -788,12 +825,10 @@ export class AugustaTrack {
   }
 
   spawnConfetti() {
-    const colors = [0xff0055, 0x00f7ff, 0xffd700, 0x00ff66, 0x9900ff, 0xff8800];
     const geom = new THREE.PlaneGeometry(0.28, 0.28);
     const startSample = this.pathSamples[0];
     for (let i = 0; i < 180; i++) {
-      const col = colors[Math.floor(Math.random() * colors.length)];
-      const mat = new THREE.MeshBasicMaterial({ color: col, side: THREE.DoubleSide });
+      const mat = CONFETTI_MATERIALS[Math.floor(Math.random() * CONFETTI_MATERIALS.length)];
       const conf = new THREE.Mesh(geom, mat);
       conf.position.copy(startSample.position).add(new THREE.Vector3(
         (Math.random() - 0.5) * this.width,
@@ -815,11 +850,14 @@ export class AugustaTrack {
   }
 
   update(dt) {
+    // Deterministic animation clock: dt-fed instead of wall-clock Date.now()
+    this.elapsed += dt;
+
     // 1. Rotate & float mystery item boxes
     for (const box of this.itemBoxes) {
       if (box.active) {
         box.mesh.rotation.y += dt * 2.2;
-        box.mesh.position.y = box.basePos.y + Math.sin(Date.now() * 0.0035 + box.basePos.x) * 0.25;
+        box.mesh.position.y = box.basePos.y + Math.sin(this.elapsed * 3.5 + box.basePos.x) * 0.25;
       } else {
         box.respawnTimer -= dt;
         if (box.respawnTimer <= 0) {
@@ -833,8 +871,11 @@ export class AugustaTrack {
     for (let i = this.droppedOilSlicks.length - 1; i >= 0; i--) {
       const slick = this.droppedOilSlicks[i];
       slick.life -= dt;
+      slick.time += dt;
       if (slick.life <= 0) {
         this.group.remove(slick.mesh);
+        if (slick.mesh.geometry) slick.mesh.geometry.dispose();
+        // material is the shared this.oilMaterial: never disposed here
         this.droppedOilSlicks.splice(i, 1);
         const idx = this.oilSlicks.indexOf(slick);
         if (idx !== -1) this.oilSlicks.splice(idx, 1);
@@ -865,6 +906,13 @@ export class AugustaTrack {
       m.mesh.rotation.y = Math.atan2(m.forward.x, m.forward.z);
       if (m.life <= 0) {
         this.group.remove(m.mesh);
+        // Missile parts (geometries + materials) are unique per missile: free them all
+        m.mesh.traverse((part) => {
+          if (part.isMesh) {
+            if (part.geometry) part.geometry.dispose();
+            if (part.material) part.material.dispose();
+          }
+        });
         this.activeMissiles.splice(i, 1);
       }
     }
@@ -879,6 +927,8 @@ export class AugustaTrack {
       sw.material.opacity = Math.max(0, 1.0 - progress);
       if (sw.life <= 0) {
         this.group.remove(sw.mesh);
+        if (sw.mesh.geometry) sw.mesh.geometry.dispose();
+        if (sw.material) sw.material.dispose(); // ring material is unique per shockwave
         this.activeShockwaves.splice(i, 1);
       }
     }
@@ -891,7 +941,14 @@ export class AugustaTrack {
       s.mesh.position.addScaledVector(s.vel, dt);
       if (s.life <= 0) {
         this.group.remove(s.mesh);
+        const sparkGeom = s.mesh.geometry;
+        const sparkMat = s.mesh.material;
         this.activeSparks.splice(i, 1);
+        // Geometry and material are shared within one burst: dispose on the last user
+        if (!this.activeSparks.some((other) => other.mesh.geometry === sparkGeom)) {
+          if (sparkGeom) sparkGeom.dispose();
+          if (sparkMat) sparkMat.dispose();
+        }
       }
     }
 
@@ -905,7 +962,13 @@ export class AugustaTrack {
       c.mesh.rotation.z += c.rotVel.z * dt;
       if (c.life <= 0 || c.mesh.position.y < 0) {
         this.group.remove(c.mesh);
+        const confGeom = c.mesh.geometry;
         this.activeConfetti.splice(i, 1);
+        // Geometry is shared within one burst: dispose on the last user. The material
+        // is module-level shared (CONFETTI_MATERIALS) and is never disposed here.
+        if (!this.activeConfetti.some((other) => other.mesh.geometry === confGeom)) {
+          if (confGeom) confGeom.dispose();
+        }
       }
     }
 
@@ -914,13 +977,29 @@ export class AugustaTrack {
       if (obj.type === 'beacon') {
         obj.mesh.rotation.y += dt * 1.5;
       } else if (obj.type === 'flame') {
-        const s = 1.0 + Math.sin(Date.now() * 0.01 + obj.mesh.position.x) * 0.2;
+        const s = 1.0 + Math.sin(this.elapsed * 10.0 + obj.mesh.position.x) * 0.2;
         obj.mesh.scale.set(s, s * 1.2, s);
       } else if (obj.type === 'subwoofer') {
-        const s = 1.0 + Math.sin(Date.now() * 0.02) * 0.15;
+        const s = 1.0 + Math.sin(this.elapsed * 20.0) * 0.15;
         obj.mesh.scale.set(s, 1.0, s);
       }
     }
+  }
+
+  dispose() {
+    // Full teardown: free every geometry and every per-instance material (with its
+    // texture map). Materials flagged userData.shared — the module-level confetti
+    // set — are intentionally skipped so other track instances keep working.
+    this.group.traverse((obj) => {
+      if (!obj.isMesh) return;
+      if (obj.geometry) obj.geometry.dispose();
+      const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
+      for (const mat of materials) {
+        if (!mat || mat.userData.shared) continue;
+        if (mat.map) mat.map.dispose();
+        mat.dispose();
+      }
+    });
   }
 
   projectPoint(pos) {

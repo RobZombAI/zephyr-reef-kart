@@ -11,9 +11,13 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:hardwareAccelerated="true"
+        android:largeHeap="true"
         android:enableOnBackInvokedCallback="true"
         android:theme="@style/Theme.ZephyrReefKart">
-        <activity
+        <meta-data
+        android:name="com.google.android.gms.ads.APPLICATION_ID"
+        android:value="ca-app-pub-3940256099942544~3347511713" />
+    <activity
             android:name=".MainActivity"
             android:exported="true"
             android:hardwareAccelerated="true"

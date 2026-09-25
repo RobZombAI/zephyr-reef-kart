@@ -1,12 +1,35 @@
 import * as THREE from 'three';
-import { GAME_CONFIG, POWERUPS } from '../config/augustaConfig.js';
+
+// Local config: the original '../config/augustaConfig.js' module does not exist,
+// so every value actually used by this file is inlined here (single source of truth).
+const CONFIG = {
+  maxNormalSpeed: 170,    // km/h top speed without boosts
+  nitroSpeed: 210,        // km/h with nitro / mini-turbo engaged
+  accelRate: 20.0,        // m/s^2
+  brakeRate: 28.0,        // m/s^2
+  steerSpeed: 2.4,        // rad/s base steering rate
+  totalLaps: 3,
+  smogSlowdown: 0.6,      // max speed multiplier while choked by smog
+  oilSpinDuration: 0.75,  // seconds of spinout triggered by an oil slick
+  POWERUPS: {
+    granita:  { id: 'granita',  name: 'Granita Nitro', duration: 2.2, speedBoost: 1.35 },
+    greggio:  { id: 'greggio',  name: 'Autogreggio' },
+    trap:     { id: 'trap',     name: 'Onda Urtante', blastRadius: 9.0 },
+    politica: { id: 'politica', name: 'Scudo Dorato', duration: 5.0 },
+    fico:     { id: 'fico',     name: 'Fico Missile' }
+  }
+};
 
 export class KartController {
+  // Progressive id used to process each kart-to-kart collision pair exactly once
+  static _uidCounter = 0;
+
   constructor(racerConfig, track, isPlayer = false, allKarts = []) {
     this.racer = racerConfig;
     this.track = track;
     this.isPlayer = isPlayer;
     this.allKarts = allKarts;
+    this.racerIndex = KartController._uidCounter++;
 
     this.position = new THREE.Vector3();
     this.velocity = new THREE.Vector3();
@@ -17,10 +40,10 @@ export class KartController {
     this.steerAngle = 0;
 
     this.speed = 0;
-    this.maxSpeed = (GAME_CONFIG.maxNormalSpeed / 3.6) * racerConfig.stats.speed;
-    this.accelRate = GAME_CONFIG.accelRate * racerConfig.stats.accel;
-    this.brakeRate = GAME_CONFIG.brakeRate;
-    this.handling = GAME_CONFIG.steerSpeed * racerConfig.stats.handling;
+    this.maxSpeed = (CONFIG.maxNormalSpeed / 3.6) * racerConfig.stats.speed;
+    this.accelRate = CONFIG.accelRate * racerConfig.stats.accel;
+    this.brakeRate = CONFIG.brakeRate;
+    this.handling = CONFIG.steerSpeed * racerConfig.stats.handling;
 
     // Drifting state
     this.isDrifting = false;
@@ -36,6 +59,7 @@ export class KartController {
     this.spinDuration = 0.75;
     this.spinStartYaw = 0;
     this.slickCooldown = 0;
+    this.slickImmunity = 0;
     this.smogLevel = 0;
     this.shieldTimer = 0;
 
@@ -43,6 +67,8 @@ export class KartController {
     this.currentItem = null;
     this.itemRollingTimer = 0;
     this.wallHit = false;
+    this.wasTouchingWall = false; // edge detection for onWallHit
+    this.wallHitTimer = 0;        // re-trigger throttle while scraping (400ms)
 
     // Race Progress & Sector Splits
     this.u = 0;
@@ -56,6 +82,9 @@ export class KartController {
     this.sector = 0; // 0, 1, 2
     this.sectorTimes = [0, 0, 0];
     this.lapStartTime = 0;
+
+    // Sectors crossed forward since the last lap increment (anti lap-duplication)
+    this.visitedSectors = new Set();
 
     // Input state
     this.input = {
@@ -98,12 +127,23 @@ export class KartController {
     this.spinDuration = 0.75;
     this.spinStartYaw = 0;
     this.slickCooldown = 0;
+    this.slickImmunity = 0;
     this.boostTimer = 0;
     this.shieldTimer = 0;
     this.currentItem = null;
     this.itemRollingTimer = 0;
     this.sector = 0;
     this.sectorTimes = [0, 0, 0];
+    this.wasTouchingWall = false;
+    this.wallHitTimer = 0;
+
+    // Seed the sector set with every sector behind the spawn point, so a kart
+    // placed mid-track or behind the start line still needs a coherent set of
+    // forward crossings before its next lap counts.
+    this.visitedSectors = new Set();
+    for (let s = 0; s <= Math.min(2, Math.floor(this.u * 3)); s++) {
+      this.visitedSectors.add(s);
+    }
   }
 
   triggerSpin(duration = 0.75) {
@@ -121,8 +161,9 @@ export class KartController {
     // Record starting heading for smooth blend
     this.spinStartYaw = this.yaw;
 
-    // Decelerate but preserve positive forward momentum! Never negative, never 0.
-    this.speed = Math.max(12.0, this.speed * 0.58);
+    // Decelerate but preserve forward momentum! The spin must never RAISE the
+    // speed (low floor 4.0 only avoids karts freezing solid).
+    this.speed = Math.max(4.0, this.speed * 0.58);
 
     if (this.onSpin) {
       this.onSpin();
@@ -130,7 +171,7 @@ export class KartController {
   }
 
   collectItem(itemKey) {
-    this.currentItem = POWERUPS[itemKey] || POWERUPS.granita;
+    this.currentItem = CONFIG.POWERUPS[itemKey] || CONFIG.POWERUPS.granita;
     this.itemRollingTimer = 0.65; // item roulette cycle duration
     if (this.onItemPickup) this.onItemPickup(this.currentItem);
   }
@@ -144,11 +185,12 @@ export class KartController {
       // Super Nitro boost
       this.boostTimer = item.duration;
       this.boostMultiplier = item.speedBoost;
-      this.speed = (GAME_CONFIG.nitroSpeed / 3.6) * 1.12;
+      this.speed = (CONFIG.nitroSpeed / 3.6) * 1.12;
     } else if (item.id === 'greggio') {
-      // Drop oil slick trap behind
+      // Drop oil slick trap behind; the dropper gets 2s immunity to their own slick
       const dropPos = this.position.clone().addScaledVector(this.forward, -4.5);
-      this.track.dropOilSlick(dropPos, 3.8);
+      this.track.dropOilSlick(dropPos, 3.8, this);
+      this.slickImmunity = 2.0;
     } else if (item.id === 'trap') {
       // Area blast: trigger expanding 3D shockwave ring and spin nearby racers
       this.track.triggerShockwave(this.position.clone());
@@ -196,6 +238,10 @@ export class KartController {
   }
 
   update(dt) {
+    // Clamp dt: with huge frames the dt-scaled lerps (dt*12, dt*8, dt*10) would
+    // push their alpha past 1 and teleport the kart.
+    dt = Math.min(dt, 1 / 30);
+
     if (this.itemRollingTimer > 0) {
       this.itemRollingTimer -= dt;
     }
@@ -206,6 +252,10 @@ export class KartController {
 
     if (this.slickCooldown > 0) {
       this.slickCooldown -= dt;
+    }
+
+    if (this.slickImmunity > 0) {
+      this.slickImmunity -= dt;
     }
 
     if (this.finished) {
@@ -244,8 +294,9 @@ export class KartController {
       this.driftAngle = 0;
 
       // Moto fisico: il kart viaggia RIGOROSAMENTE IN AVANTI lungo la tangente della pista!
-      // Rallenta dolcemente (fino a min ~11.5 m/s ~ 41 km/h) ma NON si ferma e NON torna MAI indietro!
-      this.speed = Math.max(11.5, this.speed - 16.0 * dt);
+      // Rallenta dolcemente ma NON si ferma e NON torna MAI indietro; il decadimento
+      // non deve mai ALZARE la velocità (floor basso 4.0 solo anti-blocco).
+      this.speed = Math.max(4.0, this.speed - 16.0 * dt);
       this.forward.copy(proj.tangent).normalize();
       this.velocity.copy(this.forward).multiplyScalar(this.speed);
       this.position.addScaledVector(this.velocity, dt);
@@ -258,6 +309,11 @@ export class KartController {
         this.velocity.copy(this.forward).multiplyScalar(this.speed);
       }
 
+      // Even while spinning the kart keeps interacting with the world: item boxes,
+      // nitro pads, kart-kart bumps and hazards still apply — only steering and
+      // acceleration input are skipped during the spin.
+      this.checkKartCollisions();
+      this.checkHazardsAndPickups(dt);
       this.updateTrackProgress(dt);
       return;
     }
@@ -266,11 +322,11 @@ export class KartController {
     let currentMaxSpeed = this.maxSpeed;
     if (this.boostTimer > 0) {
       this.boostTimer -= dt;
-      currentMaxSpeed = (GAME_CONFIG.nitroSpeed / 3.6) * this.boostMultiplier;
+      currentMaxSpeed = (CONFIG.nitroSpeed / 3.6) * this.boostMultiplier;
     }
 
     if (this.smogLevel > 65 && this.shieldTimer <= 0) {
-      currentMaxSpeed *= GAME_CONFIG.smogSlowdown;
+      currentMaxSpeed *= CONFIG.smogSlowdown;
     }
 
     // 3. Acceleration & Braking
@@ -334,7 +390,8 @@ export class KartController {
       const lowSpeedBoost = 1.65 * Math.max(0, 1.0 - spd / 16.0);
       const cruiseFactor = THREE.MathUtils.clamp(spd / (this.maxSpeed * 0.5), 0.5, 1.0);
       const speedFactor = Math.max(0.72, Math.max(cruiseFactor, lowSpeedBoost));
-      const steerDirection = (this.speed < -0.4 && this.input.brake && !this.input.accel) ? -1 : 1;
+      // Steering inverts as soon as the kart actually moves backwards
+      const steerDirection = this.speed < -0.4 ? -1 : 1;
       this.yaw += steerDir * this.handling * speedFactor * dt * steerDirection;
       this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, 0, dt * 10);
     }
@@ -357,6 +414,10 @@ export class KartController {
     const minDist = 2.8; // combined kart collision diameter
     for (const other of this.allKarts) {
       if (other === this) continue;
+      // Process every pair exactly once: only the kart with the lower index resolves it
+      const otherIndex = other.racerIndex ?? 0;
+      if (otherIndex <= this.racerIndex) continue;
+
       const dx = this.position.x - other.position.x;
       const dz = this.position.z - other.position.z;
       const distSq = dx * dx + dz * dz;
@@ -373,10 +434,17 @@ export class KartController {
         other.position.x -= nx * overlap;
         other.position.z -= nz * overlap;
 
-        // Impulse momentum transfer
-        const relSpeed = (this.speed - other.speed) * 0.35;
-        this.speed -= relSpeed * 0.5;
-        other.speed += relSpeed * 0.5;
+        // Impulse momentum transfer along the collision normal (centres direction):
+        // n points from other towards this, so relNormal < 0 while the karts approach.
+        const rvx = this.forward.x * this.speed - other.forward.x * other.speed;
+        const rvz = this.forward.z * this.speed - other.forward.z * other.speed;
+        const relNormal = rvx * nx + rvz * nz;
+        if (relNormal < 0) {
+          const impulse = -relNormal * 0.35;
+          // Project the normal impulse onto each kart's own forward axis (scalar speed model)
+          this.speed += impulse * 0.5 * (nx * this.forward.x + nz * this.forward.z);
+          other.speed -= impulse * 0.5 * (nx * other.forward.x + nz * other.forward.z);
+        }
 
         if (this.isPlayer && this.onKartBump) {
           this.onKartBump();
@@ -389,15 +457,15 @@ export class KartController {
     if (this.driftLevel === 3) {
       this.boostTimer = 2.5;
       this.boostMultiplier = 1.35;
-      this.speed = Math.min(this.speed + 18.0, GAME_CONFIG.nitroSpeed / 3.6);
+      this.speed = Math.min(this.speed + 18.0, CONFIG.nitroSpeed / 3.6);
     } else if (this.driftLevel === 2) {
       this.boostTimer = 1.8;
       this.boostMultiplier = 1.25;
-      this.speed = Math.min(this.speed + 13.0, GAME_CONFIG.nitroSpeed / 3.6);
+      this.speed = Math.min(this.speed + 13.0, CONFIG.nitroSpeed / 3.6);
     } else if (this.driftLevel === 1) {
       this.boostTimer = 1.0;
       this.boostMultiplier = 1.15;
-      this.speed = Math.min(this.speed + 8.0, GAME_CONFIG.nitroSpeed / 3.6);
+      this.speed = Math.min(this.speed + 8.0, CONFIG.nitroSpeed / 3.6);
     }
   }
 
@@ -435,13 +503,13 @@ export class KartController {
         this.yaw = targetYaw - Math.sign(dYaw) * 0.78;
         dYaw = targetYaw - this.yaw;
       }
-      // Continuous forward alignment pull
-      this.yaw += dYaw * 0.35;
+      // Continuous forward alignment pull (frame-rate independent)
+      this.yaw += dYaw * (1 - Math.pow(1 - 0.35, dt * 60));
 
       // Continuous forward drive along guardrail with tangible friction deceleration
-      const isAccelerating = this.input.forward || Math.abs(this.speed) > 2.0;
+      const isAccelerating = this.input.accel || Math.abs(this.speed) > 2.0;
       if (isAccelerating) {
-        this.speed = Math.max(8.5, this.speed * 0.88);
+        this.speed = Math.max(8.5, this.speed * Math.pow(0.88, dt * 60));
         this.forward.copy(proj.tangent).normalize();
         this.velocity.copy(this.forward).multiplyScalar(this.speed);
       }
@@ -454,12 +522,21 @@ export class KartController {
       }
 
       this.wallHit = true;
-      if (this.onWallHit) this.onWallHit();
+      // Edge detection: emit onWallHit only on the false->true transition, with a
+      // 400ms re-trigger throttle at most while continuously scraping the rail.
+      this.wallHitTimer -= dt;
+      if (!this.wasTouchingWall || this.wallHitTimer <= 0) {
+        if (this.onWallHit) this.onWallHit();
+        this.wallHitTimer = 0.4;
+      }
+      this.wasTouchingWall = true;
+    } else {
+      this.wasTouchingWall = false;
     }
 
     // Surface Y and 3D Pitch / Roll orientation (Item 14)
     const surfaceY = proj.nearestPos.y + 0.35;
-    this.position.y = THREE.MathUtils.lerp(this.position.y, surfaceY, 0.3);
+    this.position.y = THREE.MathUtils.lerp(this.position.y, surfaceY, 1 - Math.pow(1 - 0.3, dt * 60));
     if (this.position.y < surfaceY - 0.1) {
       this.position.y = surfaceY;
     }
@@ -479,9 +556,15 @@ export class KartController {
     const oldU = this.u;
     this.u = proj.u;
 
-    // Sector split detection
+    // Sector split detection: only FORWARD crossings populate visitedSectors
     const currentSector = Math.floor(this.u * 3);
     if (currentSector !== this.sector) {
+      const deltaU = this.u - oldU;
+      const crossedForward = deltaU < -0.5;             // wrapped past the finish line forwards
+      const steppedForward = deltaU > 0 && deltaU < 0.5; // regular forward progress
+      if (steppedForward || crossedForward) {
+        this.visitedSectors.add(currentSector);
+      }
       this.sector = currentSector;
       if (this.onSectorSplit) {
         this.onSectorSplit(this.sector);
@@ -489,31 +572,40 @@ export class KartController {
     }
 
     if (oldU > 0.85 && this.u < 0.15) {
-      this.lap += 1;
-      if (this.lap === 3 && this.onFinalLap) {
-        this.onFinalLap();
-      }
-      if (this.lap > GAME_CONFIG.totalLaps) {
-        this.finished = true;
+      // Lap counts only when every sector was crossed forward since the last one:
+      // reverse-crossing the line and re-crossing can no longer duplicate laps.
+      if (this.visitedSectors.size === 3) {
+        this.lap += 1;
+        this.visitedSectors.clear();
+        if (this.lap === CONFIG.totalLaps && this.onFinalLap) {
+          this.onFinalLap();
+        }
+        if (this.lap > CONFIG.totalLaps) {
+          this.finished = true;
+        }
       }
     } else if (oldU < 0.15 && this.u > 0.85) {
-      this.lap = Math.max(1, this.lap - 1);
+      // Backwards crossing: never raises the lap (grid karts legitimately sit on lap 0)
+      if (this.lap > 1) {
+        this.lap -= 1;
+      }
+      this.visitedSectors.clear();
     }
 
     this.totalProgress = (this.lap - 1) + this.u;
   }
 
   checkHazardsAndPickups(dt) {
-    // 1. Check Mystery Item Boxes
+    // 1. Check Mystery Item Boxes (only consumed when they actually give an item)
     if (this.track.itemBoxes) {
       for (const box of this.track.itemBoxes) {
         if (box.active && this.position.distanceTo(box.mesh.position) < box.radius) {
-          box.active = false;
-          box.mesh.visible = false;
-          box.respawnTimer = 4.0;
-
           if (!this.currentItem) {
-            const keys = Object.keys(POWERUPS);
+            box.active = false;
+            box.mesh.visible = false;
+            box.respawnTimer = 4.0;
+
+            const keys = Object.keys(CONFIG.POWERUPS);
             const randomKey = keys[Math.floor(Math.random() * keys.length)];
             this.collectItem(randomKey);
           }
@@ -527,7 +619,7 @@ export class KartController {
       if (this.position.distanceTo(pad.position) < pad.radius) {
         this.boostTimer = 2.2;
         this.boostMultiplier = 1.35;
-        this.speed = GAME_CONFIG.nitroSpeed / 3.6;
+        this.speed = CONFIG.nitroSpeed / 3.6;
         break;
       }
     }
@@ -535,8 +627,11 @@ export class KartController {
     // 3. Check Oil Slicks (unless shielded or in immunity cooldown)
     if (this.spinTimer <= 0 && this.shieldTimer <= 0 && this.slickCooldown <= 0) {
       for (const slick of this.track.oilSlicks) {
+        // Autogreggio: a freshly dropped slick (owner's 2s immunity window) never
+        // spins out the very kart that dropped it.
+        if (slick.owner === this && this.slickImmunity > 0 && (slick.time ?? 0) < 2.0) continue;
         if (this.position.distanceTo(slick.position) < slick.radius) {
-          this.triggerSpin(GAME_CONFIG.oilSpinDuration || 0.75);
+          this.triggerSpin(CONFIG.oilSpinDuration || 0.75);
           // Se si tratta di greggio lanciato in gara, consuma la chiazza
           if (slick.life !== undefined) {
             slick.life = 0;

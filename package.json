@@ -1,13 +1,16 @@
 {
   "name": "zephyr-reef-kart",
-  "version": "6.7.0",
+  "version": "6.9.6",
   "description": "Zephyr Reef Grand Prix - 3D fantasy kart racer powered by Three.js and Android Native WebView",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "build:ios": "bash scripts/build_ios.sh",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test tests/test_all_systems.mjs",
+    "test:browser": "node tests/verify_in_browser.mjs",
+    "sync": "node scripts/sync_all_mirrors.js"
   },
   "dependencies": {
     "three": "^0.186.0"

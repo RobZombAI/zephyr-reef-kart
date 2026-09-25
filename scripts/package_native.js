@@ -1,82 +1,93 @@
-import fs from 'fs';
-import path from 'path';
-import { execSync } from 'child_process';
+#!/usr/bin/env node
+/**
+ * package_native.js — sincronizza i mirror e produce i pacchetti nativi (APK + IPA).
+ *
+ * - Il sync dei mirror è delegato all'unico script scripts/sync_all_mirrors.js.
+ * - Gli artifact vengono copiati in <repo>/build/artifacts/ di default;
+ *   si può override con la env var ZEPHYR_ARTIFACTS_DIR.
+ * - Tutti i comandi esterni sono avvolti in try/catch: errore -> exit 1 con messaggio chiaro.
+ */
+import fs from 'node:fs';
+import path from 'node:path';
+import { execSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { syncMirrors, REPO_ROOT } from './sync_all_mirrors.js';
 
-const rootDir = process.cwd();
-const artifactsDir = '/Users/robzomb/.gemini/antigravity/brain/0394039c-7986-43d7-9058-02535fa2c8fe';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-console.log('=== Synchronizing all mirrors and native packages to v6.9.5 ===');
+const pkg = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8'));
 
-const bundle = path.join(rootDir, 'assets/index-C9rd31_W.js');
-const css = path.join(rootDir, 'assets/index-DMliwuo_.css');
-const indexHtml = path.join(rootDir, 'index.html');
-const zephyrHtml = path.join(rootDir, 'zephyr.html');
+// Default: <repo>/build/artifacts/ ; override con ZEPHYR_ARTIFACTS_DIR
+const artifactsDir = process.env.ZEPHYR_ARTIFACTS_DIR
+  ? path.resolve(process.env.ZEPHYR_ARTIFACTS_DIR)
+  : path.join(REPO_ROOT, 'build', 'artifacts');
 
-const targets = [
-  { dir: path.join(rootDir, 'dist'), hasAssets: true },
-  { dir: path.join(rootDir, 'public'), hasAssets: true },
-  { dir: path.join(rootDir, 'android/ZephyrReefKart/app/src/main/assets'), hasAssets: true },
-  { dir: path.join(rootDir, 'ios/ZephyrReefKart/ZephyrReefKart/Resources/WebAssets'), hasAssets: true }
-];
+function run(cmd, opts = {}) {
+  execSync(cmd, { stdio: 'inherit', ...opts });
+}
 
-for (const t of targets) {
-  fs.mkdirSync(t.dir, { recursive: true });
-  fs.copyFileSync(indexHtml, path.join(t.dir, 'index.html'));
-  fs.copyFileSync(zephyrHtml, path.join(t.dir, 'zephyr.html'));
-  if (t.hasAssets) {
-    const assetsDir = path.join(t.dir, 'assets');
-    fs.mkdirSync(assetsDir, { recursive: true });
-    for (const file of fs.readdirSync(path.join(rootDir, 'assets'))) {
-      fs.copyFileSync(path.join(rootDir, 'assets', file), path.join(assetsDir, file));
-    }
+try {
+  fs.mkdirSync(artifactsDir, { recursive: true });
+  console.log(`=== Sync mirror + packaging nativo — v${pkg.version} ===`);
+  console.log(`Artifact dir: ${artifactsDir}`);
+
+  // 0. Sync di tutti i mirror (public, android, ios, dist se esiste)
+  syncMirrors();
+
+  // 1. Build & verify signed ZephyrReefKart.apk via Gradle
+  console.log('--> Building properly signed & aligned ZephyrReefKart.apk...');
+  const androidDir = path.join(REPO_ROOT, 'android/ZephyrReefKart');
+  const homebrewJdk = '/opt/homebrew/opt/openjdk@17';
+  let javaHome = null;
+  if (fs.existsSync(homebrewJdk)) {
+    javaHome = homebrewJdk;
+  } else if (process.env.JAVA_HOME) {
+    javaHome = process.env.JAVA_HOME;
   }
-  console.log(`Synced -> ${t.dir}`);
+  if (!javaHome) {
+    throw new Error(
+      'JAVA_HOME non impostato e JDK homebrew non trovato in ' +
+        homebrewJdk +
+        '. Installa JDK 17 (es. brew install openjdk@17) oppure imposta JAVA_HOME.'
+    );
+  }
+  const env = { ...process.env, JAVA_HOME: javaHome, PATH: `${javaHome}/bin:${process.env.PATH}` };
+
+  run('./gradlew assembleRelease --no-daemon', { cwd: androidDir, env });
+  const builtApk = path.join(androidDir, 'app/build/outputs/apk/release/app-release.apk');
+  if (!fs.existsSync(builtApk)) {
+    throw new Error(`Built APK not found at ${builtApk}`);
+  }
+
+  const targetApk = path.join(REPO_ROOT, 'ZephyrReefKart.apk');
+  fs.copyFileSync(builtApk, targetApk);
+
+  // Verify with apksigner and zipalign
+  const buildTools = path.join(process.env.HOME || '', 'Library/Android/sdk/build-tools/35.0.0');
+  const apksigner = path.join(buildTools, 'apksigner');
+  const zipalign = path.join(buildTools, 'zipalign');
+  if (fs.existsSync(apksigner)) {
+    run(`"${apksigner}" verify --verbose "${targetApk}"`, { env });
+  }
+  if (fs.existsSync(zipalign)) {
+    run(`"${zipalign}" -c -v 4 "${targetApk}"`, { env, stdio: 'pipe' });
+  }
+
+  fs.copyFileSync(targetApk, path.join(artifactsDir, 'ZephyrReefKart.apk'));
+  console.log('Successfully built, signed, aligned and verified ZephyrReefKart.apk');
+
+  // 2. Build ZephyrReefKart.ipa via build_ios.sh
+  console.log('--> Building ZephyrReefKart.ipa via scripts/build_ios.sh...');
+  run('bash scripts/build_ios.sh', { cwd: REPO_ROOT });
+  const targetIpa = path.join(REPO_ROOT, 'ZephyrReefKart.ipa');
+  if (!fs.existsSync(targetIpa)) {
+    throw new Error(`Built IPA not found at ${targetIpa}`);
+  }
+  fs.copyFileSync(targetIpa, path.join(artifactsDir, 'ZephyrReefKart.ipa'));
+  console.log('Successfully built ZephyrReefKart.ipa');
+
+  console.log(`=== All mirrors and native packages synchronized successfully! Artifacts in ${artifactsDir} ===`);
+} catch (err) {
+  console.error(`ERRORE packaging nativo: ${err && err.message ? err.message : err}`);
+  process.exit(1);
 }
-
-// 1. Build and verify signed ZephyrReefKart.apk via Gradle
-console.log('--> Building properly signed & aligned ZephyrReefKart.apk...');
-const androidDir = path.join(rootDir, 'android/ZephyrReefKart');
-const javaHome = fs.existsSync('/opt/homebrew/opt/openjdk@17') ? '/opt/homebrew/opt/openjdk@17' : process.env.JAVA_HOME;
-const env = { ...process.env, JAVA_HOME: javaHome, PATH: `${javaHome}/bin:${process.env.PATH}` };
-
-execSync('./gradlew assembleRelease --no-daemon', { cwd: androidDir, env, stdio: 'inherit' });
-const builtApk = path.join(androidDir, 'app/build/outputs/apk/release/app-release.apk');
-if (!fs.existsSync(builtApk)) {
-  throw new Error(`Built APK not found at ${builtApk}`);
-}
-
-const targetApk = path.join(rootDir, 'ZephyrReefKart.apk');
-fs.copyFileSync(builtApk, targetApk);
-
-// Verify with apksigner and zipalign
-const apksigner = path.join(process.env.HOME, 'Library/Android/sdk/build-tools/35.0.0/apksigner');
-const zipalign = path.join(process.env.HOME, 'Library/Android/sdk/build-tools/35.0.0/zipalign');
-if (fs.existsSync(apksigner)) {
-  execSync(`"${apksigner}" verify --verbose "${targetApk}"`, { env, stdio: 'inherit' });
-}
-if (fs.existsSync(zipalign)) {
-  execSync(`"${zipalign}" -c -v 4 "${targetApk}"`, { stdio: 'pipe' });
-}
-
-fs.copyFileSync(targetApk, path.join(artifactsDir, 'ZephyrReefKart.apk'));
-console.log('Successfully built, signed, aligned and verified ZephyrReefKart.apk');
-
-// 2. Update ZephyrReefKart.ipa
-console.log('--> Updating ZephyrReefKart.ipa...');
-const tempIpa = path.join(rootDir, 'temp_ipa_update');
-fs.rmSync(tempIpa, { recursive: true, force: true });
-const ipaAssetsDir = path.join(tempIpa, 'Payload/ZephyrReefKart.app/WebAssets/assets');
-fs.mkdirSync(ipaAssetsDir, { recursive: true });
-fs.copyFileSync(indexHtml, path.join(tempIpa, 'Payload/ZephyrReefKart.app/WebAssets/index.html'));
-fs.copyFileSync(zephyrHtml, path.join(tempIpa, 'Payload/ZephyrReefKart.app/WebAssets/zephyr.html'));
-for (const file of fs.readdirSync(path.join(rootDir, 'assets'))) {
-  fs.copyFileSync(path.join(rootDir, 'assets', file), path.join(ipaAssetsDir, file));
-}
-
-execSync(`cd "${tempIpa}" && zip -u -r "${path.join(rootDir, 'ZephyrReefKart.ipa')}" Payload`, { stdio: 'inherit' });
-fs.rmSync(tempIpa, { recursive: true, force: true });
-execSync(`unzip -t "${path.join(rootDir, 'ZephyrReefKart.ipa')}" > /dev/null`);
-fs.copyFileSync(path.join(rootDir, 'ZephyrReefKart.ipa'), path.join(artifactsDir, 'ZephyrReefKart.ipa'));
-console.log('Updated and verified ZephyrReefKart.ipa');
-
-console.log('=== All mirrors and native packages successfully updated and verified! ===');

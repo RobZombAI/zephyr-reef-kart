@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="it">
   <head>
     <meta charset="UTF-8" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
@@ -35,15 +35,29 @@
     <script>
       // Clean legacy caches and service workers & force fresh load on version change
       (function() {
-        var APP_VERSION = 'zephyr-6.9.5';
+        var APP_VERSION = 'zephyr-6.9.6';
+        // ═══ CONFIG PUBBLICITÀ WEB (AdSense) ═══
+        // Su Android/iOS le ads sono gestite dall'app nativa (AdMob, ID test
+        // ufficiali Google già attivi). Sul web: crea l'account AdSense
+        // (google.com/adsense), inserisci qui il client (ca-pub-XXXX) e lo slot
+        // del banner title, e gli annunci appariranno sullo schermo title.
+        // Con client vuoto: nessun script caricato, nessun impatto.
+        window.ZEPHYR_ADS = { adsenseClient: '', bannerTitleSlot: '' };
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistrations().then(function(regs) {
-            for (var r of regs) r.unregister();
+            for (var r of regs) {
+              try {
+                // Purge only this app's service workers (same origin may host other apps)
+                if (r.scope && (r.scope.indexOf('zephyr') !== -1 || r.scope.indexOf(window.location.pathname) !== -1)) r.unregister();
+              } catch (e) {}
+            }
           });
         }
         if ('caches' in window) {
           caches.keys().then(function(names) {
-            for (var n of names) caches.delete(n);
+            for (var n of names) {
+              if (n.indexOf('zephyr') !== -1) caches.delete(n);
+            }
           });
         }
         try {
@@ -61,7 +75,7 @@
           var storedVersion = localStorage.getItem('zephyr_client_version');
           if (storedVersion !== APP_VERSION) {
             localStorage.setItem('zephyr_client_version', APP_VERSION);
-            if (storedVersion && window.location.search.indexOf('v=') === -1) {
+            if (storedVersion && !new URLSearchParams(window.location.search).has('v')) {
               window.location.replace(window.location.pathname + '?v=' + APP_VERSION);
             }
           }
@@ -69,9 +83,9 @@
       })();
     </script>
     <script src="./assets/peerjs.min.js"></script>
-    <script type="module" src="./assets/multiplayerManager.js?v=zephyr-6.9.5"></script>
-    <script type="module" crossorigin src="./assets/index-C9rd31_W.js?v=zephyr-6.9.5"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DMliwuo_.css?v=zephyr-6.9.5">
+    <script type="module" src="./assets/multiplayerManager.js?v=zephyr-6.9.6"></script>
+    <script type="module" crossorigin src="./assets/index-C9rd31_W.js?v=zephyr-6.9.6"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DMliwuo_.css?v=zephyr-6.9.6">
     <style>
       /* Mobile Touch Controls Layer */
       .zephyr-touch-layer {
@@ -257,75 +271,7 @@
         background: rgba(118, 255, 240, 0.3);
       }
 
-      /* 3 Mobile Control Modes: Steering Wheel, Gyro HUD, and Mode Pills */
-      .z-wheel-container {
-        position: relative;
-        width: 132px;
-        height: 132px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        user-select: none;
-        -webkit-user-select: none;
-        touch-action: none;
-        pointer-events: auto;
-      }
-      .z-wheel-disc {
-        position: relative;
-        width: 100%;
-        height: 100%;
-        border-radius: 50%;
-        box-sizing: border-box;
-        border: 4.5px solid rgba(118, 255, 240, 0.75);
-        background: radial-gradient(circle at center, rgba(16, 44, 56, 0.92) 0%, rgba(10, 26, 36, 0.98) 70%, rgba(118, 255, 240, 0.3) 100%);
-        box-shadow: 0 4px 22px rgba(0, 0, 0, 0.75), inset 0 0 18px rgba(118, 255, 240, 0.4);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        will-change: transform;
-      }
-      .z-wheel-disc.snapping {
-        transition: transform 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      }
-      .z-wheel-spoke {
-        position: absolute;
-        background: linear-gradient(90deg, #76fff0, #ffc857);
-        border-radius: 2px;
-        box-shadow: 0 0 6px rgba(118, 255, 240, 0.6);
-      }
-      .z-wheel-spoke.horizontal {
-        width: 82%;
-        height: 5px;
-      }
-      .z-wheel-spoke.vertical {
-        width: 5px;
-        height: 40%;
-        bottom: 10%;
-      }
-      .z-wheel-center {
-        width: 46px;
-        height: 46px;
-        border-radius: 50%;
-        background: #0d1e30;
-        border: 2px solid #ffc857;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 19px;
-        box-shadow: 0 0 12px rgba(255, 200, 87, 0.6);
-        z-index: 2;
-      }
-      .z-wheel-indicator {
-        position: absolute;
-        top: 5px;
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #ff4fd8;
-        box-shadow: 0 0 10px #ff4fd8;
-        z-index: 2;
-      }
+      /* Mobile Control Modes: Gyro HUD and Mode Pills (dead steering-wheel CSS removed) */
       .z-gyro-container {
         display: flex;
         flex-direction: column;
@@ -394,24 +340,6 @@
         background: rgba(118, 255, 240, 0.28);
         color: #ffffff;
         box-shadow: 0 0 16px rgba(118, 255, 240, 0.45);
-      }
-      .touch-compact .z-wheel-container {
-        width: 106px;
-        height: 106px;
-      }
-      .touch-compact .z-wheel-center {
-        width: 38px;
-        height: 38px;
-        font-size: 16px;
-      }
-      .touch-large .z-wheel-container {
-        width: 154px;
-        height: 154px;
-      }
-      .touch-large .z-wheel-center {
-        width: 52px;
-        height: 52px;
-        font-size: 22px;
       }
 
       /* ======================================================================
@@ -1273,9 +1201,65 @@
           display: none !important;
         }
       }
+      #z-toast-msg {
+        position: fixed;
+        top: 24px;
+        left: 50%;
+        transform: translateX(-50%) translateY(-20px);
+        background: rgba(10, 25, 40, 0.92);
+        color: #bff7ee;
+        border: 1px solid rgba(0, 242, 254, 0.45);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 16px rgba(0, 242, 254, 0.25);
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-family: inherit;
+        font-size: 15px;
+        font-weight: 700;
+        z-index: 1000003;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.25s ease, transform 0.25s ease;
+      }
+      #z-toast-msg.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+      #z-rotate {
+        position: fixed;
+        inset: 0;
+        z-index: 1000002;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        background: linear-gradient(160deg, #06131f, #0b2438);
+        color: #bff7ee;
+        font-weight: 800;
+        font-size: 18px;
+        text-align: center;
+        padding: 24px;
+      }
+      #z-rotate .z-rot-ico {
+        font-size: 52px;
+        animation: zrot 2.2s ease-in-out infinite;
+      }
+      @keyframes zrot {
+        0%, 20% { transform: rotate(0); }
+        55%, 100% { transform: rotate(90deg); }
+      }
+      @media (orientation: portrait) {
+        #z-rotate { display: flex; }
+      }
     </style>
   </head>
   <body>
+    <div id="z-toast-msg"></div>
+    <div id="z-rotate">
+      <div class="z-rot-ico">🔄</div>
+      <div>Ruota il dispositivo</div>
+      <div style="font-size:13px;opacity:.75">Zephyr Reef Grand Prix è un gioco orizzontale</div>
+    </div>
     <div id="app">
       <canvas id="gl"></canvas>
       <div id="ui"></div>
@@ -1342,11 +1326,11 @@
       <div id="z-threat-radar" class="hud__threat-alert hidden">⚠️ ATTACCO IN ARRIVO! ⚠️</div>
       <div id="z-blind-left" class="hud__blind-spot left hidden">◀ RIVALE</div>
       <div id="z-blind-right" class="hud__blind-spot right hidden">RIVALE ▶</div>
-      <div id="z-hud-wrong-way" class="z-banner z-banner-wrong hidden">⚠️ WRONG WAY! TURN AROUND! ⚠️</div>
-      <div id="z-hud-final-lap" class="z-banner z-banner-lap hidden">🏁 FINAL LAP! 🏁</div>
+      <div id="z-hud-wrong-way" class="z-banner z-banner-wrong hidden" aria-live="polite">⚠️ WRONG WAY! TURN AROUND! ⚠️</div>
+      <div id="z-hud-final-lap" class="z-banner z-banner-lap hidden" aria-live="polite">🏁 FINAL LAP! 🏁</div>
 
       <!-- In-race Pause Menu -->
-      <div id="z-pause-modal" class="z-modal hidden">
+      <div id="z-pause-modal" class="z-modal hidden" role="dialog" aria-modal="true">
         <div class="z-modal-card z-pause-card">
           <h2 style="font-size: 20px; font-weight: 800; color: #76fff0; margin: 0 0 4px 0;">⏸️ GARA IN PAUSA</h2>
           <p style="font-size: 12px; color: #94a3b8; margin: 0 0 12px 0;">Zephyr Reef Grand Prix</p>
@@ -1362,7 +1346,7 @@
       </div>
 
       <!-- Quick Chat Modal -->
-      <div id="z-chat-modal" class="z-modal hidden">
+      <div id="z-chat-modal" class="z-modal hidden" role="dialog" aria-modal="true">
         <div class="z-modal-card z-chat-card">
           <h2 style="font-size: 18px; font-weight: 800; color: #76fff0; margin: 0 0 8px 0;">💬 CHAT RAPIDA</h2>
           <div class="z-chat-grid">
@@ -1378,7 +1362,7 @@
       </div>
 
       <!-- Settings Modal -->
-      <div id="z-settings-modal" class="z-modal hidden">
+      <div id="z-settings-modal" class="z-modal hidden" role="dialog" aria-modal="true">
         <div class="z-modal-card z-settings-card">
           <h2 style="font-size: 20px; font-weight: 800; color: #76fff0; margin: 0 0 10px 0; text-align: center;">⚙️ OPZIONI GIOCO</h2>
           <div class="z-settings-grid">
@@ -1423,7 +1407,7 @@
       </div>
 
       <!-- Track Selector Modal -->
-      <div id="z-track-modal" class="z-modal hidden">
+      <div id="z-track-modal" class="z-modal hidden" role="dialog" aria-modal="true">
         <div class="z-modal-card z-track-card">
           <h2>SCEGLI CIRCUITO ZEPHYR REEF</h2>
           <p>Seleziona il tracciato con guardrail protettivo continuo (Zero cadute nel vuoto):</p>
@@ -1650,7 +1634,7 @@
       </div>
 
       <!-- Multiplayer Private Room Modal -->
-      <div id="z-multiplayer-modal" class="z-modal hidden">
+      <div id="z-multiplayer-modal" class="z-modal hidden" role="dialog" aria-modal="true">
         <div class="z-modal-card z-mp-card">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <h2 style="font-size: 18px; font-weight: 800; color: #76fff0; margin: 0; display: flex; align-items: center; gap: 8px;">
@@ -1823,7 +1807,7 @@
       </div>
 
       <!-- 5-Second Synchronized Pre-Race Countdown / Loading Overlay -->
-      <div id="z-mp-countdown-overlay" class="hidden" style="position: fixed; inset: 0; background: radial-gradient(circle at center, rgba(8, 26, 36, 0.97) 0%, rgba(2, 8, 14, 0.99) 100%); z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); text-align: center; padding: 20px;">
+      <div id="z-mp-countdown-overlay" class="hidden" style="position: fixed; inset: 0; background: radial-gradient(circle at center, rgba(8, 26, 36, 0.97) 0%, rgba(2, 8, 14, 0.99) 100%); z-index: 100001; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); text-align: center; padding: 20px;">
         <div style="font-size: 13px; font-weight: 900; letter-spacing: 0.2em; color: #76fff0; text-transform: uppercase; margin-bottom: 6px;">
           TUTTI I PILOTI CONFERMATI!
         </div>
@@ -1909,25 +1893,92 @@
           }
         };
 
+        // HTML escape helper: ALL remote data must pass through esc() before touching innerHTML
+        const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+        // Safe storage helpers: private mode / WebView quota errors must never crash the shell
+        const zsGet = (k, session) => {
+          try { return (session ? window.sessionStorage : window.localStorage).getItem(k); } catch (e) { return null; }
+        };
+        const zsSet = (k, v, session) => {
+          try { (session ? window.sessionStorage : window.localStorage).setItem(k, v); } catch (e) {}
+        };
+        const zsDel = (k, session) => {
+          try { (session ? window.sessionStorage : window.localStorage).removeItem(k); } catch (e) {}
+        };
+        const zsParse = (k, fallback, session) => {
+          try {
+            const v = (session ? window.sessionStorage : window.localStorage).getItem(k);
+            return v ? JSON.parse(v) : fallback;
+          } catch (e) { return fallback; }
+        };
+
+        // Unified toast: prefers the engine toast, falls back to the shell toast element
+        const showToast = (msg, secs = 2.5) => {
+          if (window.__zephyr?.ui?.toast) {
+            window.__zephyr.ui.toast(msg, secs);
+            return;
+          }
+          const toastEl = document.getElementById('z-toast-msg');
+          if (toastEl) {
+            toastEl.textContent = msg;
+            toastEl.classList.add('show');
+            setTimeout(() => toastEl.classList.remove('show'), secs * 1000);
+          }
+        };
+
         // Multi-touch & Anti-sticky button management
         const activeKeys = new Set();
+
+        // Correct key/keyCode metadata for synthetic KeyboardEvents (the engine reads key + keyCode)
+        const CODE_META = {
+          KeyW: { key: 'w', keyCode: 87 },
+          KeyA: { key: 'a', keyCode: 65 },
+          KeyS: { key: 's', keyCode: 83 },
+          KeyD: { key: 'd', keyCode: 68 },
+          KeyE: { key: 'e', keyCode: 69 },
+          KeyP: { key: 'p', keyCode: 80 },
+          KeyC: { key: 'c', keyCode: 67 },
+          KeyQ: { key: 'q', keyCode: 81 },
+          ArrowUp: { key: 'ArrowUp', keyCode: 38 },
+          ArrowDown: { key: 'ArrowDown', keyCode: 40 },
+          ArrowLeft: { key: 'ArrowLeft', keyCode: 37 },
+          ArrowRight: { key: 'ArrowRight', keyCode: 39 },
+          Space: { key: ' ', keyCode: 32 },
+          ShiftLeft: { key: 'Shift', keyCode: 16 }
+        };
+        const keyMetaFor = (code) => {
+          if (CODE_META[code]) return CODE_META[code];
+          if (code.indexOf('Key') === 0 && code.length === 4) return { key: code.slice(3).toLowerCase(), keyCode: code.charCodeAt(3) };
+          return { key: code, keyCode: 0 };
+        };
+
+        // Track REAL (trusted) key state: never stack a synthetic event on top of a physically held key
+        const physicalKeys = new Set();
+        window.addEventListener('keydown', (e) => { if (e.isTrusted) physicalKeys.add(e.code); }, true);
+        window.addEventListener('keyup', (e) => { if (e.isTrusted) physicalKeys.delete(e.code); }, true);
+
         const sendKey = (code, isDown) => {
           if (isDown) {
+            if (physicalKeys.has(code)) return;
             if (!activeKeys.has(code)) {
               activeKeys.add(code);
-              window.dispatchEvent(new KeyboardEvent('keydown', { code, key: code, bubbles: true }));
+              const m = keyMetaFor(code);
+              window.dispatchEvent(new KeyboardEvent('keydown', { code, key: m.key, keyCode: m.keyCode, bubbles: true, cancelable: true }));
             }
           } else {
             if (activeKeys.has(code)) {
               activeKeys.delete(code);
-              window.dispatchEvent(new KeyboardEvent('keyup', { code, key: code, bubbles: true }));
+              const m = keyMetaFor(code);
+              window.dispatchEvent(new KeyboardEvent('keyup', { code, key: m.key, keyCode: m.keyCode, bubbles: true, cancelable: true }));
             }
           }
         };
 
         const clearAllInputs = () => {
           for (const code of activeKeys) {
-            window.dispatchEvent(new KeyboardEvent('keyup', { code, key: code, bubbles: true }));
+            const m = keyMetaFor(code);
+            window.dispatchEvent(new KeyboardEvent('keyup', { code, key: m.key, keyCode: m.keyCode, bubbles: true, cancelable: true }));
           }
           activeKeys.clear();
           document.querySelectorAll('.z-btn.active').forEach(b => b.classList.remove('active'));
@@ -2000,6 +2051,8 @@
         // HUD, Auto-Recovery, Adaptive Touch Layer & Lap Monitor
         let stuckTime = 0;
         let lastLap = 1;
+        let raceEndHandled = false;
+        let tickIdleDone = false;
         const steerGroup = document.getElementById('z-touch-steer-group');
         const pedalsGroup = document.getElementById('z-touch-pedals-group');
         const wrongWayEl = document.getElementById('z-hud-wrong-way');
@@ -2031,9 +2084,22 @@
             window.addEventListener('touchstart', () => { window.__touchActive = true; }, { passive: true });
           }
 
-          // Toggle touch controls visibility depending on game mode AND touch device capability
+          // Idle early-out: outside a race only one hidden pass is needed (perf on title/menus)
+          if (!isRacing) {
+            if (!tickIdleDone) {
+              tickIdleDone = true;
+              if (steerGroup) steerGroup.style.display = 'none';
+              if (pedalsGroup) pedalsGroup.style.display = 'none';
+              const emoteBarEl = document.getElementById('z-emote-bar');
+              if (emoteBarEl) emoteBarEl.classList.add('hidden');
+            }
+            return;
+          }
+          tickIdleDone = false;
+
+          // Toggle touch controls visibility depending on touch capability (racing)
           if (steerGroup && pedalsGroup) {
-            if (isRacing && window.__touchActive) {
+            if (window.__touchActive) {
               steerGroup.style.display = 'flex';
               pedalsGroup.style.display = 'flex';
             } else {
@@ -2044,7 +2110,7 @@
 
           const emoteBarEl = document.getElementById('z-emote-bar');
           if (emoteBarEl) {
-            if (isRacing && window.__multiplayerManager && window.__multiplayerManager.state === 'RACING') {
+            if (window.__multiplayerManager && window.__multiplayerManager.state === 'RACING') {
               emoteBarEl.classList.remove('hidden');
             } else {
               emoteBarEl.classList.add('hidden');
@@ -2077,7 +2143,6 @@
                   triple_turbo: '🚀',
                   matrix: '⭐',
                   shockwave: '📢',
-                  glitch: '🌐',
                   decoy: '📦',
                   bolt: '⚡',
                   blast: '📢',
@@ -2095,7 +2160,6 @@
                   triple_turbo: (player.turboCharges || 3) + 'x NITRO',
                   matrix: 'MATRIX',
                   shockwave: 'SHOCKWAVE',
-                  glitch: 'GLITCH',
                   decoy: 'DECOY',
                   bolt: 'PHOTON',
                   blast: 'SHOCKWAVE',
@@ -2200,9 +2264,15 @@
               }
             }
 
-            // Final Lap banner
-            if (player.lap === 3 && lastLap === 2) {
-              lastLap = 3;
+            // Final Lap banner (any configured lap count; the racer exposes the current lap
+            // via displayLap()/progress.lap — player.lap does not exist on the engine racer)
+            const totalLaps = (director.config && parseInt(director.config.laps, 10)) || 3;
+            const curLap = (typeof player.displayLap === 'function')
+              ? player.displayLap(totalLaps)
+              : Math.max(1, player.progress?.lap || 0);
+            if (curLap === 1 && window.__raceJustEnded) { window.__raceJustEnded = false; window.__adShownForRace = false; }
+            if (curLap === totalLaps && lastLap < totalLaps) {
+              lastLap = totalLaps;
               if (finalLapEl) {
                 finalLapEl.classList.remove('hidden');
                 haptic(50);
@@ -2210,23 +2280,38 @@
               }
             }
 
-            // Save track record & progression if player finishes
-            if (player.progress && player.progress.finished && player.progress.finishTime > 0) {
-              const curTrack = localStorage.getItem('zephyr_track') || '0';
+            // Pubblicità (AdMob su Android): banner nei menu, niente in gara,
+            // interstitial quando la gara finisce. Su web/desktop: no-op.
+            try {
+              if (window.AndroidAds) {
+                const inRaceNow = window.__zephyr && window.__zephyr.mode === 'race' && !window.__zephyr.paused;
+                if (inRaceNow && window.__adsBannerShown) { window.AndroidAds.hideBanner(); window.__adsBannerShown = false; }
+                else if (!inRaceNow && !window.__adsBannerShown) { window.AndroidAds.showBanner(); window.__adsBannerShown = true; }
+                if (window.__raceJustEnded && !window.__adShownForRace) {
+                  window.AndroidAds.showInterstitial && window.AndroidAds.showInterstitial();
+                  window.__adShownForRace = true;
+                }
+              }
+            } catch (e) {}
+
+            // Save track record & progression if player finishes (one-shot latch: this poll
+            // keeps ticking after the finish, so writes + unlock toast must fire once)
+            if (!raceEndHandled && player.progress && player.progress.finished && player.progress.finishTime > 0) {
+              raceEndHandled = true;
+              window.__raceJustEnded = true;
+              const curTrack = zsGet('zephyr_track') || '0';
               const curIdx = parseInt(curTrack, 10);
-              const oldRecord = parseFloat(localStorage.getItem('zephyr_record_' + curTrack) || '9999');
+              const oldRecord = parseFloat(zsGet('zephyr_record_' + curTrack) || '9999');
               if (player.progress.finishTime < oldRecord) {
-                localStorage.setItem('zephyr_record_' + curTrack, player.progress.finishTime.toFixed(2));
+                zsSet('zephyr_record_' + curTrack, player.progress.finishTime.toFixed(2));
               }
               const rank = player.progress.finishRank || player.rank || 1;
               if (rank === 1) {
-                localStorage.setItem('zephyr_won_track_' + curIdx, '1');
-                const curMax = parseInt(localStorage.getItem('zephyr_max_unlocked_track') || '0', 10);
+                zsSet('zephyr_won_track_' + curIdx, '1');
+                const curMax = parseInt(zsGet('zephyr_max_unlocked_track') || '0', 10);
                 if (curIdx >= curMax && curIdx < 23) {
-                  localStorage.setItem('zephyr_max_unlocked_track', String(curIdx + 1));
-                  if (window.__zephyr?.ui?.toast) {
-                    window.__zephyr.ui.toast(`🎉 VITTORIA 1° POSTO! Pista ${curIdx + 2} Sbloccata!`, 4.0);
-                  }
+                  zsSet('zephyr_max_unlocked_track', String(curIdx + 1));
+                  showToast(`🎉 VITTORIA 1° POSTO! Pista ${curIdx + 2} Sbloccata!`, 4.0);
                 }
               }
             }
@@ -2239,7 +2324,9 @@
         const closeBtn = document.getElementById('z-modal-close');
 
         const getUnlockedMax = () => {
-          const v = parseInt(localStorage.getItem('zephyr_max_unlocked_track') || '0', 10);
+          // Keep the direct (try/catch-guarded) read: progression source of truth for the engine
+          let v = 0;
+          try { v = parseInt(localStorage.getItem('zephyr_max_unlocked_track') || '0', 10); } catch (e) { v = 0; }
           return isNaN(v) ? 0 : Math.max(0, Math.min(23, v));
         };
 
@@ -2249,7 +2336,7 @@
             const item = document.querySelector(`.z-track-item[data-index="${i}"]`);
             const el = document.getElementById('z-record-' + i);
             const isUnlocked = i <= maxUnlocked;
-            const isWon = localStorage.getItem('zephyr_won_track_' + i) === '1';
+            const isWon = zsGet('zephyr_won_track_' + i) === '1';
 
             if (item) {
               item.classList.toggle('locked', !isUnlocked);
@@ -2276,7 +2363,7 @@
             }
 
             if (el) {
-              const rec = localStorage.getItem('zephyr_record_' + i);
+              const rec = zsGet('zephyr_record_' + i);
               if (rec) {
                 const sec = parseFloat(rec);
                 const m = Math.floor(sec / 60);
@@ -2307,10 +2394,10 @@
         }
 
         const maxInit = getUnlockedMax();
-        let curTrack = localStorage.getItem('zephyr_track') || '0';
+        let curTrack = zsGet('zephyr_track') || '0';
         if (parseInt(curTrack, 10) > maxInit) {
           curTrack = '0';
-          localStorage.setItem('zephyr_track', '0');
+          zsSet('zephyr_track', '0');
         }
 
         document.querySelectorAll('.z-track-item').forEach(item => {
@@ -2334,7 +2421,9 @@
               return;
             }
             haptic(25);
-            localStorage.setItem('zephyr_track', item.dataset.index);
+            lastLap = 1;
+            raceEndHandled = false;
+            zsSet('zephyr_track', item.dataset.index);
             if (window.__zephyr && typeof window.__zephyr.loadTrack === 'function') {
               window.__zephyr.loadTrack(trackIdx);
               document.querySelectorAll('.z-track-item').forEach(el => el.classList.toggle('active', el.dataset.index === item.dataset.index));
@@ -2371,6 +2460,8 @@
 
         document.getElementById('z-pause-restart')?.addEventListener('click', () => {
           pauseModal?.classList.add('hidden');
+          lastLap = 1;
+          raceEndHandled = false;
           if (window.__zephyr) {
             window.__zephyr.restartRace();
             window.__zephyr.setPaused(false);
@@ -2389,6 +2480,8 @@
 
         document.getElementById('z-pause-title')?.addEventListener('click', () => {
           pauseModal?.classList.add('hidden');
+          lastLap = 1;
+          raceEndHandled = false;
           if (window.__zephyr) {
             window.__zephyr.quitToTitle();
             window.__zephyr.setPaused(false);
@@ -2435,21 +2528,18 @@
         const settingsClose = document.getElementById('z-settings-close');
         const optAutogas = document.getElementById('z-opt-autogas');
         const optGyro = document.getElementById('z-opt-gyro');
-        const optBtnSize = document.getElementById('z-opt-btnsize');
-        const optSpeedClass = document.getElementById('z-opt-speedclass');
-        const optFps = document.getElementById('z-opt-fps');
 
         if (optAutogas) {
-          optAutogas.checked = localStorage.getItem('zephyr_opt_autogas') === '1';
+          optAutogas.checked = zsGet('zephyr_opt_autogas') === '1';
           window.__ZEPHYR_AUTOGAS = optAutogas.checked;
           optAutogas.addEventListener('change', () => {
             window.__ZEPHYR_AUTOGAS = optAutogas.checked;
-            localStorage.setItem('zephyr_opt_autogas', optAutogas.checked ? '1' : '0');
+            zsSet('zephyr_opt_autogas', optAutogas.checked ? '1' : '0');
           });
         }
 
         // 2 Smartphone Control Modes: Tasti Normali (buttons) & Giroscopio Calibrato (gyro)
-        let currentControlMode = localStorage.getItem('zephyr_control_mode') || 'buttons';
+        let currentControlMode = zsGet('zephyr_control_mode') || 'buttons';
         if (currentControlMode !== 'gyro') currentControlMode = 'buttons';
         window.__ZEPHYR_CONTROL_MODE = currentControlMode;
 
@@ -2458,6 +2548,10 @@
         const gyroHud = document.getElementById('z-gyro-hud');
         const gyroBubble = document.getElementById('z-gyro-bubble');
         const modePills = document.querySelectorAll('.z-mode-pill');
+
+        // Declared before setControlMode: it is invoked at load with a restored gyro mode
+        let currentGyroSteer = 0;
+        let lastOrientationTs = 0;
 
         const requestGyroPermissionIfNeeded = async () => {
           if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
@@ -2472,6 +2566,30 @@
           return true;
         };
 
+        // iOS: gyro mode restored from settings at load cannot show the permission prompt yet —
+        // arm a one-time gesture listener that requests it on the first user interaction
+        const armGyroPermissionOnFirstGesture = () => {
+          if (typeof DeviceOrientationEvent === 'undefined' || typeof DeviceOrientationEvent.requestPermission !== 'function') return;
+          if (window.__zephyrGyroArmTick) return;
+          window.__zephyrGyroArmTick = true;
+          const onFirstGesture = async () => {
+            window.removeEventListener('touchend', onFirstGesture);
+            window.removeEventListener('click', onFirstGesture);
+            const granted = await requestGyroPermissionIfNeeded();
+            if (granted) {
+              // Permission granted: the deviceorientation listener below is already attached,
+              // it starts receiving events right away (gyro re-hooked)
+              currentGyroSteer = 0;
+              window.__customSteerAxis = 0;
+            } else {
+              showToast('⚠️ Permesso Giroscopio non abilitato', 2.5);
+              if (currentControlMode === 'gyro') setControlMode('buttons', false);
+            }
+          };
+          window.addEventListener('touchend', onFirstGesture, { once: true });
+          window.addEventListener('click', onFirstGesture, { once: true });
+        };
+
         const setControlMode = async (mode, userTriggered = false) => {
           if (mode !== 'gyro') mode = 'buttons';
           if (mode === 'gyro' && userTriggered) {
@@ -2483,10 +2601,13 @@
               mode = 'buttons';
             }
           }
+          if (mode === 'gyro' && !userTriggered) {
+            armGyroPermissionOnFirstGesture();
+          }
 
           currentControlMode = mode;
           window.__ZEPHYR_CONTROL_MODE = mode;
-          localStorage.setItem('zephyr_control_mode', mode);
+          zsSet('zephyr_control_mode', mode);
 
           // Update HUD quick button (toggle directly between TASTI and GIRO)
           if (btnCtrlMode) {
@@ -2546,7 +2667,6 @@
         setControlMode(currentControlMode, false);
 
         // Gyroscope DeviceOrientation Logic with Best-in-Class Pro Ergonomics (Mario Kart Tour / Asphalt Standard)
-        let currentGyroSteer = 0;
         if (typeof window !== 'undefined' && window.DeviceOrientationEvent) {
           window.addEventListener('deviceorientation', (e) => {
             if (currentControlMode !== 'gyro') return;
@@ -2579,8 +2699,12 @@
               target = sign * Math.pow(normalized, 1.1);
             }
 
-            // Snappy low-latency filter (alpha = 0.65) for instant zero-latency steering with smooth transitions
-            currentGyroSteer = currentGyroSteer * 0.35 + target * 0.65;
+            // Snappy low-latency filter: base alpha = 0.65 @ 60Hz, scaled by real elapsed time
+            const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+            const dtMs = lastOrientationTs > 0 ? Math.min(1000, Math.max(0, now - lastOrientationTs)) : 16.7;
+            lastOrientationTs = now;
+            const alpha = 1 - Math.pow(1 - 0.65, dtMs / 16.7);
+            currentGyroSteer = currentGyroSteer * (1 - alpha) + target * alpha;
             if (Math.abs(currentGyroSteer) < 0.008 && target === 0) currentGyroSteer = 0;
             window.__customSteerAxis = Math.max(-1, Math.min(1, currentGyroSteer));
 
@@ -2783,6 +2907,61 @@
             mp = new window.MultiplayerManager();
             window.__multiplayerManager = mp;
 
+            // Schermata risultati autorevole: il rank mostrato dal motore e'
+            // calcolato dal finishCounter LOCALE di ogni macchina e puo' divergere
+            // dall'ordine reale. Sul guest, sostituiamo i risultati locali con
+            // quelli pubblicati dall'host (TOURNAMENT_STANDINGS_SYNC.raceResults).
+            const installResultsWrapper = () => {
+              const ui = window.__zephyr?.ui;
+              if (!ui?.showResults || ui.__mpResultsWrapped) return;
+              ui.__mpResultsWrapped = true;
+              const origShowResults = ui.showResults.bind(ui);
+              ui.showResults = (entries, bestLap, totalTime, localRank) => {
+                const mpInst = window.__multiplayerManager;
+                // NB: il motore chiama showResults PRIMA di handleRaceResults, quindi
+                // mp.state puo' essere ancora 'RACING': la condizione giusta e' "sono
+                // un guest in stanza", non lo stato corrente.
+                if (!mpInst || mpInst.isHost || !mpInst.roomCode || !Array.isArray(entries) || entries.length === 0) {
+                  return origShowResults(entries, bestLap, totalTime, localRank);
+                }
+                let renderedFinal = false;
+                let renderedLocal = false;
+                const applyAuth = (auth) => {
+                  if (renderedFinal || !Array.isArray(auth) || !auth.length) return;
+                  renderedFinal = true;
+                  const bySlot = new Map(auth.map(r => [r.slot, r]));
+                  const fixed = entries
+                    .map(e => {
+                      const a = bySlot.get(e.slot ?? e.id);
+                      return a ? { ...e, rank: a.rank, finishTime: a.finishTime || e.finishTime } : e;
+                    })
+                    .sort((x, y) => x.rank - y.rank);
+                  origShowResults(fixed, bestLap, totalTime, fixed.find(e => e.isPlayer)?.rank ?? localRank);
+                  if (renderedLocal && window.__zephyr?.ui?.toast) window.__zephyr.ui.toast('📊 Classifica ufficiale aggiornata', 2.5);
+                };
+                // Fase 1: attende l'ordine autorevole dell'host (max ~12s)
+                const waitAuth = (attempt) => {
+                  if (renderedFinal) return;
+                  const auth = mpInst.authRaceResults;
+                  if (Array.isArray(auth) && auth.length) { applyAuth(auth); return; }
+                  if (attempt < 60) { setTimeout(() => waitAuth(attempt + 1), 200); return; }
+                  // Fase 2: fallback sui dati locali, ma se l'auth arriva tardi
+                  // (host con raceOverTimer>18s) ri-disegna comunque con i dati veri
+                  renderedLocal = true;
+                  origShowResults(entries, bestLap, totalTime, localRank);
+                  const lateAuth = (attempt2) => {
+                    if (renderedFinal) return;
+                    const auth2 = mpInst.authRaceResults;
+                    if (Array.isArray(auth2) && auth2.length) { applyAuth(auth2); return; }
+                    if (attempt2 < 360) setTimeout(() => lateAuth(attempt2 + 1), 250); // max ~90s
+                  };
+                  setTimeout(() => lateAuth(0), 1000);
+                };
+                waitAuth(0);
+              };
+            };
+            installResultsWrapper();
+
             // Wire callbacks
             mp.onToast = (msg) => {
               if (window.__zephyr?.ui?.toast) window.__zephyr.ui.toast(msg, 2.8);
@@ -2805,14 +2984,14 @@
                   <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${isMe ? 'rgba(118, 255, 240, 0.12)' : 'rgba(255,255,255,0.03)'}; border-radius: 8px; border: 1px solid ${isMe ? '#76fff0' : 'rgba(255,255,255,0.06)'};">
                     <div style="display: flex; align-items: center; gap: 8px;">
                       <span style="font-size: 14px;">${p.isHost ? '👑' : '🏎️'}</span>
-                      <span style="font-size: 13px; font-weight: 800; color: ${isMe ? '#ffc857' : '#ffffff'};">${p.name} ${isMe ? '(Tu)' : ''}</span>
-                      <span style="font-size: 11px; padding: 2px 6px; border-radius: 6px; background: rgba(255,255,255,0.08); color: #76fff0;">${kInfo.icon} ${kInfo.label}</span>
+                      <span style="font-size: 13px; font-weight: 800; color: ${isMe ? '#ffc857' : '#ffffff'};">${esc(p.name)} ${isMe ? '(Tu)' : ''}</span>
+                      <span style="font-size: 11px; padding: 2px 6px; border-radius: 6px; background: rgba(255,255,255,0.08); color: #76fff0;">${kInfo.icon} ${esc(kInfo.label)}</span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
                       ${readyBadge}
                       <div style="display: flex; align-items: center; gap: 4px;">
                         <span style="display:inline-block; width: 6px; height: 6px; border-radius: 50%; background: ${pingColor};"></span>
-                        <span style="font-size: 11px; font-family: monospace; color: #94a3b8;">${p.ping || 30}ms</span>
+                        <span style="font-size: 11px; font-family: monospace; color: #94a3b8;">${esc(p.ping || 30)}ms</span>
                       </div>
                     </div>
                   </div>
@@ -2825,12 +3004,12 @@
               if (guestInfoEl) {
                 const curRoom = lobby.roomCode || mp.roomCode || '';
                 const tName = (window.__ZEPHYR_TRACKS && window.__ZEPHYR_TRACKS[lobby.trackIndex]?.name) || 'Circuito';
-                guestInfoEl.innerHTML = `Stanza: <b style="color: #ffc857; font-family: monospace;">${curRoom}</b> • Circuito: <b>${tName}</b> (${lobby.laps} giri)<br>In attesa che l'Host avvii la gara...`;
+                guestInfoEl.innerHTML = `Stanza: <b style="color: #ffc857; font-family: monospace;">${esc(curRoom)}</b> • Circuito: <b>${esc(tName)}</b> (${esc(lobby.laps)} giri)<br>In attesa che l'Host avvii la gara...`;
               }
               if (guestTracksListEl) {
                 const tracks = (lobby.playlistTracks && lobby.playlistTracks.length > 0) ? lobby.playlistTracks : (mp.playlistTracks || [lobby.trackIndex]);
                 guestTracksListEl.innerHTML = tracks.map((tId, idx) => {
-                  return `<div><span style="opacity: 0.8;">Gara ${idx + 1}:</span> <b>${getTrackName(tId)}</b></div>`;
+                  return `<div><span style="opacity: 0.8;">Gara ${idx + 1}:</span> <b>${esc(getTrackName(tId))}</b></div>`;
                 }).join('');
               }
 
@@ -2972,6 +3151,9 @@
             };
 
             mp.onRaceStart = (data) => {
+              installResultsWrapper();
+              lastLap = 1;
+              raceEndHandled = false;
               if (tourneyModal) {
                 tourneyModal.style.display = 'none';
                 tourneyModal.classList.add('hidden');
@@ -2980,14 +3162,14 @@
                 mpCountdownOverlay.style.display = 'none';
                 mpCountdownOverlay.classList.add('hidden');
               }
-              const curTrack = parseInt(localStorage.getItem('zephyr_track') || '0', 10);
+              const curTrack = parseInt(zsGet('zephyr_track') || '0', 10);
               if (curTrack !== data.trackIndex) {
                 if (window.__zephyr?.loadTrack) {
                   window.__zephyr.loadTrack(data.trackIndex);
                 } else {
                   // Fallback: reload with correct track spline & theme
-                  localStorage.setItem('zephyr_track', String(data.trackIndex));
-                  sessionStorage.setItem('zephyr_mp_autojoin', JSON.stringify({
+                  zsSet('zephyr_track', String(data.trackIndex));
+                  zsSet('zephyr_mp_autojoin', JSON.stringify({
                     roomCode: mp.roomCode,
                     isHost: mp.isHost,
                     playerName: mp.playerName,
@@ -3040,6 +3222,11 @@
                   racer.invuln = 6.5;
                   director.applyTurbo(racer);
                   break;
+                case 'vortex':
+                  director.items?.spawnVortex(racer, director.spline, director.racers);
+                  director.vfx?.burst?.(racer.pos.x, racer.pos.y + .6, racer.pos.z, 65535, 24, 10);
+                  director.events?.sfx?.('vortex', { volume: 0.6 });
+                  break;
                 case 'shield':
                   director.items?.raiseShield(racer);
                   director.events?.sfx?.('shield_up', { volume: 0.6 });
@@ -3060,7 +3247,7 @@
               const p = mp.players.find(pl => pl.slot === data.slot);
               const pName = p ? p.name : `Pilota ${data.slot + 1}`;
               if (window.__zephyr?.ui?.toast) {
-                window.__zephyr.ui.toast(`🏁 ${pName} ha tagliato il traguardo! (#${data.rank})`, 3.5);
+                window.__zephyr.ui.toast(`🏁 ${esc(pName)} ha tagliato il traguardo! (#${data.rank})`, 3.5);
               }
               if (window.__zephyr?.director?.racers?.[data.slot]) {
                 const r = window.__zephyr.director.racers[data.slot];
@@ -3073,6 +3260,8 @@
 
             mp.onRematch = (data) => {
               mp.state = 'RACING';
+              lastLap = 1;
+              raceEndHandled = false;
               mpModal?.classList.add('hidden');
               if (window.__zephyr) {
                 window.__zephyr.startMultiplayerRace(data.trackIndex ?? mp.trackIndex, mp.laps, mp.players, mp.mySlot);
@@ -3119,10 +3308,10 @@
                     <tr style="background: ${rowBg}; ${borderStyle} border-bottom: 1px solid rgba(255,255,255,0.06);">
                       <td style="padding: 10px 12px; font-weight: 800; font-size: 14px; color: ${i === 0 ? '#ffc857' : i === 1 ? '#e2e8f0' : i === 2 ? '#fb923c' : '#94a3b8'};">${medal}</td>
                       <td style="padding: 10px 12px; font-weight: 700; color: #ffffff;">
-                        <span style="margin-right: 6px;">${kartIcon}</span>${st.name} ${isMe ? '<span style="font-size: 10px; color: #76fff0; font-weight: 800;">(TU)</span>' : ''}
+                        <span style="margin-right: 6px;">${kartIcon}</span>${esc(st.name)} ${isMe ? '<span style="font-size: 10px; color: #76fff0; font-weight: 800;">(TU)</span>' : ''}
                       </td>
-                      <td style="padding: 10px 12px; text-align: center; color: #34d399; font-weight: 800;">${racePts}</td>
-                      <td style="padding: 10px 12px; text-align: right; font-weight: 900; font-size: 15px; color: #ffc857;">${st.totalPoints} PTS</td>
+                      <td style="padding: 10px 12px; text-align: center; color: #34d399; font-weight: 800;">${esc(racePts)}</td>
+                      <td style="padding: 10px 12px; text-align: right; font-weight: 900; font-size: 15px; color: #ffc857;">${esc(st.totalPoints)} PTS</td>
                     </tr>
                   `;
                 }).join('');
@@ -3168,7 +3357,7 @@
             mp.onTournamentComplete = (data) => {
               if (window.__zephyr?.ui?.toast) {
                 const winner = data.standings?.[0]?.name || 'Campione';
-                window.__zephyr.ui.toast(`🏆 Torneo completato! Vincitore: ${winner}!`, 4.5);
+                window.__zephyr.ui.toast(`🏆 Torneo completato! Vincitore: ${esc(winner)}!`, 4.5);
               }
             };
 
@@ -3245,8 +3434,10 @@
             hostView?.classList.remove('hidden');
             guestView?.classList.add('hidden');
             haptic(15);
-            if (mp && mp.state !== 'HOST_LOBBY') {
+            if (mp && mp.state === 'IDLE') {
               mp.createRoom();
+            } else if (mp && mp.state !== 'HOST_LOBBY') {
+              showToast('Sei connesso a una stanza: esci prima di crearne una nuova', 2.5);
             }
           });
 
@@ -3316,7 +3507,7 @@
             if (window.__zephyr?.ui?.toast) window.__zephyr.ui.toast(`Codice copiato: ${mp.roomCode}`, 2.0);
             haptic(25);
           }).catch(() => {
-            prompt('Copia il codice della stanza:', mp.roomCode);
+            showToast(`Copia manuale: ${mp.roomCode}`, 4.0);
           });
         });
 
@@ -3327,7 +3518,7 @@
             if (window.__zephyr?.ui?.toast) window.__zephyr.ui.toast(`Link invito copiato negli appunti! 🔗`, 2.5);
             haptic(25);
           }).catch(() => {
-            prompt('Copia il link d\'invito per i tuoi amici:', link);
+            showToast(`Copia manuale link: ${link}`, 4.5);
           });
         });
 
@@ -3369,6 +3560,10 @@
             return;
           }
           initMultiplayer();
+          if (!mp) {
+            showToast('⚠️ Multiplayer non disponibile: ricarica la pagina', 2.5);
+            return;
+          }
           if (guestKartSelect) mp.setSelectedKart(guestKartSelect.value);
           haptic(25);
 
@@ -3387,7 +3582,7 @@
             guestWaitingBox.classList.remove('hidden');
           }
           if (guestInfoEl) {
-            guestInfoEl.innerHTML = `⏳ Connessione alla stanza <b style="color: #ffc857; font-family: monospace;">${code}</b> in corso...`;
+            guestInfoEl.innerHTML = `⏳ Connessione alla stanza <b style="color: #ffc857; font-family: monospace;">${esc(code)}</b> in corso...`;
           }
 
           mp.joinRoom(code, guestNameInput?.value);
@@ -3398,7 +3593,7 @@
               if (window.__zephyr?.ui?.toast) window.__zephyr.ui.toast('Tempo di connessione scaduto. Riprova.', 2.5);
               mp.leaveRoom();
             }
-          }, 8000);
+          }, 14000);
         });
 
         // Leave Room (Guest)
@@ -3435,6 +3630,9 @@
 
         // URL Hash & Session Storage Auto-Join
         const checkAutoJoin = () => {
+          // One-shot guard: registered twice (DOMContentLoaded + timeout) — must join only once
+          if (window.__zephyrAutojoinRan) return;
+          window.__zephyrAutojoinRan = true;
           // Check hash #room=ZEPH-XXXX
           const hash = window.location.hash;
           let roomParam = null;
@@ -3444,15 +3642,15 @@
           }
 
           // Check session storage for reload continuation
-          const savedSession = sessionStorage.getItem('zephyr_mp_autojoin');
+          const savedSession = zsGet('zephyr_mp_autojoin', true);
           if (savedSession) {
             try {
-              sessionStorage.removeItem('zephyr_mp_autojoin');
+              zsDel('zephyr_mp_autojoin', true);
               const session = JSON.parse(savedSession);
               initMultiplayer();
               if (session.action === 'start_race') {
                 setTimeout(() => {
-                  if (window.__zephyr) {
+                  if (window.__zephyr && mp) {
                     mp.roomCode = session.roomCode;
                     mp.isHost = session.isHost;
                     mp.players = session.players;
@@ -3484,5 +3682,511 @@
         setTimeout(checkAutoJoin, 800);
       })();
     </script>
-  </body>
+    <script>
+      /* ── Zephyr Visual Grade: look cinematografico a costo quasi zero ──
+         - IBL: env map equirectangular generata su canvas -> riflessi reali sui
+           materiali (il metalness dei kart senza env map e' "spento")
+         - Luci: spegne le shadow pass delle luci di riempimento (512px) e tiene
+           solo la key a 2048: -2 shadow render pass per frame, qualita' invariata
+         - Bloom: soglia/forza tarate per far brillare neon e poteri (stesso costo)
+         - Materiali kart: metalness/roughness bilanciati per speculari "dipinta"
+         - Overlay CSS: vignetta + grana statica GPU-composita (zero repaint)   */
+      (function () {
+        if (typeof location !== 'undefined' && location.search.indexOf('nograde') !== -1) return; // A/B switch
+        const GRADED = new WeakSet();
+        const LIGHTS_OFF = new WeakSet();
+        let envApplied = false;
+
+        function buildEquirectTexture(TexCtor) {
+          const c = document.createElement('canvas');
+          c.width = 1024; c.height = 512;
+          const g = c.getContext('2d');
+          const sky = g.createLinearGradient(0, 0, 0, 300);
+          sky.addColorStop(0, '#0a2540');
+          sky.addColorStop(0.55, '#1b6d8c');
+          sky.addColorStop(1, '#7fd8d8');
+          g.fillStyle = sky; g.fillRect(0, 0, 1024, 300);
+          const sun = g.createRadialGradient(640, 120, 8, 640, 120, 220);
+          sun.addColorStop(0, 'rgba(255,250,230,0.95)');
+          sun.addColorStop(0.25, 'rgba(255,220,160,0.35)');
+          sun.addColorStop(1, 'rgba(255,220,160,0)');
+          g.fillStyle = sun; g.fillRect(0, 0, 1024, 300);
+          const hor = g.createLinearGradient(0, 240, 0, 320);
+          hor.addColorStop(0, 'rgba(255,200,120,0)');
+          hor.addColorStop(1, 'rgba(255,190,120,0.35)');
+          g.fillStyle = hor; g.fillRect(0, 240, 1024, 80);
+          const gr = g.createLinearGradient(0, 300, 0, 512);
+          gr.addColorStop(0, '#134a52');
+          gr.addColorStop(1, '#03141c');
+          g.fillStyle = gr; g.fillRect(0, 300, 1024, 212);
+          const tex = new TexCtor(c);
+          tex.mapping = 302;       // EquirectangularReflectionMapping
+          tex.colorSpace = 3001;   // SRGBColorSpace
+          return tex;
+        }
+
+        function gradeScene(z) {
+          const S = z.scene;
+          if (!S) return;
+          // env map una tantum; luci/bloom/esposure ri-applicate a ogni tick
+          // (il motore ripristina intensita' a ogni load pista/theme)
+          if (!envApplied) {
+            let TexCtor = null;
+            S.traverse(o => {
+              if (!TexCtor && o.material) {
+                const maps = Array.isArray(o.material) ? o.material.map(m => m.map) : [o.material.map];
+                for (const m of maps) { if (m) { TexCtor = m.constructor; break; } }
+              }
+            });
+            if (TexCtor) {
+              try {
+                S.environment = buildEquirectTexture(TexCtor);
+                if ('environmentIntensity' in S) S.environmentIntensity = 0.55;
+                envApplied = true;
+              } catch (e) { console.warn('[grade] env map non applicata:', e); }
+            }
+          }
+          S.traverse(o => {
+            if (!o.isLight) return;
+            if (o.shadow?.mapSize && o.shadow.mapSize.x <= 512 && o.castShadow && !LIGHTS_OFF.has(o)) {
+              o.castShadow = false;           // riempimento: via la shadow pass
+              LIGHTS_OFF.add(o);
+            }
+            if (o.isHemisphereLight && o.intensity > 0.6) o.intensity = 0.55; // riequilibra con IBL
+          });
+          if (z.bloom) { z.bloom.strength = 0.62; z.bloom.radius = 0.55; z.bloom.threshold = 0.76; }
+          if (z.renderer) z.renderer.toneMappingExposure = 1.08;
+        }
+
+        function gradeKarts(z) {
+          const d = z.director;
+          if (!d?.racers) return;
+          for (const r of d.racers) {
+            r.kart?.object?.traverse(o => {
+              const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
+              for (const m of mats) {
+                if (m.userData?.zGraded || m.map || m.transparent) continue;
+                m.userData = m.userData || {};
+                m.userData.zGraded = true;
+                if (m.metalness !== undefined) {
+                  m.metalness = Math.max(m.metalness, 0.32);
+                  m.roughness = Math.min(m.roughness, 0.38);
+                  m.envMapIntensity = 0.9;
+                }
+              }
+            });
+          }
+        }
+
+        // overlay CSS (creati una sola volta, compositing GPU)
+        function installOverlays() {
+          if (document.getElementById('z-vignette')) return;
+          const st = document.createElement('style');
+          st.textContent = `#gl{filter:saturate(1.07) contrast(1.04)}
+            @media (max-width:900px){#gl.z-light-hw{filter:saturate(1.07) contrast(1.04)}#gl:not(.z-light-hw){filter:none}}
+            .z-vignette{position:fixed;inset:0;pointer-events:none;z-index:9000;
+              background:radial-gradient(ellipse at center,rgba(0,0,0,0) 58%,rgba(0,10,20,0.28) 100%)}
+            .z-grain{position:fixed;inset:0;pointer-events:none;z-index:9001;opacity:.05;mix-blend-mode:overlay;
+              background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2"/></filter><rect width="180" height="180" filter="url(%23n)" opacity="0.6"/></svg>');
+              background-size:180px 180px}
+            .z-statusfx{position:fixed;top:calc(env(safe-area-inset-top,0px) + 74px);left:50%;transform:translateX(-50%);
+              pointer-events:none;z-index:9500;font-weight:800;font-size:15px;letter-spacing:.5px;display:none;
+              padding:7px 16px;border-radius:10px;background:rgba(8,26,36,.82);backdrop-filter:blur(4px)}
+            .z-statusfx.emp{display:block;color:#fca5a5;border:1px solid #ef4444;text-shadow:0 0 12px rgba(239,68,68,.7)}
+            html,body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+            body,input,button,select{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+            input,textarea{user-select:text;-webkit-user-select:text}
+            #z-rotate{position:fixed;inset:0;z-index:1000002;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+              background:linear-gradient(160deg,#06131f,#0b2438);color:#bff7ee;font-weight:800;font-size:18px;text-align:center;padding:24px}
+            #z-rotate .z-rot-ico{font-size:52px;animation:zrot 2.2s ease-in-out infinite}
+            @keyframes zrot{0%,20%{transform:rotate(0)}55%,100%{transform:rotate(90deg)}}
+            @media (orientation:portrait){#z-rotate{display:flex}}`;
+          document.head.appendChild(st);
+          const v = document.createElement('div'); v.className = 'z-vignette'; v.id = 'z-vignette';
+          const n = document.createElement('div'); n.className = 'z-grain'; n.id = 'z-grain';
+          const fx = document.createElement('div'); fx.className = 'z-statusfx'; fx.id = 'z-statusfx';
+          if (!document.getElementById('z-rotate')) {
+            const rot = document.createElement('div'); rot.id = 'z-rotate';
+            rot.innerHTML = '<div class="z-rot-ico">🔄</div><div>Ruota il dispositivo</div><div style="font-size:13px;opacity:.75">Zephyr Reef Grand Prix \u00e8 un gioco orizzontale</div>';
+            document.body.append(rot);
+          }
+          document.body.append(v, n, fx);
+          const gl = document.getElementById('gl');
+          if (gl && (navigator.hardwareConcurrency || 4) >= 6) gl.classList.add('z-light-hw');
+        }
+
+        // indicatore stato negativo sul giocatore (EMP-mine): chiarezza UX
+        function updateStatusFx() {
+          const fx = document.getElementById('z-statusfx');
+          const d = window.__zephyr?.director;
+          const p = d?.player || d?.racers?.find?.(r => r.isPlayer);
+          if (!fx || !p) return;
+          if (p.state?.spinTimer > 0 && p.invuln > 0) { fx.className = 'z-statusfx emp'; fx.textContent = '💥 COLPITO DA EMP!'; }
+          else if (fx.className !== 'z-statusfx') fx.className = 'z-statusfx';
+        }
+
+        // ── Character Studio: sembianze potenziate per-carattere ──
+        // Il motore costruisce teste senza volto; qui aggiungiamo occhi espressivi
+        // + un accessorio firma per ogni personaggio (corona, cappello, occhiali,
+        // benda...), agganciati al gruppo "head" cosi' animano con il pilota.
+        // I costruttori three.js vengono raccolti dalla scena viva (no import).
+        const CHARDONE = new WeakSet();
+        let GEO = null; // costruttori harvestati dalla scena
+        const CHARPALETTE = new Map();
+        function harvestGeo(z) {
+          if (GEO) return GEO;
+          GEO = {};
+          const mats = {};
+          z.scene?.traverse(o => {
+            if (o.geometry && !GEO[o.geometry.type]) GEO[o.geometry.type] = o.geometry.constructor;
+            if (o.isMesh && !GEO.mesh) GEO.mesh = o.constructor;
+            if (o.material && !Array.isArray(o.material)) { const t = o.material.type; if (!mats[t]) mats[t] = o.material.constructor; }
+          });
+          GEO.std = mats.MeshStandardMaterial || mats.MeshLambertMaterial || mats.MeshBasicMaterial;
+          GEO.Sphere = GEO.SphereGeometry || GEO.BufferGeometry;
+          GEO.Box = GEO.BoxGeometry || GEO.BufferGeometry;
+          GEO.Cylinder = GEO.CylinderGeometry || GEO.BufferGeometry;
+          GEO.Torus = GEO.TorusGeometry || GEO.SphereGeometry || GEO.BufferGeometry;
+          return GEO;
+        }
+        function pmat(hex, opts = {}) {
+          const key = hex + JSON.stringify(opts);
+          if (!CHARPALETTE.has(key)) {
+            CHARPALETTE.set(key, new GEO.std({ color: hex, roughness: opts.rough ?? 0.35, metalness: opts.metal ?? 0.1, emissive: opts.emissive ?? 0x000000, emissiveIntensity: opts.emissiveIntensity ?? 1 }));
+          }
+          return CHARPALETTE.get(key);
+        }
+        function sph(mat, r, w = 10, h = 8) { return new GEO.mesh(new GEO.Sphere(r, w, h), mat); }
+        function box(mat, x, y, z) { return new GEO.mesh(new GEO.Box(x, y, z), mat); }
+        function cyl(mat, rt, rb, h, seg = 12) { return new GEO.mesh(new GEO.Cylinder(rt, rb, h, seg), mat); }
+        function tor(mat, r, tube, seg = 18) { return new GEO.mesh(new GEO.Torus(r, tube, 8, seg), mat); }
+        function headRadius(head) {
+          let r = 0.5;
+          head.traverse(o => {
+            if (o.isMesh && o.geometry) {
+              if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere();
+              const k = Math.max(o.scale.x, o.scale.y, o.scale.z);
+              r = Math.max(r, o.geometry.boundingSphere.radius * k + o.position.length() * k);
+            }
+          });
+          return Math.min(r, 0.72);
+        }
+        function eyeSet(head, r, opts = {}) {
+          const white = pmat(opts.iris || 0xffffff, { rough: 0.2 });
+          const dark = pmat(opts.pupil || 0x101418, { rough: 0.3 });
+          const ex = r * (opts.spread ?? 0.34), ey = r * (opts.height ?? 0.14), ez = -r * 0.86;
+          for (const side of [-1, 1]) {
+            const w = sph(white, r * 0.155, 10, 8); w.scale.z = 0.5;
+            w.position.set(side * ex, ey, ez);
+            head.add(w);
+            const pupil = sph(dark, r * (opts.pupilR ?? 0.07), 8, 6); pupil.scale.z = 0.5;
+            pupil.position.set(side * ex, ey, ez - r * 0.1);
+            head.add(pupil);
+          }
+        }
+        function buildFace(head, id) {
+          if (!GEO?.Sphere || !GEO.mesh) return;
+          const r = headRadius(head);
+          const add = (mesh, x, y, z, sx = 1, sy = 1, sz = 1, rx = 0, ry = 0, rz = 0) => {
+            mesh.position.set(x, y, z); mesh.scale.set(sx, sy, sz); mesh.rotation.set(rx, ry, rz);
+            mesh.userData.zGraded = true; head.add(mesh); return mesh;
+          };
+          switch (id) {
+            case 'nix': { // lontra: muso, naso, baffi
+              eyeSet(head, r);
+              add(sph(pmat(0xe8b57e, { rough: 0.5 }), r * 0.3, 12, 9), 0, -r * 0.28, -r * 0.72);
+              add(sph(pmat(0x1a1d22, { rough: 0.3 }), r * 0.09, 8, 6), 0, -r * 0.2, -r * 0.98);
+              const whisk = pmat(0xf5efe0, { rough: 0.4 });
+              for (const side of [-1, 1]) for (let k = 0; k < 2; k++) {
+                const w = cyl(whisk, r * 0.008, r * 0.008, r * 0.5, 5);
+                add(w, side * r * 0.55, -r * 0.18 - k * r * 0.1, -r * 0.62, 1, 1, 1, 0, 0, side * (Math.PI / 2 - k * 0.25));
+              }
+              break;
+            }
+            case 'bruno': { // roccia: occhi di lava + sopracciglio ferro
+              eyeSet(head, r, { iris: 0xff7a1a, pupil: 0xffd166, emissive: 0xff7a1a, emissiveIntensity: 1.6, spread: 0.36, height: 0.1 });
+              add(box(pmat(0x4a4d55, { rough: 0.6, metal: 0.35 }), r * 0.95, r * 0.16, r * 0.22), 0, r * 0.42, -r * 0.72);
+              break;
+            }
+            case 'sable': { // notte: occhi ciano luminosi
+              eyeSet(head, r, { iris: 0x7cf9ff, pupil: 0x0b1030, emissive: 0x7cf9ff, emissiveIntensity: 1.4, height: 0.16 });
+              break;
+            }
+            case 'zuzu': { // pastello: occhioni + guance
+              eyeSet(head, r, { spread: 0.38, pupilR: 0.085, height: 0.1 });
+              for (const side of [-1, 1])
+                add(sph(pmat(0xff6fb5, { rough: 0.45 }), r * 0.11, 8, 6), side * r * 0.52, -r * 0.12, -r * 0.6, 1, 0.6, 0.4);
+              break;
+            }
+            case 'rustam': { // meccanico: occhiali da saldatore
+              eyeSet(head, r, { iris: 0x8affd0, pupil: 0x10331f, emissive: 0x8affd0, emissiveIntensity: 0.8, spread: 0.3, height: 0.16 });
+              const gold = pmat(0xffd166, { rough: 0.3, metal: 0.8 });
+              for (const side of [-1, 1])
+                add(tor(gold, r * 0.17, r * 0.035, 14), side * r * 0.3, r * 0.16, -r * 0.88);
+              add(box(pmat(0x35383f, { rough: 0.5, metal: 0.4 }), r * 1.05, r * 0.08, r * 0.06), 0, r * 0.16, r * 0.38);
+              break;
+            }
+            case 'marlow': { // corsaro: berretto da capitano + barba
+              eyeSet(head, r);
+              const navy = pmat(0x22304a, { rough: 0.5 });
+              add(cyl(navy, r * 0.55, r * 0.58, r * 0.28, 14), 0, r * 0.82, 0);
+              add(cyl(navy, r * 0.85, r * 0.85, r * 0.05, 16), 0, r * 0.68, -r * 0.12);
+              add(cyl(pmat(0xffd166, { rough: 0.3, metal: 0.8 }), r * 0.575, r * 0.575, r * 0.07, 14), 0, r * 0.72, 0);
+              add(sph(pmat(0xe8e4da, { rough: 0.6 }), r * 0.34, 10, 8), 0, -r * 0.42, -r * 0.5, 1.25, 0.7, 0.9);
+              break;
+            }
+            case 'princess': { // corona + gemma
+              eyeSet(head, r, { iris: 0xfff1c9, pupil: 0x1a1d22, spread: 0.32 });
+              const gold = pmat(0xffd166, { rough: 0.25, metal: 0.9 });
+              add(tor(gold, r * 0.4, r * 0.055, 18), 0, r * 0.78, 0, 1, 1, 1, Math.PI / 2, 0, 0);
+              for (let k = 0; k < 4; k++) {
+                const a = (k / 4) * Math.PI * 2 + Math.PI / 4;
+                add(box(gold, r * 0.09, r * 0.22, r * 0.09), Math.cos(a) * r * 0.4, r * 0.95, Math.sin(a) * r * 0.4, 1, 1, 1, 0, -a, 0);
+              }
+              add(sph(pmat(0xff4f7b, { rough: 0.2, emissive: 0xff4f7b, emissiveIntensity: 0.35 }), r * 0.07, 8, 6), 0, r * 0.78, -r * 0.4);
+              break;
+            }
+            case 'pirate': { // tricorno + benda + barba
+              eyeSet(head, r);
+              const blk = pmat(0x14161c, { rough: 0.45 });
+              add(sph(blk, r * 0.13, 8, 6), -r * 0.34, r * 0.14, -r * 0.88, 1.25, 0.85, 0.35);
+              add(box(blk, r * 1.02, r * 0.05, r * 0.05), 0, r * 0.22, 0, 1, 1, 1, 0, 0, -0.12);
+              add(cyl(blk, r * 0.6, r * 0.66, r * 0.1, 14), 0, r * 0.86, 0, 1, 1, 1, 0.16, 0, 0);
+              add(sph(blk, r * 0.38, 10, 8), 0, r * 0.95, -r * 0.05, 1.15, 0.5, 1.05);
+              add(sph(pmat(0xe8e4da, { rough: 0.6 }), r * 0.3, 10, 8), 0, -r * 0.4, -r * 0.52, 1.2, 0.75, 0.85);
+              break;
+            }
+            default: // generico: solo occhi
+              eyeSet(head, r);
+          }
+        }
+        // registro occhi per blink e micro-sguardo (per racer/stage)
+        const EYEREG = new WeakMap();
+        function registerEyes(owner, head, r) {
+          const eyes = [], pupils = [];
+          head.traverse(o => {
+            if (!o.isMesh || o.geometry?.type !== 'Sphere') return;
+            const c = o.material?.color?.getHexString?.();
+            if (c === 'ffffff' || /ff(f1c9|7a1a|9ff|d166)/.test(c || '')) { if (o.position.z < -0.3) eyes.push(o); }
+            if (c && ['101418','0b1030','1a1d22','10331f','ffd166'].includes(c) && o.position.z < -0.35) pupils.push(o);
+          });
+          EYEREG.set(owner, { eyes, pupils, blinkAt: performance.now() + 1500 + Math.random() * 3000, lookT: Math.random() * 4 });
+        }
+        // ── Corpo: volante + colonna, mani con pollici, sopracciglia, bocca, stemma ──
+        function buildBody(drv, body, id, head) {
+          if (!GEO?.Sphere || !GEO.mesh) return;
+          const r = headRadius(head);
+          const add = (parent, mesh, x, y, z, sx = 1, sy = 1, sz = 1, rx = 0, ry = 0, rz = 0) => {
+            mesh.position.set(x, y, z); mesh.scale.set(sx, sy, sz); mesh.rotation.set(rx, ry, rz);
+            mesh.userData.zGraded = true; parent.add(mesh); return mesh;
+          };
+          const dark = pmat(0x191d24, { rough: 0.45, metal: 0.3 });
+          const gold = pmat(0xffd166, { rough: 0.3, metal: 0.85 });
+          // volante + colonna: le mani (già presenti a ~(\u00b10.35,0.04,-0.40) nel
+          // sottogruppo busto) finalmente afferrano qualcosa di reale
+          add(body, tor(dark, r * 0.3, r * 0.045, 16), 0, r * 0.14, -r * 0.82, 1, 1, 1, -0.55, 0, 0);
+          add(body, cyl(dark, r * 0.035, r * 0.05, r * 0.6, 8), 0, -r * 0.16, -r * 0.62, 1, 1, 1, -0.55, 0, 0);
+          // pollici sulle mani
+          for (const side of [-1, 1]) {
+            const hand = body.getObjectByName?.(side < 0 ? 'hand_L' : 'hand_R');
+            if (hand) {
+              add(hand, sph(pmat(0xe8b57e, { rough: 0.5 }), r * 0.055, 8, 6), side * -r * 0.06, r * 0.07, 0.02, 1, 0.75, 1);
+              const hs = hand.children?.[0];
+              if (hs && hs.geometry?.type === 'Sphere') hs.scale.setScalar(1.22);
+            }
+          }
+          // sopracciglia: carattere per personaggio (angolo e colore)
+          const browCfg = {
+            nix: [0x8a5a34, -0.18], bruno: [0x3a3d45, 0.42], sable: [0xb9ff4f, -0.3],
+            zuzu: [0xd95fae, -0.15], rustam: [0x6b4a23, 0.22], marlow: [0x8a6a4a, -0.22],
+            princess: [0xc98b3f, -0.26], pirate: [0x2a221a, 0.3]
+          }[id] || [0x555a63, -0.15];
+          const browMat = pmat(browCfg[0], { rough: 0.5 });
+          for (const side of [-1, 1])
+            add(head, box(browMat, r * 0.3, r * 0.07, r * 0.07), side * r * 0.33, r * 0.3, -r * 0.84, 1, 1, 1, 0, 0, side * browCfg[1]);
+          // bocca: sorriso per gli eroi, grin per i cattivi
+          const mouthY = id === 'nix' ? -r * 0.44 : -r * 0.34;
+          add(head, box(pmat(0x231a14, { rough: 0.5 }), r * 0.26, r * 0.045, r * 0.05), 0, mouthY, -r * 0.8, 1, 1, 1, 0.15, 0, 0);
+          // stemma sul petto: disco con nucleo colore personaggio
+          const emblemC = { nix: 0x2ec4b6, bruno: 0xff7a1a, sable: 0x7cf9ff, zuzu: 0xff9ad5, rustam: 0x8affd0, marlow: 0x22304a, princess: 0xff4f7b, pirate: 0x22304a }[id] || 0x2ec4b6;
+          add(body, cyl(pmat(gold ? 0xffd166 : 0xffffff, { rough: 0.35, metal: 0.6 }), r * 0.11, r * 0.11, r * 0.025, 14), 0, r * 0.02, -r * 0.36, 1, 1, 1, Math.PI / 2, 0, 0);
+          add(body, cyl(pmat(emblemC, { rough: 0.3, emissive: emblemC, emissiveIntensity: 0.25 }), r * 0.055, r * 0.055, r * 0.03, 12), 0, r * 0.02, -r * 0.37, 1, 1, 1, Math.PI / 2, 0, 0);
+        }
+
+        // ── Blink + micro-sguardo ──
+        function blinkLoop() {
+          try {
+            const z = window.__zephyr;
+            if (z?.stageModel && !CHARDONE.has(z.stageModel)) {
+              charStudio(z);
+            }
+            const now = performance.now();
+            EYEREG.forEach((e, owner) => {
+              // blink: chiusura/apertura ~130ms ogni 2.5-5.5s
+              if (now >= e.blinkAt && now < e.blinkAt + 130) {
+                const t = (now - e.blinkAt) / 130;
+                const c = t < 0.5 ? 1 - t * 2 : (t - 0.5) * 2;
+                const sy = Math.max(0.08, c);
+                for (const eye of e.eyes) eye.scale.y = eye.userData._sy === undefined ? (eye.userData._sy = eye.scale.y) : eye.userData._sy * sy;
+              } else if (now >= e.blinkAt + 130) {
+                for (const eye of e.eyes) if (eye.userData._sy !== undefined) eye.scale.y = eye.userData._sy;
+                e.blinkAt = now + 2500 + Math.random() * 3000;
+              }
+              // micro-sguardo: le pupille derivano lentamente
+              const ph = (now * 0.00035 + e.lookT) % (Math.PI * 2);
+              const dx = Math.sin(ph) * 0.018;
+              for (const p2 of e.pupils) if (p2.userData._px === undefined) p2.userData._px = p2.position.x;
+              for (const p2 of e.pupils) p2.position.x = p2.userData._px + dx;
+            });
+          } catch (err) { /* mai bloccare il rAF */ }
+          requestAnimationFrame(blinkLoop);
+        }
+        requestAnimationFrame(blinkLoop);
+
+        function charStudio(z) {
+          const d = z.director;
+          harvestGeo(z);
+          if (!GEO.std || !GEO.mesh) return;
+          // kart del menu (stage): volto visibile in rotazione sul piedistallo
+          const stage = z.stageModel;
+          if (stage && !CHARDONE.has(stage)) {
+            const shead = stage.getObjectByName?.('head');
+            const sid = z.playerSpec?.id || stage.name?.replace?.('kart_', '');
+            if (shead && sid) {
+              CHARDONE.add(stage);
+              try {
+                buildFace(shead, sid);
+                registerEyes(stage, shead, 1);
+                let drv = null;
+                stage.traverse(o => { if (!drv && o.name && String(o.name).startsWith('driver')) drv = o; });
+                if (drv && drv.children[0]) buildBody(drv, drv.children[0], sid, shead);
+              } catch (e) {}
+            }
+          }
+          if (!d?.racers) return;
+          for (const r of d.racers) {
+            const root = r.kart?.object;
+            if (!root || CHARDONE.has(root)) continue;
+            const head = root.getObjectByName?.('head');
+            const id = r.kart?.spec?.id;
+            if (!head || !id) continue;
+            CHARDONE.add(root);
+            try {
+              buildFace(head, id);
+              registerEyes(root, head, 1);
+              // corpo: gruppo driver + sottogruppo busto
+              let drv = null;
+              root.traverse(o => { if (!drv && o.name && String(o.name).startsWith('driver')) drv = o; });
+              if (drv && drv.children[0]) buildBody(drv, drv.children[0], id, head);
+            } catch (e) { console.warn('[charStudio]', id, e); }
+          }
+        }
+
+        // Rileva rendering software (SwiftShader): su alcuni device Android il
+        // WebView perde l'accelerazione GPU — meglio saperlo che subire stutter
+        function detectSoftGpu(z) {
+          if (window.__zSoftGpuChecked || !z.renderer) return;
+          window.__zSoftGpuChecked = true;
+          try {
+            const gl = z.renderer.getContext();
+            const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+            const rn = String(dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : '');
+            if (/swiftshader|software|basic render/i.test(rn)) {
+              z.ui?.toast?.('\u26a0\ufe0f GPU hardware non attiva: qualit\u00e0 ridotta dal sistema', 5);
+              if (z.quality) { z.quality.shadowMapSize = 1024; }
+            }
+          } catch (e) {}
+        }
+
+        // ── Ombre 30Hz ──
+        // Il shadow pass renderizza tutti i caster della scena: aggiornare la
+        // shadow map a metà frequenza (30Hz) e' visivamente identico su blob
+        // soft 2048px e dimezza il suo costo. Forzato a piena frequenza su
+        // pausa/ritorno visibilità per evitare ombre stantio al resume.
+        let shadowTick = 0;
+        function shadowLoop() {
+          try {
+            const z = window.__zephyr;
+            if (z?.renderer?.shadowMap) {
+              const rm = z.renderer.shadowMap;
+              if (z.paused || document.hidden) { rm.autoUpdate = true; }
+              else {
+                rm.autoUpdate = false;
+                shadowTick++;
+                if (shadowTick % 2 === 0) rm.needsUpdate = true;
+              }
+            }
+          } catch (e) { /* mai bloccare il rAF */ }
+          requestAnimationFrame(shadowLoop);
+        }
+        requestAnimationFrame(shadowLoop);
+
+        // ── DRS runtime ──
+        // Se il device non tiene i 60fps, la risoluzione scende a gradini di
+        // 0.125x (fino a 1.0x) e risale quando può: fluidità garantita con
+        // la qualità massima che il device regge, e consumo GPU minimo.
+        let drsBad = 0, drsGood = 0, drsLast = 0;
+        function drsTick(z) {
+          if (z.mode !== 'race' || z.paused) { drsBad = 0; drsGood = 0; return; }
+          const now = performance.now();
+          const sd = z._smoothDt || 0;
+          const cur = z.renderer.getPixelRatio();
+          const cap = Math.max(z.quality?.pixelRatioCap || 1.5, cur);
+          // isteresi ampia + cooldown 6s: la risoluzione non deve mai oscillare
+          if (sd > 18.5) { drsBad++; drsGood = 0; }
+          else if (sd < 15.4 && cur < cap) { drsGood++; drsBad = 0; }
+          else { drsBad = 0; drsGood = 0; }
+          const apply = (nr) => {
+            nr = +nr.toFixed(3);
+            z.renderer.setPixelRatio(nr);
+            z.composer?.setPixelRatio?.(nr);
+            z.composer?.setSize?.(window.innerWidth, window.innerHeight);
+          };
+          if (drsBad >= 4 && cur > 1 && now - drsLast > 6000) {
+            apply(Math.max(1, cur - 0.125)); drsBad = 0; drsLast = now;
+            z.ui?.toast?.('\u26a1 Risoluzione adattiva ' + (+Math.max(1, cur - 0.125).toFixed(2)) + 'x', 1.4);
+          } else if (drsGood >= 6 && cur < cap && now - drsLast > 6000) {
+            apply(Math.min(cap, cur + 0.125)); drsGood = 0; drsLast = now;
+          }
+        }
+
+        // hook di test/diagnostica per il DRS (usato dalla suite di verifica)
+        window.__zdrs = (z2) => drsTick(z2 || window.__zephyr);
+
+        let tries = 0;
+        const iv = setInterval(() => {
+          const z = window.__zephyr;
+          if (!z?.scene) { if (++tries > 900) clearInterval(iv); return; }
+          try { installOverlays(); detectSoftGpu(z); gradeScene(z); gradeKarts(z); updateStatusFx(); charStudio(z); drsTick(z); } catch (e) { console.warn('[grade]', e); }
+        }, 1200);
+      })();
+    </script>
+  <script>
+    // Banner AdSense title-screen: attivo SOLO con client configurato
+    (function () {
+      const cfg = window.ZEPHYR_ADS || {};
+      if (!cfg.adsenseClient || !cfg.bannerTitleSlot) return;
+      if (/^appassets\./.test(location.hostname) || location.protocol === 'file:') return;
+      const ad = document.createElement('ins');
+      ad.className = 'adsbygoogle';
+      ad.style.display = 'block';
+      ad.style.position = 'fixed';
+      ad.style.bottom = '0';
+      ad.style.left = '0';
+      ad.style.right = '0';
+      ad.style.zIndex = '9002';
+      ad.setAttribute('data-ad-client', cfg.adsenseClient);
+      ad.setAttribute('data-ad-slot', cfg.bannerTitleSlot);
+      ad.setAttribute('data-ad-format', 'auto');
+      ad.setAttribute('data-full-width-responsive', 'true');
+      document.body.appendChild(ad);
+      const sc = document.createElement('script');
+      sc.async = true;
+      sc.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + cfg.adsenseClient;
+      sc.crossOrigin = 'anonymous';
+      document.head.appendChild(sc);
+      try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) {}
+    })();
+  </script>
+</body>
 </html>

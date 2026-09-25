@@ -1,7 +1,10 @@
 import puppeteer from "puppeteer";
+import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 
-const artifactsDir = "/Users/robzomb/.gemini/antigravity/brain/0394039c-7986-43d7-9058-02535fa2c8fe";
+const artifactsDir = path.join(path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."), "build", "artifacts");
+fs.mkdirSync(artifactsDir, { recursive: true });
 
 async function run() {
   console.log("Launching Puppeteer for live verification of https://robzombai.github.io/zephyr-reef-kart/?v=zephyr-6.9.5 ...");
