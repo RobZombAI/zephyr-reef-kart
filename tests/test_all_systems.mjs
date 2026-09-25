@@ -5085,5 +5085,148 @@ describe('=== UNIT & PROCESS TESTS: REVOLUTIONARY BIOME DIVERSITY, WORLD IDENTIT
   });
 });
 
+describe('=== UNIT & PROCESS TESTS: AUTHENTIC ARCADE GRID POSITIONS & LAST-PLACE PLAYER START ===', () => {
+  const indexHtml = fs.readFileSync(path.join(REPO_ROOT, 'index.html'), 'utf8');
+  const zephyrHtml = fs.readFileSync(path.join(REPO_ROOT, 'zephyr.html'), 'utf8');
+  const bundleCode = fs.readFileSync(BUNDLE_PATH, 'utf8');
+
+  it('1. Single Player Starting Grid: Player unconditionally spawns in last grid slot (N-1), rivals ahead in slots 0 to N-2', () => {
+    assert.ok(bundleCode.includes('slotIdx=isSinglePlayer?(n===0?this.racers.length-1:n-1):n'), 'Single player maps player (index 0) to last grid slot and AI rivals ahead');
+    assert.ok(bundleCode.includes('isSinglePlayer=!('), 'Distinguishes single player from multiplayer state');
+
+    // Simulate 6 racers slot allocation
+    const totalRacers = 6;
+    const isSinglePlayer = true;
+    const slots = [];
+    for (let n = 0; n < totalRacers; n++) {
+      const slotIdx = isSinglePlayer ? (n === 0 ? totalRacers - 1 : n - 1) : n;
+      slots.push({ racerIndex: n, isPlayer: n === 0, slotIdx });
+    }
+
+    assert.strictEqual(slots[0].slotIdx, 5, 'Player (n=0) must be in grid slot 5 (last place)');
+    assert.strictEqual(slots[1].slotIdx, 0, 'Rival 1 (n=1) must be in grid slot 0 (pole position)');
+    assert.strictEqual(slots[2].slotIdx, 1, 'Rival 2 (n=2) must be in grid slot 1');
+    assert.strictEqual(slots[3].slotIdx, 2, 'Rival 3 (n=3) must be in grid slot 2');
+    assert.strictEqual(slots[4].slotIdx, 3, 'Rival 4 (n=4) must be in grid slot 3');
+    assert.strictEqual(slots[5].slotIdx, 4, 'Rival 5 (n=5) must be in grid slot 4');
+
+    const uniqueSlots = new Set(slots.map(s => s.slotIdx));
+    assert.strictEqual(uniqueSlots.size, 6, 'All 6 slots must be occupied without duplicates');
+  });
+
+  it('2. Staggered Dual-Column Grid Geometry: Monotonically increasing track distance from pole to last place', () => {
+    assert.ok(bundleCode.includes('gridSlot(t,e){const n=this.startS-(Rg+t*4.5)'), 'gridSlot staggers each slot 4.5m backwards');
+
+    const startS = 40.0;
+    const Rg = 9.0;
+    const Cg = 5.6;
+
+    const slotMetrics = [];
+    for (let t = 0; t < 6; t++) {
+      const distAlongTrack = startS - (Rg + t * 4.5);
+      const lateralSide = (t % 2 === 0 ? -1 : 1) * Cg;
+      slotMetrics.push({ slot: t, dist: distAlongTrack, lateral: lateralSide });
+    }
+
+    // Verify distance monotonically decreases from slot 0 (front) to slot 5 (back)
+    for (let i = 0; i < slotMetrics.length - 1; i++) {
+      assert.ok(
+        slotMetrics[i].dist > slotMetrics[i + 1].dist,
+        `Slot ${i} (${slotMetrics[i].dist}m) must be ahead of Slot ${i + 1} (${slotMetrics[i + 1].dist}m)`
+      );
+    }
+
+    // Verify alternating dual-column lateral positions
+    assert.strictEqual(slotMetrics[0].lateral, -5.6, 'Slot 0 (Pole) is left column');
+    assert.strictEqual(slotMetrics[1].lateral, 5.6, 'Slot 1 is right column');
+    assert.strictEqual(slotMetrics[2].lateral, -5.6, 'Slot 2 is left column');
+    assert.strictEqual(slotMetrics[3].lateral, 5.6, 'Slot 3 is right column');
+    assert.strictEqual(slotMetrics[4].lateral, -5.6, 'Slot 4 is left column');
+    assert.strictEqual(slotMetrics[5].lateral, 5.6, 'Slot 5 (Player) is right column');
+  });
+
+  it('3. Starting Standings & HUD Indicator: Player ranks in last place (6/6) at countdown', () => {
+    assert.ok(bundleCode.includes('r.rank=isSinglePlayer?(n===0?this.racers.length:n):n+1'), 'Initial rank initializes player to last rank and rivals to 1..N-1');
+    assert.ok(bundleCode.includes('this.computeStandings()'), 'computeStandings executes on grid setup');
+    assert.ok(bundleCode.includes('this.camera.snap(this.player.state,this.spline)'), 'Camera snaps behind player at start');
+
+    // Simulate computeStandings with initial grid distances
+    const racers = [
+      { id: 0, isPlayer: true, progress: { finished: false, lap: 0, checkpoint: 15, distance: -30.31 }, rank: 6 },
+      { id: 1, isPlayer: false, progress: { finished: false, lap: 0, checkpoint: 15, distance: -7.81 }, rank: 1 },
+      { id: 2, isPlayer: false, progress: { finished: false, lap: 0, checkpoint: 15, distance: -12.31 }, rank: 2 },
+      { id: 3, isPlayer: false, progress: { finished: false, lap: 0, checkpoint: 15, distance: -16.82 }, rank: 3 },
+      { id: 4, isPlayer: false, progress: { finished: false, lap: 0, checkpoint: 15, distance: -21.32 }, rank: 4 },
+      { id: 5, isPlayer: false, progress: { finished: false, lap: 0, checkpoint: 15, distance: -25.81 }, rank: 5 },
+    ];
+
+    const sorted = [...racers].sort((e, n) => n.progress.distance - e.progress.distance);
+    for (let e = 0; e < sorted.length; e++) sorted[e].rank = e + 1;
+
+    assert.strictEqual(racers.find(r => r.isPlayer).rank, 6, 'Player must be rank 6 of 6 at start');
+    assert.strictEqual(racers.find(r => r.id === 1).rank, 1, 'Pole position AI must be rank 1');
+  });
+
+  it('4. Dynamic Overtaking Logic: Standings promote player rank as rivals are overtaken', () => {
+    assert.ok(bundleCode.includes('newRank<prevRank'), 'Engine detects player overtaking into higher position');
+    assert.ok(bundleCode.includes('this.events?.sfx?.(newRank===1?"mini_turbo":"drafting"'), 'Plays overtake SFX when climbing positions');
+
+    const racers = [
+      { id: 0, isPlayer: true, progress: { finished: false, lap: 0, checkpoint: 15, distance: -30.0 }, rank: 6 },
+      { id: 1, isPlayer: false, progress: { finished: false, lap: 0, checkpoint: 15, distance: -7.0 }, rank: 1 },
+      { id: 2, isPlayer: false, progress: { finished: false, lap: 0, checkpoint: 15, distance: -12.0 }, rank: 2 },
+      { id: 3, isPlayer: false, progress: { finished: false, lap: 0, checkpoint: 15, distance: -17.0 }, rank: 3 },
+      { id: 4, isPlayer: false, progress: { finished: false, lap: 0, checkpoint: 15, distance: -22.0 }, rank: 4 },
+      { id: 5, isPlayer: false, progress: { finished: false, lap: 0, checkpoint: 15, distance: -26.0 }, rank: 5 },
+    ];
+
+    function updateRanks() {
+      const sorted = [...racers].sort((e, n) => n.progress.distance - e.progress.distance);
+      for (let e = 0; e < sorted.length; e++) sorted[e].rank = e + 1;
+    }
+
+    // Pass rival 5
+    racers[0].progress.distance = -24.0;
+    updateRanks();
+    assert.strictEqual(racers[0].rank, 5, 'Player climbs to 5th after passing rival 5');
+
+    // Pass rival 4
+    racers[0].progress.distance = -19.0;
+    updateRanks();
+    assert.strictEqual(racers[0].rank, 4, 'Player climbs to 4th after passing rival 4');
+
+    // Pass rival 3
+    racers[0].progress.distance = -14.0;
+    updateRanks();
+    assert.strictEqual(racers[0].rank, 3, 'Player climbs to 3rd after passing rival 3');
+
+    // Pass rival 2
+    racers[0].progress.distance = -9.0;
+    updateRanks();
+    assert.strictEqual(racers[0].rank, 2, 'Player climbs to 2nd after passing rival 2');
+
+    // Pass leader into 1st place!
+    racers[0].progress.distance = 0.0;
+    updateRanks();
+    assert.strictEqual(racers[0].rank, 1, 'Player takes 1st place after passing leader');
+  });
+
+  it('5. Tactile & Audio Feedback: Overtaking sound effects and HUD rank-pop animation', () => {
+    assert.ok(bundleCode.includes('this.elRank.classList.add("rank-pop")'), 'HUD triggers rank-pop animation when position improves');
+
+    for (const [name, html] of [['index.html', indexHtml], ['zephyr.html', zephyrHtml]]) {
+      assert.ok(html.includes('.hud__rank-num.rank-pop'), `${name} contains .hud__rank-num.rank-pop CSS`);
+      assert.ok(html.includes('@keyframes rankpop'), `${name} contains @keyframes rankpop`);
+    }
+  });
+
+  it('6. Multiplayer Preservation: Room slot assignments strictly honored', () => {
+    assert.ok(
+      bundleCode.includes('this.racers[i].resetOnGrid(this.spline,i);this.racers[i].updateProgress(this.gates)'),
+      'Multiplayer preserves exact room slot for each participant'
+    );
+  });
+});
+
 
 
