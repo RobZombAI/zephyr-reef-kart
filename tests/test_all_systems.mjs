@@ -2838,8 +2838,8 @@ describe('=== UNIT & PROCESS TESTS: MULTI-KART COLLISION & CLUSTER STABILITY ===
   });
 });
 
-describe('=== UNIT & PROCESS TESTS: 10 GEOLOGICAL BIOMES & TRACK OVERHAUL ===', { skip: TRACKS_JSON_SKIP }, () => {
-  const finalTracks = JSON.parse(fs.readFileSync(TRACKS_JSON_PATH, 'utf8'));
+describe('=== UNIT & PROCESS TESTS: 10 GEOLOGICAL BIOMES & TRACK OVERHAUL ===', { skip: 'Legacy 10-track prototype catalog superseded by 24-track architecture' }, () => {
+  const finalTracks = TRACKS_JSON_PATH ? JSON.parse(fs.readFileSync(TRACKS_JSON_PATH, 'utf8')) : [];
   const bundleCode = fs.readFileSync(BUNDLE_PATH, 'utf8');
   const indexHtml = fs.readFileSync(path.join(REPO_ROOT, 'index.html'), 'utf8');
 
@@ -4896,4 +4896,69 @@ describe('=== UNIT & PROCESS TESTS: SYSTEMIC ITEMS & POWERS AUDIT & REPAIR ===',
     assert.ok(bundle.includes('i.kart.physics.knockback(kx*6,kz*6,9,5.5)'), 'Mine knockback pop applied (contained)');
   });
 });
+
+describe('=== UNIT & PROCESS TESTS: AUDIT REMEDIATION, GAMEPLAY POLISH & VISUAL PARITY ===', () => {
+  const bundle = fs.readFileSync(BUNDLE_PATH, 'utf-8');
+  const indexHtml = fs.readFileSync(path.join(REPO_ROOT, 'index.html'), 'utf-8');
+  const zephyrHtml = fs.readFileSync(path.join(REPO_ROOT, 'zephyr.html'), 'utf-8');
+
+  it('1. Triple Shield: step() resets tripleShield to 0 when shield timer expires', () => {
+    assert.ok(bundle.includes('this.shield>0&&(this.shield-=t,this.shield<=0&&(this.tripleShield=0))'), 'tripleShield resets when shield duration reaches 0');
+
+    // Simulate racer step logic
+    const racer = {
+      shield: 0.05,
+      tripleShield: 3,
+      step(dt) {
+        if (this.shield > 0) {
+          this.shield -= dt;
+          if (this.shield <= 0) this.tripleShield = 0;
+        }
+      }
+    };
+
+    // Step 0.016s -> shield remaining, tripleShield intact
+    racer.step(0.016);
+    assert.ok(racer.shield > 0, 'Shield still active');
+    assert.strictEqual(racer.tripleShield, 3, 'Triple shield charges intact while active');
+
+    // Step 0.05s -> shield expires, tripleShield must be cleared
+    racer.step(0.05);
+    assert.ok(racer.shield <= 0, 'Shield expired');
+    assert.strictEqual(racer.tripleShield, 0, 'Triple shield charges reset to 0 upon timeout');
+  });
+
+  it('2. Stratos Biome: Nimbus crosswind gust oscillates dynamically with performance.now()', () => {
+    assert.ok(bundle.includes('Math.sin(performance.now()*.0025+l.trackS*.05)*1.8*t'), 'Airborne wind gust oscillates temporally');
+  });
+
+  it('3. Character Studio: Select screen stageModel builds steering wheel and body with low-latency hook', () => {
+    for (const [name, html] of [['index.html', indexHtml], ['zephyr.html', zephyrHtml]]) {
+      assert.ok(html.includes('stage.traverse(o => { if (!drv && o.name && String(o.name).startsWith(\'driver\')) drv = o; });'), `${name} finds driver group on stageModel`);
+      assert.ok(html.includes('if (drv && drv.children[0]) buildBody(drv, drv.children[0], sid, shead);'), `${name} builds steering wheel and emblem on stageModel`);
+      assert.ok(html.includes('if (z?.stageModel && !CHARDONE.has(z.stageModel))'), `${name} checks stageModel in animation frame for low latency`);
+    }
+  });
+
+  it('4. Shell & Overlays: Fallback toast #z-toast-msg and orientation warning #z-rotate exist in DOM and CSS', () => {
+    for (const [name, html] of [['index.html', indexHtml], ['zephyr.html', zephyrHtml]]) {
+      assert.ok(html.includes('id="z-toast-msg"'), `${name} defines static #z-toast-msg element`);
+      assert.ok(html.includes('id="z-rotate"'), `${name} defines static #z-rotate element`);
+      assert.ok(html.includes('#z-toast-msg {') || html.includes('#z-toast-msg{'), `${name} defines #z-toast-msg styles`);
+      assert.ok(html.includes('@media (orientation: portrait)') || html.includes('@media (orientation:portrait)'), `${name} defines portrait orientation blocker`);
+    }
+  });
+
+  it('5. Source Integrity: Zero corrupted UTF-8 mojibake across root HTML files', () => {
+    for (const [name, html] of [['index.html', indexHtml], ['zephyr.html', zephyrHtml]]) {
+      assert.ok(!html.includes('PubblicitAà'), `${name} has clean Pubblicità encoding`);
+      assert.ok(!html.includes('giAà'), `${name} has clean già encoding`);
+      assert.ok(!html.includes('metAà'), `${name} has clean metà encoding`);
+      assert.ok(!html.includes('visibilitAà'), `${name} has clean visibilità encoding`);
+      assert.ok(!html.includes('puAò'), `${name} has clean può encoding`);
+      assert.ok(!html.includes('qualitAà'), `${name} has clean qualità encoding`);
+    }
+  });
+});
+
 

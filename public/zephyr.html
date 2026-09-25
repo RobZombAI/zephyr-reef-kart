@@ -36,6 +36,13 @@
       // Clean legacy caches and service workers & force fresh load on version change
       (function() {
         var APP_VERSION = 'zephyr-6.9.6';
+        // ═══ CONFIG PUBBLICITÀ WEB (AdSense) ═══
+        // Su Android/iOS le ads sono gestite dall'app nativa (AdMob, ID test
+        // ufficiali Google già attivi). Sul web: crea l'account AdSense
+        // (google.com/adsense), inserisci qui il client (ca-pub-XXXX) e lo slot
+        // del banner title, e gli annunci appariranno sullo schermo title.
+        // Con client vuoto: nessun script caricato, nessun impatto.
+        window.ZEPHYR_ADS = { adsenseClient: '', bannerTitleSlot: '' };
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistrations().then(function(regs) {
             for (var r of regs) {
@@ -76,9 +83,9 @@
       })();
     </script>
     <script src="./assets/peerjs.min.js"></script>
-    <script type="module" src="./assets/multiplayerManager.js?v=zephyr-6.9.5"></script>
-    <script type="module" crossorigin src="./assets/index-C9rd31_W.js?v=zephyr-6.9.5"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DMliwuo_.css?v=zephyr-6.9.5">
+    <script type="module" src="./assets/multiplayerManager.js?v=zephyr-6.9.6"></script>
+    <script type="module" crossorigin src="./assets/index-C9rd31_W.js?v=zephyr-6.9.6"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DMliwuo_.css?v=zephyr-6.9.6">
     <style>
       /* Mobile Touch Controls Layer */
       .zephyr-touch-layer {
@@ -1194,9 +1201,65 @@
           display: none !important;
         }
       }
+      #z-toast-msg {
+        position: fixed;
+        top: 24px;
+        left: 50%;
+        transform: translateX(-50%) translateY(-20px);
+        background: rgba(10, 25, 40, 0.92);
+        color: #bff7ee;
+        border: 1px solid rgba(0, 242, 254, 0.45);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 16px rgba(0, 242, 254, 0.25);
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-family: inherit;
+        font-size: 15px;
+        font-weight: 700;
+        z-index: 1000003;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.25s ease, transform 0.25s ease;
+      }
+      #z-toast-msg.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+      #z-rotate {
+        position: fixed;
+        inset: 0;
+        z-index: 1000002;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        background: linear-gradient(160deg, #06131f, #0b2438);
+        color: #bff7ee;
+        font-weight: 800;
+        font-size: 18px;
+        text-align: center;
+        padding: 24px;
+      }
+      #z-rotate .z-rot-ico {
+        font-size: 52px;
+        animation: zrot 2.2s ease-in-out infinite;
+      }
+      @keyframes zrot {
+        0%, 20% { transform: rotate(0); }
+        55%, 100% { transform: rotate(90deg); }
+      }
+      @media (orientation: portrait) {
+        #z-rotate { display: flex; }
+      }
     </style>
   </head>
   <body>
+    <div id="z-toast-msg"></div>
+    <div id="z-rotate">
+      <div class="z-rot-ico">🔄</div>
+      <div>Ruota il dispositivo</div>
+      <div style="font-size:13px;opacity:.75">Zephyr Reef Grand Prix è un gioco orizzontale</div>
+    </div>
     <div id="app">
       <canvas id="gl"></canvas>
       <div id="ui"></div>
@@ -2207,6 +2270,7 @@
             const curLap = (typeof player.displayLap === 'function')
               ? player.displayLap(totalLaps)
               : Math.max(1, player.progress?.lap || 0);
+            if (curLap === 1 && window.__raceJustEnded) { window.__raceJustEnded = false; window.__adShownForRace = false; }
             if (curLap === totalLaps && lastLap < totalLaps) {
               lastLap = totalLaps;
               if (finalLapEl) {
@@ -2216,10 +2280,25 @@
               }
             }
 
+            // Pubblicità (AdMob su Android): banner nei menu, niente in gara,
+            // interstitial quando la gara finisce. Su web/desktop: no-op.
+            try {
+              if (window.AndroidAds) {
+                const inRaceNow = window.__zephyr && window.__zephyr.mode === 'race' && !window.__zephyr.paused;
+                if (inRaceNow && window.__adsBannerShown) { window.AndroidAds.hideBanner(); window.__adsBannerShown = false; }
+                else if (!inRaceNow && !window.__adsBannerShown) { window.AndroidAds.showBanner(); window.__adsBannerShown = true; }
+                if (window.__raceJustEnded && !window.__adShownForRace) {
+                  window.AndroidAds.showInterstitial && window.AndroidAds.showInterstitial();
+                  window.__adShownForRace = true;
+                }
+              }
+            } catch (e) {}
+
             // Save track record & progression if player finishes (one-shot latch: this poll
             // keeps ticking after the finish, so writes + unlock toast must fire once)
             if (!raceEndHandled && player.progress && player.progress.finished && player.progress.finishTime > 0) {
               raceEndHandled = true;
+              window.__raceJustEnded = true;
               const curTrack = zsGet('zephyr_track') || '0';
               const curIdx = parseInt(curTrack, 10);
               const oldRecord = parseFloat(zsGet('zephyr_record_' + curTrack) || '9999');
@@ -3726,9 +3805,12 @@
           const v = document.createElement('div'); v.className = 'z-vignette'; v.id = 'z-vignette';
           const n = document.createElement('div'); n.className = 'z-grain'; n.id = 'z-grain';
           const fx = document.createElement('div'); fx.className = 'z-statusfx'; fx.id = 'z-statusfx';
-          const rot = document.createElement('div'); rot.id = 'z-rotate';
-          rot.innerHTML = '<div class="z-rot-ico">🔄</div><div>Ruota il dispositivo</div><div style="font-size:13px;opacity:.75">Zephyr Reef Grand Prix \u00e8 un gioco orizzontale</div>';
-          document.body.append(v, n, fx, rot);
+          if (!document.getElementById('z-rotate')) {
+            const rot = document.createElement('div'); rot.id = 'z-rotate';
+            rot.innerHTML = '<div class="z-rot-ico">🔄</div><div>Ruota il dispositivo</div><div style="font-size:13px;opacity:.75">Zephyr Reef Grand Prix \u00e8 un gioco orizzontale</div>';
+            document.body.append(rot);
+          }
+          document.body.append(v, n, fx);
           const gl = document.getElementById('gl');
           if (gl && (navigator.hardwareConcurrency || 4) >= 6) gl.classList.add('z-light-hw');
         }
@@ -3900,7 +3982,7 @@
           };
           const dark = pmat(0x191d24, { rough: 0.45, metal: 0.3 });
           const gold = pmat(0xffd166, { rough: 0.3, metal: 0.85 });
-          // volante + colonna: le mani (giAà presenti a ~(\u00b10.35,0.04,-0.40) nel
+          // volante + colonna: le mani (già presenti a ~(\u00b10.35,0.04,-0.40) nel
           // sottogruppo busto) finalmente afferrano qualcosa di reale
           add(body, tor(dark, r * 0.3, r * 0.045, 16), 0, r * 0.14, -r * 0.82, 1, 1, 1, -0.55, 0, 0);
           add(body, cyl(dark, r * 0.035, r * 0.05, r * 0.6, 8), 0, -r * 0.16, -r * 0.62, 1, 1, 1, -0.55, 0, 0);
@@ -3934,6 +4016,10 @@
         // ── Blink + micro-sguardo ──
         function blinkLoop() {
           try {
+            const z = window.__zephyr;
+            if (z?.stageModel && !CHARDONE.has(z.stageModel)) {
+              charStudio(z);
+            }
             const now = performance.now();
             EYEREG.forEach((e, owner) => {
               // blink: chiusura/apertura ~130ms ogni 2.5-5.5s
@@ -3968,7 +4054,13 @@
             const sid = z.playerSpec?.id || stage.name?.replace?.('kart_', '');
             if (shead && sid) {
               CHARDONE.add(stage);
-              try { buildFace(shead, sid); registerEyes(stage, shead, 1); } catch (e) {}
+              try {
+                buildFace(shead, sid);
+                registerEyes(stage, shead, 1);
+                let drv = null;
+                stage.traverse(o => { if (!drv && o.name && String(o.name).startsWith('driver')) drv = o; });
+                if (drv && drv.children[0]) buildBody(drv, drv.children[0], sid, shead);
+              } catch (e) {}
             }
           }
           if (!d?.racers) return;
@@ -4008,9 +4100,9 @@
 
         // ── Ombre 30Hz ──
         // Il shadow pass renderizza tutti i caster della scena: aggiornare la
-        // shadow map a metAà frequenza (30Hz) e' visivamente identico su blob
+        // shadow map a metà frequenza (30Hz) e' visivamente identico su blob
         // soft 2048px e dimezza il suo costo. Forzato a piena frequenza su
-        // pausa/ritorno visibilitAà per evitare ombre stantio al resume.
+        // pausa/ritorno visibilità per evitare ombre stantio al resume.
         let shadowTick = 0;
         function shadowLoop() {
           try {
@@ -4031,8 +4123,8 @@
 
         // ── DRS runtime ──
         // Se il device non tiene i 60fps, la risoluzione scende a gradini di
-        // 0.125x (fino a 1.0x) e risale quando puAò: fluiditAà garantita con
-        // la qualitAà massima che il device regge, e consumo GPU minimo.
+        // 0.125x (fino a 1.0x) e risale quando può: fluidità garantita con
+        // la qualità massima che il device regge, e consumo GPU minimo.
         let drsBad = 0, drsGood = 0, drsLast = 0;
         function drsTick(z) {
           if (z.mode !== 'race' || z.paused) { drsBad = 0; drsGood = 0; return; }
@@ -4069,5 +4161,32 @@
         }, 1200);
       })();
     </script>
-  </body>
+  <script>
+    // Banner AdSense title-screen: attivo SOLO con client configurato
+    (function () {
+      const cfg = window.ZEPHYR_ADS || {};
+      if (!cfg.adsenseClient || !cfg.bannerTitleSlot) return;
+      if (/^appassets\./.test(location.hostname) || location.protocol === 'file:') return;
+      const ad = document.createElement('ins');
+      ad.className = 'adsbygoogle';
+      ad.style.display = 'block';
+      ad.style.position = 'fixed';
+      ad.style.bottom = '0';
+      ad.style.left = '0';
+      ad.style.right = '0';
+      ad.style.zIndex = '9002';
+      ad.setAttribute('data-ad-client', cfg.adsenseClient);
+      ad.setAttribute('data-ad-slot', cfg.bannerTitleSlot);
+      ad.setAttribute('data-ad-format', 'auto');
+      ad.setAttribute('data-full-width-responsive', 'true');
+      document.body.appendChild(ad);
+      const sc = document.createElement('script');
+      sc.async = true;
+      sc.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + cfg.adsenseClient;
+      sc.crossOrigin = 'anonymous';
+      document.head.appendChild(sc);
+      try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) {}
+    })();
+  </script>
+</body>
 </html>

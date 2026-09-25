@@ -1,6 +1,6 @@
 {
   "name": "zephyr-reef-kart",
-  "version": "6.9.5",
+  "version": "6.9.6",
   "description": "Zephyr Reef Grand Prix - 3D fantasy kart racer powered by Three.js and Android Native WebView",
   "type": "module",
   "scripts": {
