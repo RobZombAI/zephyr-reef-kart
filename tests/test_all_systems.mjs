@@ -5312,6 +5312,105 @@ describe('=== UNIT & PROCESS TESTS: GOOGLE ADS (ADMOB), GDPR CONSENT & GOOGLE PL
   });
 });
 
+describe('=== UNIT & PROCESS TESTS: MULTIPLAYER MUST-HAVES, DEAD RECKONING, FAIR PLAY & DEVICE STANDARDIZATION ===', () => {
+  it('1. Dead Reckoning: updateRemoteRacers extrapolates remote racer position along velocity vector', () => {
+    const mp = new MultiplayerManager();
+    mp.state = 'RACING';
+    mp.mySlot = 0;
+    mp.players = [
+      { slot: 0, isAI: false },
+      { slot: 1, name: 'ExtrapolatedRival', isAI: false }
+    ];
+
+    // Remote racer moving at 30 m/s heading north (yaw = 0)
+    // Packet arrived 50ms ago
+    const pastTime = performance.now() - 50;
+    mp.remoteStates.set(1, {
+      x: 10, y: 0, z: 10,
+      yaw: 0, speed: 30, steer: 0, driftTier: 0, isDrifting: false,
+      grounded: true, airborne: false, lap: 1, dist: 100,
+      lastUpdate: pastTime
+    });
+
+    const mockRacer = {
+      pos: { x: 10, y: 0, z: 10, clone() { return { ...this, copy() {}, project() {} }; } },
+      state: { yaw: 0, speed: 30, steer: 0, drifting: false, driftTier: 0, trackIndex: 0, grounded: true },
+      progress: { lap: 1, distance: 100 },
+      kart: null
+    };
+
+    mp.updateRemoteRacers(1 / 60, { racers: [null, mockRacer] }, null, null);
+
+    // With yaw = 0, vx = 0, vz = -30 * dt. The predicted position targetZ < 10.
+    // racer.pos.z should be extrapolated forward (z decreasing)
+    assert.ok(mockRacer.pos.z < 10, 'Dead reckoning extrapolated racer position forward along heading');
+  });
+
+  it('2. Authoritative Hit Validation: Host preserves victim slot and sets attackerSlot on RACER_HIT', () => {
+    const host = new MultiplayerManager();
+    host.createRoom('FAIR-HIT');
+    host.state = 'RACING';
+    host.players = [
+      { peerId: 'host-p', slot: 0, isAI: false },
+      { peerId: 'attacker-peer', slot: 1, isAI: false },
+      { peerId: 'victim-peer', slot: 2, isAI: false }
+    ];
+    host.peerSlots.set('attacker-peer', 1);
+    host.peerSlots.set('victim-peer', 2);
+
+    let relayedHit = null;
+    let registeredHit = null;
+    host.relayToOthers = (peerId, data) => { relayedHit = data; };
+    host.onRacerHit = (data) => { registeredHit = data; };
+
+    const attackerConn = { peer: 'attacker-peer', open: true };
+    // Attacker (slot 1) attacks victim (slot 2)
+    host.handleIncomingData(attackerConn, {
+      type: 'RACER_HIT',
+      slot: 2,
+      duration: 1.5
+    });
+
+    assert.ok(registeredHit, 'onRacerHit was called');
+    assert.strictEqual(registeredHit.slot, 2, 'Victim slot 2 was preserved rather than overwritten by attacker');
+    assert.strictEqual(registeredHit.attackerSlot, 1, 'Attacker slot 1 was recorded');
+    assert.strictEqual(relayedHit.slot, 2, 'Relayed message targets victim slot 2');
+  });
+
+  it('3. Live Multiplayer HUD Ping Indicator: markup, styling and latency classification', () => {
+    const indexHtml = fs.readFileSync(path.join(REPO_ROOT, 'index.html'), 'utf8');
+    const zephyrHtml = fs.readFileSync(path.join(REPO_ROOT, 'zephyr.html'), 'utf8');
+
+    for (const [name, html] of [['index.html', indexHtml], ['zephyr.html', zephyrHtml]]) {
+      assert.ok(html.includes('id="z-hud-ping"'), `${name} contains z-hud-ping element`);
+      assert.ok(html.includes('.z-hud-ping-badge'), `${name} contains z-hud-ping-badge CSS`);
+      assert.ok(html.includes('.z-ping-dot'), `${name} contains z-ping-dot pulsating indicator`);
+      assert.ok(html.includes('ping-med'), `${name} contains ping-med style`);
+      assert.ok(html.includes('ping-bad'), `${name} contains ping-bad style`);
+    }
+
+    const mp = new MultiplayerManager();
+    mp.lastRtt = 42;
+    assert.strictEqual(mp.getLatencyInfo().status, 'good');
+    mp.lastRtt = 85;
+    assert.strictEqual(mp.getLatencyInfo().status, 'medium');
+    mp.lastRtt = 160;
+    assert.strictEqual(mp.getLatencyInfo().status, 'bad');
+  });
+
+  it('4. Camera Aspect Calibration: setAspect dynamically recalculates FOV on resize/rotation', () => {
+    const bundleCode = fs.readFileSync(BUNDLE_PATH, 'utf8');
+    assert.ok(bundleCode.includes('setAspect(t){this.camera.aspect=t;const _aspCorr=t<1.65?(1.65-t)*18:0'), 'Camera setAspect recalibrates FOV dynamically for narrow mobile viewports');
+    assert.ok(bundleCode.includes('_aspCorr=_asp<1.65?(1.65-_asp)*18:0'), 'Dynamic race loop applies aspect ratio correction');
+  });
+
+  it('5. Ablative Code Analysis: superfluous 1.8MB og-image.png eliminated and native mirrors synced', () => {
+    assert.ok(!fs.existsSync(path.join(REPO_ROOT, 'public/og-image.png')), 'Superfluous 1.8MB PNG eliminated from public/');
+    assert.ok(!fs.existsSync(path.join(REPO_ROOT, 'dist/og-image.png')), 'Superfluous 1.8MB PNG eliminated from dist/');
+    assert.ok(fs.existsSync(path.join(REPO_ROOT, 'public/og-image.jpg')), 'Optimized 310KB JPEG preserved for web OpenGraph');
+  });
+});
+
 
 
 
