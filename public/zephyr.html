@@ -3886,6 +3886,9 @@
         }
         function buildFace(head, id) {
           if (!GEO?.Sphere || !GEO.mesh) return;
+          // Se la testa possiede già geometria procedurale nativa dal motore (Qg),
+          // non duplicare occhi/lineamenti per evitare sdoppiamento mesh e Z-fighting.
+          if (head.children.length > 1) return;
           const r = headRadius(head);
           const add = (mesh, x, y, z, sx = 1, sy = 1, sz = 1, rx = 0, ry = 0, rz = 0) => {
             mesh.position.set(x, y, z); mesh.scale.set(sx, sy, sz); mesh.rotation.set(rx, ry, rz);
@@ -3995,18 +3998,20 @@
               if (hs && hs.geometry?.type === 'Sphere') hs.scale.setScalar(1.22);
             }
           }
-          // sopracciglia: carattere per personaggio (angolo e colore)
-          const browCfg = {
-            nix: [0x8a5a34, -0.18], bruno: [0x3a3d45, 0.42], sable: [0xb9ff4f, -0.3],
-            zuzu: [0xd95fae, -0.15], rustam: [0x6b4a23, 0.22], marlow: [0x8a6a4a, -0.22],
-            princess: [0xc98b3f, -0.26], pirate: [0x2a221a, 0.3]
-          }[id] || [0x555a63, -0.15];
-          const browMat = pmat(browCfg[0], { rough: 0.5 });
-          for (const side of [-1, 1])
-            add(head, box(browMat, r * 0.3, r * 0.07, r * 0.07), side * r * 0.33, r * 0.3, -r * 0.84, 1, 1, 1, 0, 0, side * browCfg[1]);
-          // bocca: sorriso per gli eroi, grin per i cattivi
-          const mouthY = id === 'nix' ? -r * 0.44 : -r * 0.34;
-          add(head, box(pmat(0x231a14, { rough: 0.5 }), r * 0.26, r * 0.045, r * 0.05), 0, mouthY, -r * 0.8, 1, 1, 1, 0.15, 0, 0);
+          // sopracciglia e bocca solo se la testa non ha già lineamenti procedurali
+          if (head.children.length <= 1) {
+            const browCfg = {
+              nix: [0x8a5a34, -0.18], bruno: [0x3a3d45, 0.42], sable: [0xb9ff4f, -0.3],
+              zuzu: [0xd95fae, -0.15], rustam: [0x6b4a23, 0.22], marlow: [0x8a6a4a, -0.22],
+              princess: [0xc98b3f, -0.26], pirate: [0x2a221a, 0.3]
+            }[id] || [0x555a63, -0.15];
+            const browMat = pmat(browCfg[0], { rough: 0.5 });
+            for (const side of [-1, 1])
+              add(head, box(browMat, r * 0.3, r * 0.07, r * 0.07), side * r * 0.33, r * 0.3, -r * 0.84, 1, 1, 1, 0, 0, side * browCfg[1]);
+            // bocca: sorriso per gli eroi, grin per i cattivi
+            const mouthY = id === 'nix' ? -r * 0.44 : -r * 0.34;
+            add(head, box(pmat(0x231a14, { rough: 0.5 }), r * 0.26, r * 0.045, r * 0.05), 0, mouthY, -r * 0.8, 1, 1, 1, 0.15, 0, 0);
+          }
           // stemma sul petto: disco con nucleo colore personaggio
           const emblemC = { nix: 0x2ec4b6, bruno: 0xff7a1a, sable: 0x7cf9ff, zuzu: 0xff9ad5, rustam: 0x8affd0, marlow: 0x22304a, princess: 0xff4f7b, pirate: 0x22304a }[id] || 0x2ec4b6;
           add(body, cyl(pmat(gold ? 0xffd166 : 0xffffff, { rough: 0.35, metal: 0.6 }), r * 0.11, r * 0.11, r * 0.025, 14), 0, r * 0.02, -r * 0.36, 1, 1, 1, Math.PI / 2, 0, 0);
@@ -4109,8 +4114,12 @@
             const z = window.__zephyr;
             if (z?.renderer?.shadowMap) {
               const rm = z.renderer.shadowMap;
-              if (z.paused || document.hidden) { rm.autoUpdate = true; }
-              else {
+              // Durante la gara, autoUpdate DEVE essere true: le auto corrono a 140 km/h
+              // e a 30Hz l'ombra si disallinea di 0.6m a fotogrammi alterni provocando
+              // vibrazione visiva e sdoppiamento del kart.
+              if (z.mode === 'race' || z.paused || document.hidden) {
+                rm.autoUpdate = true;
+              } else {
                 rm.autoUpdate = false;
                 shadowTick++;
                 if (shadowTick % 2 === 0) rm.needsUpdate = true;
