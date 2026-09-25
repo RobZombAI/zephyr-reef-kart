@@ -92,6 +92,16 @@ const PATCHES = [
     find: 'this.hitShake=this.hitShake>0.001?this.hitShake*Math.exp(-8*e):0;if(this.hitShake>0.01){a.position.x+=(Math.random()-.5)*this.hitShake*.35;a.position.z+=(Math.random()-.5)*this.hitShake*.35;}',
     replace: 'this.hitShake=this.hitShake>0.001?this.hitShake*Math.exp(-8*e):0;if(this.hitShake>0.01&&o.chassis){o.chassis.rotation.z+=Math.sin(performance.now()*.035)*this.hitShake*.04;}'
   },
+  {
+    name: 'Fluidita fisica display 60/90/120Hz: zero frame congelati o scatti alternati',
+    find: 'this.accumulator+=i;let r=0;for(;this.accumulator>=n&&r<this.config.maxSubsteps;)this.fixedStep(n,e),this.accumulator-=n,r++;return r>=this.config.maxSubsteps&&(this.accumulator=0),this.syncVisual(i,e),this.hud()',
+    replace: 'this.accumulator+=i;let r=0;for(;this.accumulator>=n&&r<this.config.maxSubsteps;)this.fixedStep(n,e),this.accumulator-=n,r++;if(r===0&&this.accumulator>0.002){this.fixedStep(this.accumulator,e);this.accumulator=0;}return r>=this.config.maxSubsteps&&(this.accumulator=0),this.syncVisual(i,e),this.hud()'
+  },
+  {
+    name: 'Sospensioni ammortizzate: squat ruote morbido senza vibrazione a scalino',
+    find: 'const D=this.squash*.18,squat=de(f*.0035,-.06,.06),droop=!t.grounded?-.08:0',
+    replace: 'this.sq=ne(this.sq||0,de(f*.0035,-.045,.045),14,e);const D=this.squash*.18,squat=this.sq,droop=!t.grounded?-.08:0'
+  },
 ];
 
 function countOccurrences(hay, needle) {
